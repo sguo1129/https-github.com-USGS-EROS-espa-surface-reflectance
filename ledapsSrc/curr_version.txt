@@ -1,0 +1,75 @@
+Current Version
+
+LEDAPS
+Source code: February 24, 2011
+Ancillary data: September 30, 2011
+
+Overview
+
+The Landsat Ecosystem Disturbance Adaptive Processing System (LEDAPS) is a NASA project to map disturbance, regrowth, and permanent forest conversion across the continent (Masek et al., 2006). The LEDAPS processes Landsat imagery to surface reflectance, using atmospheric correction routines developed for the Terra MODIS instrument (Vermote et al., 1997). The original LEDAPS software was developed at NASA GSFC by Eric Vermote, Nazmi Saleous, and Jonathan Kutler, and Robert Wolfe with support from the NASA Terrestrial Ecology program (PI: Jeff Masek).  This version was adapted by Dr. Feng Gao. The source code and the previous ancillary data can be downloaded from the NASA LEDAPS web site (http://ledaps.nascom.nasa.gov/tools/tools.html). The ancillary data are updated and maintained in the Hydrology and Remote Sensing Laboratory, USDA-ARS by Feng Gao.
+
+LEDAPS consists of four command-line applications, intended to be run in sequence:
+
+- lndpm:  extracts metadata from the standard Landsat product, and writes configuration files for the rest of the processing chain. Also outputs ENVI header files.
+- lndcal: calibrates Landsat-5 TM and Landsat-7 ETM+ data, and generates top-of-atmosphere reflectance.  Also writes TOA brightness temperature file for band 6.  
+- lndcsm:  generates cloud mask using the ACCA (Automated Cloud Cover Assessment) algorithm (Irish et al., 2006).
+- lndsr:  performs atmospheric correction for the Landsat reflective bands using the Vermote et al. (1997) MODIS/6S radiative transfer approach, with aerosols obtained from the image itself using the Kaufmann et al (1997) ?dark dense vegetation? methodology.  
+
+Ancillary NCEP water vapor data and TOMS ozone data are included in the software distribution. There are two zipped files. One (ledapsAnc.1980-2010.tar.gz) contains all ancillary files from 1980 to 2010 and the other (ledapsAnc.2011-recent.tar.gz) contains recent updates since 2011. To update your existing ancillary data, you only need to download recent updates.    
+
+Citation:
+
+Masek, J.G., E.F. Vermote, N. Saleous, R. Wolfe, F.G. Hall, F. Huemmrich, F. Gao, J. Kutler, and T.K. Lim, A Landsat surface reflectance data set for North America, 1990-2000, Geoscience and Remote Sensing Letters, 3, 68-72, 2006.
+
+Additional References:
+
+Irish, R., Barker, J., Goward, S., and Arvidson, T., 2006, Characterization of the Landsat-7 ETM+ Automated Cloud Cover Assessment (ACCA) Algorithm, Photogrammetric Engineering & Remote Sensing, 72, 1179-1188. 
+
+Kaufman, Y., et al., 1997, The MODIS 2.2 micron channel ? Correlation with visible reflectance for use in remote sensing of aerosol, IEEE Trans. Geosci. Remote Sens., 35, 1286-1298.
+
+Vermote, E.F. et al., 1997, Atmospheric correction of visible to middle-infrared EOS-MODIS data over land surfaces:  Background, operational algorithm, and validation, J. Geophys. Res., 102, 17131-17141.
+
+System Requirements
+
+The LEDAPS software runs on 32-bit or 64-bit Linux OS.  
+
+Installation, Setup, and Test
+
+1. Install ancillary files
+
+for first time installation, run
+tar -xvzf ledapsAnc.1980-2010.tar.gz
+tar -xvzf ledapsAnc.2011-recent.tar.gz
+
+for update, download recent update and run 
+tar -xvzf ledapsAnc.2011-recent.tar.gz
+
+2. Install source files
+
+tar -xvzf ledapsSrc.20110224.tar.gz
+cd ledapsSrc/src
+source env.sh
+make
+make install
+make clean
+ 
+Note that new cloud mask program (lndsrbm) calls command "ncdump" which is a standard HDF command. This release includes a linux version ncdump command in bin directory. You need replace ncdump program if it runs from different OS systems. If you don't need to run lndsr-based cloud mask (lndsrbm), you will not need the ncdump program.
+ 
+3. Setup running environment
+
+export ANC_PATH="directory_saved_ancillary_files"
+or in C shell use 
+setenv ANC_PATH "directory_saved_ancillary_files"
+(Note: replace ?directory_saved_ancillary_files? with actual path that stores the ancillary files)
+
+4. Run test          
+
+download Landsat files from the USGS EROS GLOVIS (http://glovis.usgs.gov/) and then run
+lndpm <Landsat_meta_file>
+lndcal <lndcal_input_text>
+lndcsm <lndcsm_input_text>
+lndsr <lndsr_input_text>
+lndsrbm.ksh <lndsr_input_text>
+
+OR simply run the combined commands to generate all outputs
+do_ledaps.csh <Landsat_meta_file> 
