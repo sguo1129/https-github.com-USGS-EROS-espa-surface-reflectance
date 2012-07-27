@@ -5,15 +5,15 @@ LEDAPS Product: lndsr
 File Type: HDF
 File Content Description: Landsat surface reflectance
 Scientific Data Sets:
-	   band1 
-	   band2
-	   band3
-	   band4
-	   band5
-	   band7
-	   atmos_opacity
-	   lndsr_QA
-           band6 
+   band1 
+   band2
+   band3
+   band4
+   band5
+   band7
+   atmos_opacity
+   lndsr_QA
+   band6 
 
 
 Essential SDSes
