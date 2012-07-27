@@ -1,8 +1,8 @@
 Current Version
 
 LEDAPS
-Source code: February 24, 2011
-Ancillary data: September 30, 2011
+Source code: July 27, 2012  (reflects Nov. 2011 release from LEDAPS Tools)
+Ancillary data: July 27, 2012
 
 Overview
 
@@ -38,15 +38,12 @@ Installation, Setup, and Test
 1. Install ancillary files
 
 for first time installation, run
-tar -xvzf ledapsAnc.1980-2010.tar.gz
-tar -xvzf ledapsAnc.2011-recent.tar.gz
+tar -xvzf ledapsAnc.1980-2012.tar.gz
 
 for update, download recent update and run 
-tar -xvzf ledapsAnc.2011-recent.tar.gz
+tar -xvzf ledapsAnc.2012-recent.tar.gz (not yet available)
 
-2. Install source files
-
-tar -xvzf ledapsSrc.20110224.tar.gz
+2. Check out the source files (ledapsSrc) from the Google ledaps project and install the software
 cd ledapsSrc/src
 source env.sh
 make

@@ -2,12 +2,10 @@ Installation Guide
 (tested in Linux bash, November 2011)
 
 1. Install ancillary files
+tar -xvzf ledapsAnc.1980-2012.tar.gz
 
-tar -xvzf ledapsAnc.20111121.tar.gz
+2. Checkout and install source files
 
-2. Install source files
-
-tar -xvzf ledapsSrc.20111121.tar.gz
 cd ledapsSrc/src
 source env.sh
 make
