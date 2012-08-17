@@ -5,7 +5,8 @@
 #
 ##!END
 #############################################################################
-EXTRA  = -m32 -D_BSD_SOURCE
+#EXTRA  = -m32 -D_BSD_SOURCE
+EXTRA = -Wall
 
 TARGET = lndpm
 
