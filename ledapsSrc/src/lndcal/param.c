@@ -676,9 +676,11 @@ char* fname= this->input_header_file_name;
    }
   while ( mygetline(line,1024,iFile)>=0 )
    {
-   if ( (int)strstr(line,"LANDSAT_7") != (int)NULL )landsat_7= true;
+   if ( strstr(line,"LANDSAT_7") != NULL )landsat_7= true;
    
-   ioff=   ( (int)strstr(line,"BIAS") - (int)line );
+   ioff = -999;
+   if ( strstr(line,"BIAS") != NULL )
+       ioff= strstr(line,"BIAS") - line;
    if ( ioff==0 && landsat_7 )
      this->ETM_GB= true;
    }

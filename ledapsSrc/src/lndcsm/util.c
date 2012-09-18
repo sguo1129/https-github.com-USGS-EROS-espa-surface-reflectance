@@ -92,18 +92,18 @@ for(i=1; i<strlen(buf); i++)if ( buf[i]!=buf[0] )same=0;
 if ( same ) 
   {
   st[0]=buf[0];
-  fprintf(mfout,e);
-  for(i=0; i<wid-2; i++)fprintf(mfout,st);
-  fprintf(mfout,end);
+  fprintf(mfout,"%s",e);
+  for(i=0; i<wid-2; i++)fprintf(mfout,"%s",st);
+  fprintf(mfout,"%s",end);
   }
 else
   {
-  fprintf(mfout,ebl);
+  fprintf(mfout,"%s",ebl);
   fprintf(mfout,"%s",buf);
   s= wid - ( strlen(buf)+4 );
   if ( s<0 ) s=0;
   for (i=0; i<s; i++)fprintf(mfout," ");
-  fprintf(mfout,end);
+  fprintf(mfout,"%s",end);
   }
 fflush(mfout);
 }
@@ -118,13 +118,13 @@ for(i=1; i<strlen(buf); i++)if ( buf[i]!=buf[0] )same=0;
 if ( same && buf[0]!=' ' ) 
   {
   st[0]=buf[0];
-  fprintf(mfout,e);
-  for(i=0; i<wid-2; i++)fprintf(mfout,st);
-  fprintf(mfout,end);
+  fprintf(mfout,"%s",e);
+  for(i=0; i<wid-2; i++)fprintf(mfout,"%s",st);
+  fprintf(mfout,"%s",end);
   }
 else
   {
-  fprintf(mfout,ebl);
+  fprintf(mfout,"%s",ebl);
   s= wid - ( strlen(buf)+3 );
   if ( s<0 ) s=0;
   s1= s/2;
@@ -132,7 +132,7 @@ else
   for (i=0; i<s1; i++)fprintf(mfout," ");
   fprintf(mfout,"%s",buf);
   for (i=0; i<s2; i++)fprintf(mfout," ");
-  fprintf(mfout,end);
+  fprintf(mfout,"%s",end);
   }
 fflush(mfout);
 }
@@ -154,7 +154,7 @@ bool sieve( int            xsize
     , value
     , ix
     , iy
-    , ib
+    , ib=0
     , x
     , y
     , fv

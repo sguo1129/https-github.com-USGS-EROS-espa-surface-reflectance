@@ -486,11 +486,7 @@ bool GetInputPrwvMeta(InputPrwv_t *this)
 {
   Myhdf_attr_t attr;
   double dval[NBAND_REFL_MAX];
-  char string[MAX_STR_LEN + 1];
-  char date[MAX_DATE_LEN + 1];
-  int ib;
   InputPrwv_meta_t *meta;
-  char *error_string;
 
   /* Check the parameters */
 
@@ -960,11 +956,7 @@ bool GetInputOzonMeta(InputOzon_t *this)
 {
   Myhdf_attr_t attr;
   double dval[NBAND_REFL_MAX];
-  char string[MAX_STR_LEN + 1];
-  char date[MAX_DATE_LEN + 1];
-  int ib;
   InputPrwv_meta_t *meta;
-  char *error_string;
 
   /* Check the parameters */
 

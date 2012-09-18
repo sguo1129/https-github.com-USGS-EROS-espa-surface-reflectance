@@ -57,9 +57,9 @@ int  cleanUp(GRID_SR *sr);
 
 /*#define DEBUG*/
 
-main(int argc, char *argv[])
+int main(int argc, char *argv[])
 {
-  int i, irow, icol, ret;
+  int i, irow, ret;
   int32 start[2];
   int32 length[2];
   int16 *buf;
@@ -161,16 +161,13 @@ void usage(char *command)
 /* get metadata and open specific sds */
 int getMetaInfo(GRID_SR *sr) {
 
-  char name[100];
-  int i, index, ret;
+  int index, ret;
 
   char GD_gridlist[100];
   int32 gfid=0, ngrid=0, gid=0;
   int32 bufsize=100;
   float64 GD_upleft[2];
   float64 GD_lowright[2];
-
-  int32 rank,data_type,attributes,dim_sizes[2];
   int32 att_id;
 
   /* open a hdf file */
@@ -292,7 +289,6 @@ int getMetaInfo(GRID_SR *sr) {
 /* create output HDF file and open sds_id for write */
 int openForWrite(GRID_SR *sr, GRID_SR *th)
 {
-  char str[Max_StrLen];
   int ret, index, exist;
   int32 GDfid, GDid; 
   

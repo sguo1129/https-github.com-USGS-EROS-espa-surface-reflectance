@@ -1,3 +1,14 @@
+9/13/2012   Gail Schmidt, USGS
+1. Modified calibration of band 6 to flag the saturated thermal pixels in the
+   output brightness temperature product.  This is consistent with flagging the
+   saturated pixels in the reflective bands.
+2. Modified lndcal to write the QA bits for the lndth product (brightness
+   temperature product), including appropriate metadata for the QA band.  The
+   QA bits include flags for both fill pixels and for saturated band 6 pixels,
+   consistent with the QA bits for the reflective bands in the lndcal output.
+3. Cleaned up some compiler warnings and minor bugs when freeing some of the
+   data arrays.
+
 9/28/2009   Feng Gao
 1. removed production date rule in determining recalibration for TM data.
 2. recalibration is now determined by RE_CAL flag (in lndcal*.txt) only 

@@ -35,6 +35,7 @@ int main (int argc, const char **argv) {
   char *sds_names[NSDS];
   int sds_types[NSDS];
 
+  printf ("\nRunning lndcsm ...\n");
   for (i=1; i<argc; i++)if ( !strcmp(argv[i],"-o") )odometer_flag=1;
   param = GetParam(argc, argv);
   if (param == (Param_t *)NULL) ERROR("getting runtime parameters", "main");
@@ -116,7 +117,7 @@ int main (int argc, const char **argv) {
 
   /* All done */
 
-  exit(EXIT_SUCCESS);
+  printf ("lndcsm complete.\n");
 
   return (EXIT_SUCCESS);
 }

@@ -83,7 +83,7 @@ Param_wo_t *get_wo(const char* fname)
 
  if ( !iFile ) return (Param_wo_t *)NULL;
   while ( mygetline(line,1024,iFile)>=0 )
-   if ( (int)strstr(line,"Completion date")>0 )
+   if ( strstr(line,"Completion date") != NULL )
      {
      strncpy(completion_date,&line[strlen("Completion date:    ")],10); 
      completion_date[10]='\0';
@@ -92,9 +92,9 @@ Param_wo_t *get_wo(const char* fname)
      break;
      }
   while ( mygetline(line,1024,iFile)>=0 )
-   if ( (int)strstr(line,"RADIOMETRIC CORRECTION")>0 ) break;
+   if ( strstr(line,"RADIOMETRIC CORRECTION") != NULL ) break;
   while ( mygetline(line,1024,iFile)>=0 )
-   if ( (int)strstr(line,"Algorithm:")>0 ) 
+   if ( strstr(line,"Algorithm:") != NULL ) 
      {
      strncpy(algorithm,&line[strlen("Algorithm: ")],8); algorithm[8]='\0';
      break;
@@ -110,7 +110,7 @@ Param_wo_t *get_wo(const char* fname)
     this->algorithm= ALG_CCRS;
 
   while( mygetline(line,1024,iFile)>=0 )
-    if ( (int)strstr(line,"Detector")>0 && (int)strstr(line,"gain")>0 )break;
+    if ( strstr(line,"Detector") != NULL && strstr(line,"gain") != NULL )break;
 
   skipline(iFile,1);
   for (ib=0; ib<7; ib++)
@@ -128,7 +128,7 @@ Param_wo_t *get_wo(const char* fname)
     jb= ib==6 ? 5 : ib;
     gain_sum=   0.0;
     offset_sum= 0.0;
-    while( mygetline(line,1024,iFile)>=0 )if ( (int)strstr(line,"Band")>0 )break;
+    while( mygetline(line,1024,iFile)>=0 )if ( strstr(line,"Band") != NULL )break;
      
     sscanf(line,"Band %d",&band);
     if ( band != (ib+1) )
@@ -239,7 +239,7 @@ Gains_t* get_gnew(const char* fname, Date_t* adate)
    }
 
   mygetline(line,1024,iFile);
-  if ( (int)strstr(line,"Gnew[ib]=")>0 )equation=true;
+  if ( strstr(line,"Gnew[ib]=") != NULL )equation=true;
 
   skipline(iFile,(equation?2:1));
   this->valid_flag= false;

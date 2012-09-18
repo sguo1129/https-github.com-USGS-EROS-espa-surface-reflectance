@@ -1076,7 +1076,7 @@ bool GetHeaderInput(Input_t *this, char *file_header_name, Param_t *param) {
           this->meta.gain_set[i] = (Gain_t)
 	    KeyString(key.value[i], key.len_value[i],
 	              Gain_string, (int)GAIN_NULL, (int)GAIN_MAX);
-          if (this->meta.inst == GAIN_NULL) {
+          if (this->meta.inst == (int)GAIN_NULL) {
             error_string = "invalid gain setting string";
 	    break;
 	  }

@@ -56,7 +56,7 @@ typedef struct {
   Date_t prod_date;        /* Production date (must be available for ETM) */
   float sun_zen;           /* Solar zenith angle (radians; scene center) */
   float sun_az;            /* Solar azimuth angle (radians; scene center) */
-  Wrs_t wrs_sys;	   /* WRS system */
+  Wrs_t wrs_sys;           /* WRS system */
   int ipath;               /* WRS path number */
   int irow;                /* WRS row number */
   int fill;                /* Fill value */

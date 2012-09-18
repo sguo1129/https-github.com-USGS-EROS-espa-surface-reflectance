@@ -8,6 +8,7 @@
 static const int FILL_VAL[6]={65384,65252,65419,65385,65499,65521};
 static const int FILL_VAL6= 123;
 static const int SATU_VAL[7]={255,255,255,255,255,255,255};
+static const int SATU_VAL6= 254;
 
 typedef struct {
   bool first[NBAND_REFL_MAX];

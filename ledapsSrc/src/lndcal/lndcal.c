@@ -27,6 +27,12 @@
 typedef enum {FAILURE = 0, SUCCESS = 1} Status_t;
 
 /* Functions */
+/* !Revision:
+ *
+ * revision 1.0.0 9/12/2012  Gail Schmidt, USGS
+ * - modified the application to write the thermal band QA bits to the
+ *   output thermal product
+ */
 
 int main (int argc, const char **argv) {
   Param_t *param;
@@ -59,10 +65,11 @@ int main (int argc, const char **argv) {
   size_t input_psize;
   int qa_band= QA_BAND_NUM;
   int nband_refl= NBAND_REFL_MAX;
-  int ifill, num_zero, num_255;
+  int ifill, num_zero;
   int maxth=0;\
   int mss_flag=0;
 
+  printf ("\nRunning lndcal ...\n");
   for (i=1; i<argc; i++)if ( !strcmp(argv[i],"-o") )odometer_flag=1;
 
   param = GetParam(argc, argv);
@@ -221,9 +228,6 @@ else
  } 
 
   /* Allocate memory for lines */
-
-		 
- 
   line_out = (int *)calloc((size_t)input->size.s, sizeof(int));
   if (line_out == (int *)NULL) 
     ERROR("allocating output line buffer", "main");
@@ -231,11 +235,13 @@ else
   line_out_qa = (int *)calloc((size_t)input->size.s, sizeof(int));
   if (line_out_qa == (int *)NULL) 
     ERROR("allocating qa output line buffer", "main");
+  memset(line_out_qa,0,input->size.s*sizeof(int));    
 
   /* Do for each THERMAL line */
-
   oline= 0;
   if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL )
+  {
+    ifill= input->short_flag ? FILL_VAL6: (int)lut->in_fill;
     for (iline = 0; iline < input->size_th.l; iline++)
       {
       ib=0;
@@ -250,8 +256,9 @@ else
         fflush(stdout); 
       }
 
+      memset(line_out_qa,0,input->size.s*sizeof(int));    
       if ( !Cal6(lut, input, line_in, line_out_th, line_out_qa, &cal_stats6, iline) )
-        ERROR("doing calibraton for a line", "main");
+        ERROR("doing calibration for a line", "main");
 
       if ( zoomx>1 ) 
         {
@@ -261,22 +268,29 @@ else
 
       for ( iz=0; iz<zoomy; iz++ ) {
         for (isamp = 0; isamp < input->size.s; isamp++){
-
-	  val= getValue((unsigned char *)line_in_thz, isamp, input->short_flag, input->swap_flag );
-	  if ( val> maxth) maxth=val;
-        if ( val>=254 ) line_out_qa[isamp]|= ( 0x000001<<6);
-	}
+          val= getValue((unsigned char *)line_in_thz, isamp, input->short_flag, input->swap_flag );
+          if ( val> maxth) maxth=val;
+          if ( val==ifill) line_out_qa[isamp] = lut->qa_fill; 
+          else if ( val>=SATU_VAL6 ) line_out_qa[isamp] = ( 0x000001 << 6 ); 
+        }
 
         if ( oline<nls ) {
           if (!PutOutputLine(output_th, ib, oline, line_out_thz)){
-	    sprintf(msgbuf,"write error ib=%d oline=%d iline=%d",ib,oline,iline);
+	    sprintf(msgbuf,"write thermal error ib=%d oline=%d iline=%d",ib,oline,iline);
             ERROR(msgbuf, "main");
-	  }
+	      }
+
+          if (input->meta.inst != INST_MSS) 
+            if (!PutOutputLine(output_th, ib+1, oline, line_out_qa)){
+	          sprintf(msgbuf,"write thermal QA error ib=%d oline=%d iline=%d",ib+1,oline,iline);
+              ERROR(msgbuf, "main");
+	      }
         }
         oline++;
       }
 
   } /* End loop for each thermal line */
+  }
   if ( odometer_flag )printf("\n");
 
   if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL )
@@ -286,8 +300,9 @@ else
 
    if (!CloseOutput(output_th)) ERROR("closing output thermal file", "main");
  }
+
   /* Do for each line */
- 
+  ifill= input->short_flag ? FILL_VAL[ib]: (int)lut->in_fill;
   for (iline = 0; iline < input->size.l; iline++){
 /*if (iline == 6770){
 	printf("  Debug:lndcal.280:iline= %d\n",iline);
@@ -306,14 +321,11 @@ else
     
     for (isamp = 0; isamp < input->size.s; isamp++){
       num_zero=0;
-      num_255= 0;
       for (ib = 0; ib < input->nband; ib++) {
         jb= (ib != 5 ) ? ib+1 : ib+2;
-        ifill= input->short_flag ? FILL_VAL[ib]: (int)lut->in_fill;
         val= getValue((unsigned char *)&line_in[ib*nps], isamp, input->short_flag, input->swap_flag );
 	if ( val==ifill   )num_zero++;
-/*	if ( val==255     )num_255++; */
-        if ( val==255 ) line_out_qa[isamp]|= ( 0x000001 <<jb ); 
+        if ( val==SATU_VAL[ib] ) line_out_qa[isamp]|= ( 0x000001 <<jb ); 
       }
       /* Feng fixed bug by changing "|=" to "=" below (4/17/09) */
       if ( num_zero >  0 )line_out_qa[isamp] = lut->qa_fill; 
@@ -328,7 +340,6 @@ else
 
     } /* End loop for each band */
         
-    
   if (input->meta.inst != INST_MSS) 
     if (!PutOutputLine(output, qa_band, iline, line_out_qa))
       ERROR("writing qa data for a line", "main");
@@ -362,21 +373,26 @@ if ( odometer_flag )printf("\n");
   
   if (input->meta.inst == INST_MSS) nsds--;
   
+  /* Add the QA band to the number of SDSs */
+
   for (isds = 0; isds < nsds; isds++) {
     sds_names[isds] = output->sds[isds].name;
     sds_types[isds] = output->sds[isds].type;
   }
-  if (!PutSpaceDefHDF(&space_def, param->output_file_name, input->nband, 
+  if (!PutSpaceDefHDF(&space_def, param->output_file_name, nsds,
                       sds_names, sds_types, grid_name))
     ERROR("putting space metadata in HDF file", "main");
 
-  /* do the same for the thermal band  */
+  /* do the same for the thermal band and its QA band */
 
   if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL )
   {
-    sds_names[0] = output_th->sds[0].name;
-    sds_types[0] = output_th->sds[0].type;
-    if (!PutSpaceDefHDF(&space_def, param->output_therm_file_name, 1, 
+    nsds = 2;
+    for (isds = 0; isds < nsds; isds++) {
+      sds_names[isds] = output_th->sds[isds].name;
+      sds_types[isds] = output_th->sds[isds].type;
+    }
+    if (!PutSpaceDefHDF(&space_def, param->output_therm_file_name, nsds, 
                         sds_names, sds_types, grid_name))
      ERROR("putting space metadata in thermal HDF file", "main");
   }
@@ -398,5 +414,6 @@ if ( odometer_flag )printf("\n");
   free(line_in);
   /* All done */
 
+  printf ("lndcal complete.\n");
   return (EXIT_SUCCESS);
 }
