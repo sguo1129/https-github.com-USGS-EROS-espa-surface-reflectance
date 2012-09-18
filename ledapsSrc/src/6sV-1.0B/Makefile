@@ -1,7 +1,7 @@
 SHELL = /bin/sh
 SYSTEM  = HP-UX
 EXTRA   = +FPVZOUD +O3 -D$(SYSTEM)
-EXTRA   = -g
+#EXTRA   = -g
 EXTRA   = -O
 FFLAGS=  $(EXTRA)
 CFLAGS = -Ae $(EXTRA)

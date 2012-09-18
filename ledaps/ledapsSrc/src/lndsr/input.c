@@ -33,6 +33,11 @@
       MODIS Land Team Support Group     Raytheon ITSS
       robert.e.wolfe.1@gsfc.nasa.gov    4400 Forbes Blvd.
       phone: 301-614-5508               Lanham, MD 20770  
+
+	  Modified on 8/17/2012 by Gail Schmidt, USGS EROS
+	  When freeing the thermal band in FreeInput, the QA SDS is not valid
+	  and should not be attempted to be freed.  OpenInput does not read the
+	  QA for the thermal band.
   
  ! Design Notes:
    1. The following public functions handle the input data:
@@ -568,12 +573,19 @@ bool FreeInput(Input_t *this)
       if (this->sds[ib].name != (char *)NULL) 
         free(this->sds[ib].name);
     }
-    for (ir = 0; ir < this->qa_sds.rank; ir++) {
-      if (this->qa_sds.dim[ir].name != (char *)NULL) 
-        free(this->qa_sds.dim[ir].name);
+
+	/* If the nband count is 1, then this is the thermal band and no QA
+	 * data was read for that band.  Thus it can't be freed and the rank is
+	 * invalid */
+	if (this->nband > 1)
+    {
+        for (ir = 0; ir < this->qa_sds.rank; ir++) {
+          if (this->qa_sds.dim[ir].name != (char *)NULL) 
+            free(this->qa_sds.dim[ir].name);
     }
     if (this->qa_sds.name != (char *)NULL) 
       free(this->qa_sds.name);
+	}
 
     if (this->buf[0] != (int16 *)NULL)
       free(this->buf[0]);
@@ -682,7 +694,6 @@ bool GetInputQALine(Input_t *this, int iline, int8 *line)
 {
   int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
   void *buf;
-  int is;
 
   /* Check the parameters */
 

@@ -9,6 +9,9 @@
  Revision 1.0 2001/05/08
  Robert Wolfe
  Original Version.
+ Revision 1.1 2011/07/27
+ Gail Schmidt - Updated metadata output to include the surface
+   reflectance-based QA bits.
 
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
@@ -33,7 +36,7 @@
  ! Design Notes:
    1. The following public functions handle the output files:
 
-        CreateOutput - Create new output file.
+	CreateOutput - Create new output file.
 	OutputFile - Setup 'output' data structure.
 	CloseOutput - Close the output file.
 	FreeOutput - Free the 'output' data structure memory.
@@ -533,16 +536,23 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
   char *sds_name_extra[NBAND_SR_EXTRA] = {"aot_band1","lndsr_QA","nb_dark_pixels","avg_dark_sr_b7","std_dark_sr_b7"};
   char* units_b;
   char*  message;
-  char lndsr_QAMAP[2000]=
+  char lndsr_QAMAP[]=
     {"\n\tBits are numbered from right to left(bit 0 = LSB, bit 15 = MSB):\n"
      "\tBit    Description\n"
-     "\t0      unused; \n"
-     "\t1      Data Quality Flag (0 = valid data, 1 = invalid data)\n"
-     "\t2      Cloud Mask (1 = cloudy, 0 = clear)\n"
-     "\t3      Cloud shadow Mask (Not used in Beta)\n"
-     "\t4      Snow Mask (Not used in Beta)\n"
-     "\t5      Land Mask ( 1 = Land, 0 = water)\n"
-     "\t6-15   unused; \n\0"};
+     "\t0      Fill (1 = fill pixel, 0 = not fill)\n"
+     "\t1      Data Quality Flag (0 = valid QA data, 1 = invalid QA data)\n"
+     "\t2      ACCA-Based Cloud Mask (1 = cloudy, 0 = clear)\n"
+     "\t3      ACCA-Based Cloud Shadow Mask (1 = cloud shadow, 0 = clear)\n"
+     "\t4      ACCA-Based Snow Mask (1 = snow, 0 = clear)\n"
+     "\t5      DEM-Based Land/Water Mask (1 = land, 0 = water)\n"
+     "\t6      Dense Dark Vegetation (DDV) (1 = DDV, 0 = clear)\n"
+     "\t7      unused\n"
+     "\t8      Surface Reflectance-Based Cloud Mask (1 = cloudy, 0 = clear)\n"
+     "\t9      Surface Reflectance-Based Cloud Shadow Mask (1 = cloud shadow, 0 = clear)\n"
+     "\t10     Surface Reflectance-Based Snow Mask (1 = snow, 0 = clear)\n"
+     "\t11     Spectral Test-Based Land/Water Mask (1 = land, 0 = water)\n"
+     "\t12     Surface Reflectance-Based Adjacent Cloud (1 = adjacent cloud, 0 = clear)\n"
+     "\t13-15  unused\n\0"};
 
 
   /* Check the parameters */

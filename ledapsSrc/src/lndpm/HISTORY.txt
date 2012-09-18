@@ -1,5 +1,21 @@
 Revision:
 
+revision 1.0.1  09/11/2012 Gail Schmidt, USGS EROS
+- updated lndpm based on mods provided by Feng Gao from 1/18/2012
+  -- restores the solar zenith angle bug fix from the past for NLAP_W0 format
+     (Greg Ederer)
+  -- fixes a bug when writing the UTM zone (south) into the ENVI hdr file
+     (Greg Ederer)
+  -- added processing for Landsat-4 TM (Feng Gao)
+
+revision 1.0.0  08/17/2012 Gail Schmidt, USGS EROS
+- updated the metadata tags to work with the newly released LPGS metadata
+  as well as continuing to support the old metadata tags
+- cleaned up warning messages from compilation
+- reset the version to 1.0.0 as this is our first official version of
+  LEDAPS for the ESPA system
+- changed the DataProvider to USGS/EROS
+
 revision 1.5.7  10/22/2010 Feng Gao
 - included global DEM file for lndsr processing
 - used actual LMIN, LMAX, QCALMIN and QCALMAX values for ETM+ calibration if provided in LPGS metadata, otherwise still use gain_settings (HIGH or LOW)

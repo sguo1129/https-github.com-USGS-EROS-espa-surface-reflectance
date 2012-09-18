@@ -45,7 +45,7 @@ The DDV flag in ddv_line (bit 0) is updated in this routine
   int ib;
   double sum_band[3],sum_band_sq[3];
   double sum_srefl,sum_srefl_sq;
-  float rho_surf,a,b;
+  float rho_surf;
   short *collect_band[3],*collect_band7,tmp_short;
   int collect_nbsamps;
   
@@ -53,17 +53,16 @@ The DDV flag in ddv_line (bit 0) is updated in this routine
   float fraction_water,fraction_clouds,fraction_cldshadow,fraction_snow;
   bool is_fill;
   int n,water;
-  float ndvi;
 
 	float avg_band[3],std_band[3];
         float avg_srefl,std_srefl;
 	float fts,ftv,phi;
 	float uwv,uoz,spres;
-	float avg_aot,std_aot;
- 	int band_number,start_i;
+	float avg_aot;
+ 	int start_i;
 
 	float T_h2o_b7,T_g_b7,rho7,rho4,MP;
-	float rho6,rho1,rho3;
+	float rho6,rho1;
 	float a_h2o_b7=-3.7338, b_h2o_b7=0.76348,c_h2o_b7=-.030233;
 	float a_CO2_b7=0.0071958, b_CO2_b7=0.55665;
 	float a_NO2_b7=0.0013383, b_NO2_b7=0.95109;
@@ -71,7 +70,7 @@ The DDV flag in ddv_line (bit 0) is updated in this routine
 
 
 	atmos_t atmos_coef_ar;
-	float rho,tmpf;
+	float rho;
 	int nb_negative_red,nb_red_obs,ipt;
 
 	for (ib=0;ib<3;ib++)
@@ -344,7 +343,6 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 	   compute_aot(0,avg_band[0],avg_band[2],fts,ftv,phi,uoz,uwv,spres,sixs_tables,&avg_aot);
 /*			printf("HOW MANY REAL ONE?\n");*/
 
-		std_aot=0.;
 /* eric debug 3/07/2011 begin*/
 /* eric commented after sucessfull debug 4/29/2011 begin*/
 /*      avg_aot=0.01;    */
@@ -428,7 +426,6 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 		rho_surf=avg_srefl*1.4;  / * estimated reflectance in band2 = 7/5*band7 * /
 				
 	   compute_aot(1,avg_band[1],rho_surf,fts,ftv,phi,uoz,uwv,spres,sixs_tables,&avg_aot);
-		std_aot=0.;
       line_ar[1][is_ar] = (int)(avg_aot*1000.);
 ***/
 /**
@@ -436,7 +433,6 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 		rho_surf=avg_srefl*0.5;  / * estimated reflectance in band3 = band7/2 * /
 				
 	   compute_aot(2,avg_band[2],rho_surf,fts,ftv,phi,uoz,uwv,spres,sixs_tables,&avg_aot);
-		std_aot=0.;
       line_ar[2][is_ar] = (int)(avg_aot*1000.);
 
 ***/
@@ -499,12 +495,10 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 
 
 int compute_aot(int band,float toarhoblue,float toarhored,float ts,float tv, float phi, float uoz, float uwv, float spres,sixs_tables_t *sixs_tables,float *aot){
-	int i,iaot,ioat;
+	int i,iaot;
 	float minimum,temp,eratio;
 	float slope;
-	float aot2;
-	float surrhoblue[SIXS_NB_AOT],surrhored[SIXS_NB_AOT],aot_tab[SIXS_NB_AOT];
-	double coef;
+	float surrhoblue[SIXS_NB_AOT],surrhored[SIXS_NB_AOT];
         float temp1,temp2;
 	float actual_rho_ray,actual_T_ray,actual_S_r;
 	float mus,muv,tau_ray,ratio;
@@ -580,7 +574,6 @@ int compute_aot(int band,float toarhoblue,float toarhored,float ts,float tv, flo
 		*aot=sixs_tables->aot_wavelength[1][iaot-1]-temp1/slope;
 		
 	    }
-/*	&aot2=*aot;*/
         printf(" variables in compaot toarhored %f toarhoblue %f aot %f\n",toarhored,toarhoblue,*aot);
         if (*aot < 0.01)
                 *aot=0.01;
@@ -792,7 +785,7 @@ Original version: Thu Dec  7 15:46:05 EST 1995
 !Design Notes:   
 !END****************************************************************************
 */
-   int i,j,k,l,pass,count,last_value,More_Gaps,nbfills;
+   int i,j,k,l,count,last_value,More_Gaps,nbfills;
    float dist,sum_value,sum_dist;
    char **missing_flag,*missing_flag_array;
    int min_nb_values,n,max_distance;

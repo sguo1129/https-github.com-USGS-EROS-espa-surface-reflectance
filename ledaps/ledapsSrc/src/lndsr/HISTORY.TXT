@@ -54,7 +54,7 @@ v2.0.0                                                                          
 1. SIXS_PGM "/home/v1led1/bin/sixsV1.0B"  (use of vector rather than scalar)
 2. Use of lndcal's new saturation flag 
 3. Added new runtime Parameter TEMP_FILE (Thermal input file is optional)
-4. Changed CSM_FILE (Cloud-sanow mask file to optional) 
+4. Changed CSM_FILE (Cloud-snow mask file to optional) 
 
 V2.0.1                                                                         11/15/06
 =======================================================================================
@@ -68,3 +68,12 @@ V2.0.5
 =============================================================================
 1. update to be compatible with changes to lndcal (saturation value)
 2. remove some debugging output
+
+V1.0.0
+=============================================================================
+1. Cleaned up some compiler warnings and minor bugs when freeing some of the
+   data arrays.
+2. Updated the metadata output to include the surface reflectance based QA bits.
+3. Reset the version to 1.0.0 as this is our first official version of LEDAPS
+   for the ESPA system.
+

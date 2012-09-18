@@ -7,6 +7,14 @@
 #define PRINT_X (   0)
 #define PRINT_Y (   0)
 
+/* Functions */
+/* !Revision:
+ *
+ * revision 1.0.0 9/13/2012  Gail Schmidt, USGS
+ * - modified cal6 application to flag the saturated thermal pixels to be
+ *   consistent with the processing of the reflective bands
+ */
+
 bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in, 
          int *line_out, int *line_out_qa, Cal_stats_t *cal_stats, int iy) {
   int is,val,jband;
@@ -172,6 +180,14 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int *line_out,
       cal_stats->nfill++;
       continue;
     }
+
+    /* for saturated pixels, added by Gail (9/13/2012 to match code added by
+	   Feng (3/23/09) to the reflective bands) */
+    if (val >= SATU_VAL6) {
+      line_out[is] = lut->out_satu;
+      continue;
+    }
+
     cal_stats->nvalid++;
  
 /* Put 100.0 (scale_factor_th) and 273.15 (th_zero_celcius_in_degrees_kelvin)

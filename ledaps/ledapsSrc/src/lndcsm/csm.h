@@ -48,12 +48,12 @@ void compute_std(vbuf_t* vb, const int num, float* mean_std);
 /*** return, image                                                         ***/
 /***                                                                       ***/
 /*****************************************************************************/
-				
+                                
 /*
 ;-----------------------------------------------------------------------------------
 ;
-;            		Automatic Cloud Cover Assessment Algorithm
-;		         for application to Landsat 5 TM 1G imagery
+;                            Automatic Cloud Cover Assessment Algorithm
+;                         for application to Landsat 5 TM 1G imagery
 ;                           Algorithm ID:  ACCA_10May03_LPSO.ALG
 ;-----------------------------------------------------------------------------------
 pro accal5_1g
@@ -68,10 +68,10 @@ openr,4,'b4.raw'
 openr,5,'b5.raw'
 openr,6,'b6.raw'
 openw,7,'p1.mask'
-openw,8,'p2.mask'	
+openw,8,'p2.mask'        
 openw,9,'snow.mask'
 openw,10,'acca_results'
-;-----------------------------------------------------------------------------------		
+;-----------------------------------------------------------------------------------                
 
 samples = 9349L
 lines = 8524L
@@ -161,107 +161,107 @@ for l = 0L, (lines - 1) do begin
         readu, 6, b6
         fill_index = where(b2 eq -9999, fill_values)
         b2rflect = double(b2 / 10000.)
-	b3rflect = double(b3 / 10000.)
-	b4rflect = double(b4 / 10000.)
-	b5rflect = double(b5 / 10000.)
-;	b6_temp(0:samples-1,l) = double(b6 / 100) + 273   ; fixed(jk) below
-  	b6_temp(0:samples-1,l) = (double(b6) / 100.0) + 273.0
-	if(fill_values gt 0)then begin
-	  b2rflect(fill_index) = 0
-	  b3rflect(fill_index) = 0
-	  b4rflect(fill_index) = 0
-	  b5rflect(fill_index) = 0
-	  b6_temp(fill_index,l) = 0
-	endif  
+        b3rflect = double(b3 / 10000.)
+        b4rflect = double(b4 / 10000.)
+        b5rflect = double(b5 / 10000.)
+;        b6_temp(0:samples-1,l) = double(b6 / 100) + 273   ; fixed(jk) below
+          b6_temp(0:samples-1,l) = (double(b6) / 100.0) + 273.0
+        if(fill_values gt 0)then begin
+          b2rflect(fill_index) = 0
+          b3rflect(fill_index) = 0
+          b4rflect(fill_index) = 0
+          b5rflect(fill_index) = 0
+          b6_temp(fill_index,l) = 0
+        endif  
 ;-----------------------------------------------------------------------------------
 ; band 3 reflectance threshold - screens out bright targets.
 ;-----------------------------------------------------------------------------------
-	for s = 0, samples-1 do begin	
-	  if b3rflect(s) gt b3thresh then begin 
+        for s = 0, samples-1 do begin        
+          if b3rflect(s) gt b3thresh then begin 
           if(s eq targ_samp and l eq targ_line)then begin
             print,' target pixel b3rflect: ',b3rflect(s)
           endif
-		ndsi = (b2rflect(s) - b5rflect(s)) / (b2rflect(s) + b5rflect(s))
+                ndsi = (b2rflect(s) - b5rflect(s)) / (b2rflect(s) + b5rflect(s))
                 if(s eq targ_samp and l eq targ_line)then begin
                   print,' target pixel b5rflect: ',b5rflect(s)
                   print,' target pixel: ndsi: ',ndsi
                 endif
-		count1 = count1 + 1
+                count1 = count1 + 1
 ;-----------------------------------------------------------------------------------
 ; normalized difference snow index. Less that .4? Snow eliminated, but not ice.
 ;-----------------------------------------------------------------------------------
-		if (ndsi lt thresh_NDSI_max and ndsi gt thresh_NDSI_min) then begin
-		  count2 = count2 + 1	
+                if (ndsi lt thresh_NDSI_max and ndsi gt thresh_NDSI_min) then begin
+                  count2 = count2 + 1        
                   if(s eq targ_samp and l eq targ_line)then begin
                     print,' target pixel: b3rflect: ',b3rflect(s)
-                  endif	
-		  if(b6_temp(s,l) lt b6_thresh) then begin
+                  endif        
+                  if(b6_temp(s,l) lt b6_thresh) then begin
                      if(s eq targ_samp and l eq targ_line)then begin
                        print,' target pixel: b6 temp: ', b6_temp(s,l)
                      endif
-		     b6delete = b6delete + 1
-		     b56thresh = ( 1. - b5rflect(s) ) * b6_temp(s,l)
+                     b6delete = b6delete + 1
+                     b56thresh = ( 1. - b5rflect(s) ) * b6_temp(s,l)
                      if(s eq targ_samp and l eq targ_line)then begin
                         print,' target pixel: b56thresh: ',b56thresh
                      endif
-;-----------------------------------------------------------------------------------		     
+;-----------------------------------------------------------------------------------                     
 ; band 6/5 composite. Eliminate ice
 ; placed liberally at 225....secondary filter at 210
 ;-----------------------------------------------------------------------------------
-		     if(b56thresh lt thresh_b56_high) then begin 
-			   count6 = count6 + 1
-			   b43ratio = b4rflect(s) / b3rflect(s)
+                     if(b56thresh lt thresh_b56_high) then begin 
+                           count6 = count6 + 1
+                           b43ratio = b4rflect(s) / b3rflect(s)
 ;-----------------------------------------------------------------------------------
 ; band 4/3 ratio (equals about 1.0 for clouds), elimintes bright veg and soil.
 ;-----------------------------------------------------------------------------------
-			   if(b43ratio lt b43_thresh)then begin			
-            			count3 = count3 + 1
-            			b42ratio = b4rflect(s) / b2rflect(s)
+                           if(b43ratio lt b43_thresh)then begin                        
+                                    count3 = count3 + 1
+                                    b42ratio = b4rflect(s) / b2rflect(s)
 ;-----------------------------------------------------------------------------------
 ; 4/2 ratio for senescing vegetation
 ;-----------------------------------------------------------------------------------
-            			if(b42ratio lt b42_thresh)then begin
-            			  count42 = count42 + 1
-				  b45ratio = b4rflect(s) / b5rflect(s)
+                                    if(b42ratio lt b42_thresh)then begin
+                                      count42 = count42 + 1
+                                  b45ratio = b4rflect(s) / b5rflect(s)
 ;----------------------------------------------------------------------------------- 
 ; critical for desert regions, 174-47 - Sudan
 ; band 4/5 ratio. Eliminates rocks and desert    
-;-----------------------------------------------------------------------------------      				  
-				  if(b45ratio gt b45_thresh)then begin				    
-				    count4 = count4 + 1			
-				    clmask(s,l) = 255
-				    if(b56thresh lt thresh_b56_low)then begin
-				      clmask(s,l) = 254
-;				      desert_mask(i) = 255	
-				    endif  					
-			   	 endif		 ; b45 ratio endif
-			        endif		 ; b42 endif
-			       endif		 ; b43 endif
-			    endif else begin 	 ; b56 endif	
-			      if(b5rflect(s) lt .08)then clmask(s,l) = 55			    
-			    endelse	
-			endif else begin	 ; b6 endif
-			   clmask(s,l) = 55
-			   hotpixels = hotpixels + 1
-			endelse
-		      endif else begin		 ; ndsi endif else
-		        if(ndsi gt thresh_NDSI_snow)then begin
-		          snowtab = snowtab + 1
-		          snowmask(s,l) = 255
-		        endif
-		        clmask(s,l) = 55
-		        NDSItab = NDSItab + 1		  
-  		      endelse			 ; ndsi endelse
-  		    endif else begin		 ; b3thresh endif
-  		      if(b3rflect(s) lt thresh_b3_lower)then begin
-  		        clmask(s,l) = 55
-		        B3tab = B3tab + 1
-  		      endif 	      
-  		    endelse			 ; b3thresh endelse
+;-----------------------------------------------------------------------------------                                        
+                                  if(b45ratio gt b45_thresh)then begin                                    
+                                    count4 = count4 + 1                        
+                                    clmask(s,l) = 255
+                                    if(b56thresh lt thresh_b56_low)then begin
+                                      clmask(s,l) = 254
+;                                      desert_mask(i) = 255        
+                                    endif                                          
+                                    endif                 ; b45 ratio endif
+                                endif                 ; b42 endif
+                               endif                 ; b43 endif
+                            endif else begin          ; b56 endif        
+                              if(b5rflect(s) lt .08)then clmask(s,l) = 55                            
+                            endelse        
+                        endif else begin         ; b6 endif
+                           clmask(s,l) = 55
+                           hotpixels = hotpixels + 1
+                        endelse
+                      endif else begin                 ; ndsi endif else
+                        if(ndsi gt thresh_NDSI_snow)then begin
+                          snowtab = snowtab + 1
+                          snowmask(s,l) = 255
+                        endif
+                        clmask(s,l) = 55
+                        NDSItab = NDSItab + 1                  
+                        endelse                         ; ndsi endelse
+                      endif else begin                 ; b3thresh endif
+                        if(b3rflect(s) lt thresh_b3_lower)then begin
+                          clmask(s,l) = 55
+                        B3tab = B3tab + 1
+                        endif               
+                      endelse                         ; b3thresh endelse
     endfor ; samples endfor
     if(fill_values gt 0)then begin
-	  clmask(fill_index,l) = 1
-    endif  	
+          clmask(fill_index,l) = 1
+    endif          
     line100 = (l+1) mod 10
     if(line100 eq 0)then print,'lines processed: ',l+1    
 endfor ; lines endfor
@@ -625,15 +625,15 @@ printf,10,'*********************************************************************
 
     for i = 0L, lines - 1 do begin
       for j = 0L, samples - 1 do begin
-        if(clmask(j,i) eq 0)then begin	
-	  if(b6_temp(j,i) le b6thresh1)then begin
-	    clmask(j,i) = 125
-	    count9 = count9 + 1
-	    if(b6_temp(j,i) le b6thresh2)then begin	  	
-		clmask(j,i) = 200
-	    	count10 = count10 + 1
-	    endif
-	  endif
+        if(clmask(j,i) eq 0)then begin        
+          if(b6_temp(j,i) le b6thresh1)then begin
+            clmask(j,i) = 125
+            count9 = count9 + 1
+            if(b6_temp(j,i) le b6thresh2)then begin                  
+                clmask(j,i) = 200
+                    count10 = count10 + 1
+            endif
+          endif
         endif
       endfor
     endfor
@@ -670,18 +670,18 @@ printf,10,'*********************************************************************
         print,'*                                                                     *' 
         print, format = '("*  cloud minimum: ",F6.2,46x,"*")',b6min
         print, format = '("*  cloud maximum: ",F6.2,46x,"*")',b6max2
-    	result = moment(b6clouds)
-   	b6mean2 = result(0)
-   	print, format = '("*  cloud mean   : ",F6.2,46x,"*")',b6mean2
+            result = moment(b6clouds)
+           b6mean2 = result(0)
+           print, format = '("*  cloud mean   : ",F6.2,46x,"*")',b6mean2
 
         printf,10,'*                    17.5% Threshold Statistics                       *' 
         printf,10,'*                                                                     *' 
         printf,10, format = '("*  cloud minimum: ",F6.2,46x,"*")',b6min
         printf,10, format = '("*  cloud maximum: ",F6.2,46x,"*")',b6max2
-   	printf,10, format = '("*  cloud mean   : ",F6.2,46x,"*")',b6mean2
+           printf,10, format = '("*  cloud mean   : ",F6.2,46x,"*")',b6mean2
 
     endif else begin
-    	b6mean2 = b6mean
+            b6mean2 = b6mean
     endelse
 
     
@@ -784,7 +784,7 @@ printf,10,'*********************************************************************
   printf,10, format = '("* before filtering count:  ",i8,"                                   *")', $
   cloudvalues
 
-endif else begin	 ; only if clouds were found endelse (i.e > 4%) and desert index
+endif else begin         ; only if clouds were found endelse (i.e > 4%) and desert index
 ;----------------------------------------------------------------------------------
 ; use the conservative cloud count because desert features are present.
 ;----------------------------------------------------------------------------------
@@ -810,7 +810,7 @@ endif else begin	 ; only if clouds were found endelse (i.e > 4%) and desert inde
   printf,10,'cloud cover percentage: ',clpercent
   printf,10,'desert index:          ',desert_index
   
-endelse			 ; only if clouds were found endif
+endelse                         ; only if clouds were found endif
 ;writeu, 7, clmask
 ;clmaskf = median(clmask,2)
 
@@ -828,7 +828,7 @@ if(clpercent gt 0)then begin
     lines_quad34 = lineshalf 
   endelse
   clmaskfilt = filtmaj(clmask, WIDTH = 3, THRESH = 1275, CELLFLAG = 0, FILL=255,/ALL)
-		
+                
   index = where(clmaskfilt eq 255, cloudvalues)
   clpercent =  cloudvalues / float(totpix) * 100
   print, format = '("* final cloud pixel count: ",i8,"                                   *")', $
@@ -905,100 +905,100 @@ end
 
 
 function filtmaj,image,WIDTH=box_wid,THRESH=thrsh_hold,CELLFLAG = pix_val,FILL= fill_val,ALL_PIXELS=all_pixels
-		
+                
 ;
 ; NAME:
-;	filter_image
+;        filter_image
 ;
 ; PURPOSE:
-;	Computes the average and/or median of pixels in moving box,
-;	replacing center pixel with the computed average and/or median,
-;		(using the IDL smooth or median functions).
-;	The main reason for using this function is the options to
-;	also process the pixels at edges and corners of image, and,
-;	to apply iterative smoothing simulating convolution with Gaussian,
-;	and/or to convolve image with a Gaussian kernel.
+;        Computes the average and/or median of pixels in moving box,
+;        replacing center pixel with the computed average and/or median,
+;                (using the IDL smooth or median functions).
+;        The main reason for using this function is the options to
+;        also process the pixels at edges and corners of image, and,
+;        to apply iterative smoothing simulating convolution with Gaussian,
+;        and/or to convolve image with a Gaussian kernel.
 ;
 ; CALLING:
-;	Result = filter_image( image,/ALL )
+;        Result = filter_image( image,/ALL )
 ;
 ; INPUT:
-;	image = 2-D array (matrix)
+;        image = 2-D array (matrix)
 ;
 ; KEYWORDS:
 ;
-;	/ALL_PIXELS causes the edges of image to be filtered as well,
-;		accomplished by reflecting pixels adjacent to edges outward.
+;        /ALL_PIXELS causes the edges of image to be filtered as well,
+;                accomplished by reflecting pixels adjacent to edges outward.
 ;
 ;
 ; RESULT:
-;	Function returns the majority filtered image.
+;        Function returns the majority filtered image.
 ;
 ; EXAMPLES:
 ;
 ; EXTERNAL CALLS:
-;	function convolve
-;	pro factor
-;	function prime		;all these called only if FWHM is specified.
+;        function convolve
+;        pro factor
+;        function prime                ;all these called only if FWHM is specified.
 ;
 ; PROCEDURE:
-;	If /ALL_PIXELS or  then
-;	create a larger image by reflecting the edges outward,
-;	then call the IDL median and/or smooth function on the larger image,
-;	and just return the central part (the orginal size image).
+;        If /ALL_PIXELS or  then
+;        create a larger image by reflecting the edges outward,
+;        then call the IDL median and/or smooth function on the larger image,
+;        and just return the central part (the orginal size image).
 ; HISTORY:
-;	Written, 1991, Frank Varosi, NASA/GSFC.
+;        Written, 1991, Frank Varosi, NASA/GSFC.
 ;-
-	sim = size( image )
-	Lx = sim(1)-1
-	Ly = sim(2)-1
-	
-	xsize = sim(1)
-	ysize = sim(2)
+        sim = size( image )
+        Lx = sim(1)-1
+        Ly = sim(2)-1
+        
+        xsize = sim(1)
+        ysize = sim(2)
 
-	if (sim(0) NE 2) OR (sim(4) LE 4) then begin
-		message,"input must be an image (a matrix)",/INFO
-		return,image
-	   endif
+        if (sim(0) NE 2) OR (sim(4) LE 4) then begin
+                message,"input must be an image (a matrix)",/INFO
+                return,image
+           endif
 
 
-	if keyword_set( all_pixels ) then begin
-		
-		box_wid = fix( box_wid )
-		radius = (box_wid/2) > 1
-		Lxr = Lx+radius
-		Lyr = Ly+radius
-		rr = 2*radius
-		imf = bytarr( sim(1)+rr, sim(2)+rr )
-		imf(radius,radius) = image		; reflect edges outward, 
-							; to make larger image.
-		imf(  0,0) = rotate( imf(radius:rr,*), 5 )	;Left -   Transpose: True
-		imf(Lxr,0) = rotate( imf(Lx:Lxr,*), 5 )		;right -  Transpose: True
-		imf(0,  0) = rotate( imf(*,radius:rr), 7 )	;bottom - Transpose: True
-		imf(0,Lyr) = rotate( imf(*,Ly:Lyr), 7 )		;top -    Transpose: True
-	  endif else begin
+        if keyword_set( all_pixels ) then begin
+                
+                box_wid = fix( box_wid )
+                radius = (box_wid/2) > 1
+                Lxr = Lx+radius
+                Lyr = Ly+radius
+                rr = 2*radius
+                imf = bytarr( sim(1)+rr, sim(2)+rr )
+                imf(radius,radius) = image                ; reflect edges outward, 
+                                                        ; to make larger image.
+                imf(  0,0) = rotate( imf(radius:rr,*), 5 )        ;Left -   Transpose: True
+                imf(Lxr,0) = rotate( imf(Lx:Lxr,*), 5 )                ;right -  Transpose: True
+                imf(0,  0) = rotate( imf(*,radius:rr), 7 )        ;bottom - Transpose: True
+                imf(0,Lyr) = rotate( imf(*,Ly:Lyr), 7 )                ;top -    Transpose: True
+          endif else begin
 
-		radius=0
-		imf = image
-	   endelse
-	   filtab = 0L
+                radius=0
+                imf = image
+           endelse
+           filtab = 0L
 ;-----------------------------------------------------------------------------------
 ; salt
 ;-----------------------------------------------------------------------------------
-	   if(thrsh_hold eq 255) then begin
-	   	for y = 1, ysize do begin
-	   		for x = 1, xsize do begin
-	   			if(imf(x,y) eq pix_val) then begin
-					sum = total(imf(x - 1: x + 1, y - 1: y + 1))
-					if(sum eq thrsh_hold) then begin
-					  image(x,y) = fill_val
-;					  imf(x-1,y-1) = fill_val
-					  filtab = filtab + 1
-					endif
-				endif
-			endfor
-	   	endfor
-	   endif else begin
+           if(thrsh_hold eq 255) then begin
+                   for y = 1, ysize do begin
+                           for x = 1, xsize do begin
+                                   if(imf(x,y) eq pix_val) then begin
+                                        sum = total(imf(x - 1: x + 1, y - 1: y + 1))
+                                        if(sum eq thrsh_hold) then begin
+                                          image(x,y) = fill_val
+;                                          imf(x-1,y-1) = fill_val
+                                          filtab = filtab + 1
+                                        endif
+                                endif
+                        endfor
+                   endfor
+           endif else begin
 
 ;print,image(310:319,0)
 ;print,image(320:329,0)
@@ -1009,21 +1009,21 @@ function filtmaj,image,WIDTH=box_wid,THRESH=thrsh_hold,CELLFLAG = pix_val,FILL= 
 ;print,image(370:381,0)
 
 tab = 0
-	   for y = 1, ysize do begin
-	   		for x = 1, xsize do begin
-	   			if(imf(x,y) eq pix_val) then begin
-					sum = total(imf(x - 1: x + 1, y - 1: y + 1))
-					if(sum ge thrsh_hold) then begin
-					  tab = tab + 1
-;					  if(tab lt 25)then print,'pixel ',tab+1,' x: ',x,' y:',y
-					  image(x-1,y-1) = fill_val
-;					  imf(x,y) = fill_val
-					  filtab = filtab + 1
-					endif
-				endif
-			endfor
-	   	endfor
-	   endelse
+           for y = 1, ysize do begin
+                           for x = 1, xsize do begin
+                                   if(imf(x,y) eq pix_val) then begin
+                                        sum = total(imf(x - 1: x + 1, y - 1: y + 1))
+                                        if(sum ge thrsh_hold) then begin
+                                          tab = tab + 1
+;                                          if(tab lt 25)then print,'pixel ',tab+1,' x: ',x,' y:',y
+                                          image(x-1,y-1) = fill_val
+;                                          imf(x,y) = fill_val
+                                          filtab = filtab + 1
+                                        endif
+                                endif
+                        endfor
+                   endfor
+           endelse
 printf,10, format = '("* filtered pixel total:    ",i8,"                                   *")',filtab
 ;return, imf( radius:(Lx+radius), radius:(Ly+radius) ) ; fixed(jk) 
 return, image  

@@ -1,19 +1,18 @@
          Program readl7sr
          
-         character*200 filein,fileth
+         character*200 filein
          integer ii
          integer sfstart, sfselect, sfrdata, sfendacc, sfend
-	 integer sfscatt
+         integer sfscatt
          integer sd_id, sds_id, sds_index, status
          integer start(5), edges(5), stride(5)
-         integer nstart(2), nedges(2), nstride(2)
          integer DFACC_READ,DFACC_RDWR,DFNT_CHAR8
          parameter (DFACC_READ = 1)
          parameter (DFACC_RDWR = 3)
-	 integer nc,nr,mnc,mnr
+         integer nc,nr,mnc,mnr
          parameter (DFNT_CHAR8 = 4)
-	 parameter (mnc=9000)
-	 parameter (mnr=9000)
+         parameter (mnc=9000)
+         parameter (mnr=9000)
 
          integer(2), allocatable :: qa(:,:)
          integer(2), allocatable :: temp(:,:)
@@ -21,39 +20,37 @@
          integer(2), allocatable :: band3(:,:)
          integer(2), allocatable :: band2(:,:)
          integer(2), allocatable :: band5(:,:)
-	 integer*2 cloud,cloudadja,cloudshad,tmpbit,snow
-	 real tclear,ts,tv,fs,tcloud,cfac,cldh,pixsize,tna
-	 real fack,facl
-	 character*80 sds_name
-	 integer rank,data_type
-	 integer n_attrs
-	 integer dim_sizes(5)
-	 integer mband5,mband5k,mband5l
-	 double precision mclear
-	 real pclear
-	 integer*8 nbclear,nbval,nbcloud
-	 real t6
-	 integer cldhmin,cldhmax
-	 
-	 cloud=8
-	 cloudadja=12
-	 cloudshad=9
-	 snow=10
-	 tmpbit=13
-	 cfac=6.
-	 dtr=atan(1.)/45.
-	 pixsize=28.5 
-	 
-	 
+         integer*2 cloud,cloudadja,cloudshad,tmpbit,snow
+         real tclear,ts,tv,fs,tcloud,cfac,cldh,pixsize,tna
+         real fack,facl
+         character*80 sds_name
+         integer rank,data_type
+         integer n_attrs
+         integer dim_sizes(5)
+         integer mband5,mband5k,mband5l
+         double precision mclear
+         real pclear
+         integer*8 nbclear,nbval,nbcloud
+         real t6
+         integer cldhmin,cldhmax
+         
+         cloud=8
+         cloudadja=12
+         cloudshad=9
+         snow=10
+         tmpbit=13
+         cfac=6.
+         dtr=atan(1.)/45.
+         pixsize=28.5 
+         
+         
          
          call getarg(1,filein)
          ii=index(filein," ")-1
-c         call getarg(2,fileth)
-c         jj=index(fileth," ")-1
-	 write(6,*) "temp clear [k] , ts,tv,fs,truenorthadjustement "
-	 read(5,*)  tclear,ts,tv,fs,tna
-	 tclear=tclear-273.0
-	 
+         write(6,*) "temp clear [k] , ts,tv,fs,truenorthadjustement "
+         read(5,*)  tclear,ts,tv,fs,tna
+         tclear=tclear-273.0
+         
         
                  
 cc Read from the HDF file 
@@ -64,7 +61,7 @@ cc Read from the HDF file
          write(6,'(A25,1X,A80)')
      &  "WW can not open input ",filein
           stop
-	  endif
+          endif
 c reading qa       
 c allocate memory for qa
        sds_index = 7
@@ -76,12 +73,12 @@ c allocate memory for qa
        write(6,*) dim_sizes(1),dim_sizes(2)
        nc= dim_sizes(1)
        nr=dim_sizes(2)
-	allocate (qa(nc,nr),stat=ierr)
-	allocate (temp(nc,nr),stat=ierr)
-	allocate (band1(nc,nr),stat=ierr)
-	allocate (band2(nc,nr),stat=ierr)
-	allocate (band3(nc,nr),stat=ierr)
-	allocate (band5(nc,nr),stat=ierr)
+        allocate (qa(nc,nr),stat=ierr)
+        allocate (temp(nc,nr),stat=ierr)
+        allocate (band1(nc,nr),stat=ierr)
+        allocate (band2(nc,nr),stat=ierr)
+        allocate (band3(nc,nr),stat=ierr)
+        allocate (band5(nc,nr),stat=ierr)
 
 cc read qa  data 
        start(1)=0
@@ -188,14 +185,14 @@ c compute the average temperature of the clear data
 c 
         if (nbclear.gt.0) then
         mclear=mclear*10000./nbclear
-	endif
-	pclear=(nbclear*100./nbval)
-	write(6,*) nbclear-nbval,nbcloud
-	write(6,*) "average clear temperature  %clear", mclear,pclear
-	if (pclear.gt.5.) then
-	tclear=mclear       
         endif
-	     
+        pclear=(nbclear*100./nbval)
+        write(6,*) nbclear-nbval,nbcloud
+        write(6,*) "average clear temperature  %clear", mclear,pclear
+        if (pclear.gt.5.) then
+        tclear=mclear       
+        endif
+             
 c update the adjacent cloud bit
        write(6,*) "updating adjacent cloud bit"
        do i=1,nr
@@ -229,42 +226,41 @@ C compute cloud shadow
        if (btest(qa(j,i),cloud)) then
            tcloud=temp(j,i)/100.
            cldh=(tclear-tcloud)*1000./cfac
-	   if (cldh.lt.0.) cldh=0.
-	   cldhmin=cldh-1000.
-	   cldhmax=cldh+1000.
-	   mband5=9999
+           if (cldh.lt.0.) cldh=0.
+           cldhmin=cldh-1000.
+           cldhmax=cldh+1000.
+           mband5=9999
            do icldh=cldhmin/10,cldhmax/10
-	    cldh=icldh*10.
+            cldh=icldh*10.
             k=i+fack*cldh
             l=j-facl*cldh
             if ((k.ge.1).and.(k.le.nr).and.(l.ge.1)
-     &	    .and.(l.le.nc)) then
+     &            .and.(l.le.nc)) then
             if ((band5(l,k).lt.800).and.
-     &	    ((band2(l,k)-band3(l,k)).lt.100)) then
+     &            ((band2(l,k)-band3(l,k)).lt.100)) then
             if (btest(qa(l,k),cloudadja).OR.btest(qa(l,k),cloud)
      &       .or.btest(qa(l,k),cloudshad)) then
              continue
              else
 c store the value of band5 as well as the l and k value
              if (band5(l,k).lt.mband5) then
-	     mband5=band5(l,k)
-	     mband5k=k
-	     mband5l=l
-	     endif    
+             mband5=band5(l,k)
+             mband5k=k
+             mband5l=l
+             endif    
              endif
              endif
              endif
-	     enddo
-	     if (mband5.lt.9999) then
-	     l=mband5l
-	     k=mband5k
+             enddo
+             if (mband5.lt.9999) then
+             l=mband5l
+             k=mband5k
              qa(l,k)=qa(l,k)+(2**cloudshad)
-	     endif
+             endif
          endif
-	 enddo
-	 enddo
+         enddo
+         enddo
 c dilate the cloud shadowc
-c       goto 99
        write(6,*) "dilating cloud shadow"
        do i=1,nr
        do j=1,nc
@@ -301,11 +297,11 @@ c update the cloud shadow
        
        
 c updating the qa and closing
- 99     sds_index=7
+        sds_index=7
         sds_id= sfselect(sd_id,sds_index)
         status=sfwdata(sds_id, start, stride,edges,qa)
         write(6,*) "status", status
-	status = sfendacc(sds_id)
+        status = sfendacc(sds_id)
         write(6,*) "status", status
 c update the global attribute to reflect cloud processing
          status=sfscatt(sd_id, "Cloud Mask Algo Version ",DFNT_CHAR8,

@@ -161,13 +161,10 @@ int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,
 
 {
   Img_coord_int_t p[4];
-  int iar;
   int i, n,ipt, ib;
   double dl, ds, w;
   double sum[7][13], sum_w;
   Img_coord_int_t ar_region_half;
-
-  iar = lut->aerosol_fill;
 
   ar_region_half.l = (lut->ar_region_size.l + 1) / 2;
   ar_region_half.s = (lut->ar_region_size.s + 1) / 2;

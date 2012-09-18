@@ -69,7 +69,7 @@ bool sieve( int            xsize
           , unsigned char* sive_cflag
           , int            sive_size
           , int odometer_flag
-		);
+          );
 int touching( unsigned char* img_buf
             , int nps
             , int nls

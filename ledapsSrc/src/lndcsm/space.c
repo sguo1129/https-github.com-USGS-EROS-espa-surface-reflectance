@@ -1377,14 +1377,8 @@ bool PutGeoDefHDF(Geo_def_t *this, char *file_name, int nsds,
   char *pixelsize_units = "arcseconds"; /* valid=("meters" or "arcseconds") */
   char *dim_names[2] = {"YDim", "XDim"};
   int ic;
-  Map_coord_t lr_corner;
-  double ds, dl, dy, dx;
-  double sin_orien, cos_orien;
   Myhdf_attr_t attr;
   int isds;
-  int ip;
-  double f_fractional, f_integral;
-  char *cproj;
   double dval[2]; /* Feng changes from 0 to 2 in 4/17/2009 */
   char *ctype;
   int it;

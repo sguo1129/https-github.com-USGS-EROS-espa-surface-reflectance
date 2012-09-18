@@ -84,55 +84,51 @@ void sun_angles (short jday,float gmt,float flat,float flon,float *ts,float *fs)
 /* Functions */
 
 int main (int argc, const char **argv) {
-  Param_t *param;
-  Input_t *input,*input_b6;
-  InputPrwv_t *prwv_input;
-  InputOzon_t *ozon_input;
-  InputMask_t *input_mask;
-  Lut_t *lut;
-  Output_t *output;
-  int i,j,k, il, is,ib,i_aot,j_aot,ifree;
+  Param_t *param = NULL;
+  Input_t *input = NULL,*input_b6 = NULL;
+  InputPrwv_t *prwv_input = NULL;
+  InputOzon_t *ozon_input = NULL;
+  InputMask_t *input_mask = NULL;
+  Lut_t *lut = NULL;
+  Output_t *output = NULL;
+  int i,j,il, is,ib,i_aot,j_aot,ifree;
   int il_start, il_end, il_ar, il_region, is_ar;
   int *line_out[NBAND_SR_MAX];
-  int *line_out_buf;
-  int ***line_in;
-  int **line_in_band_buf;
-  int *line_in_buf;
-  int ***line_ar;
-  int **line_ar_band_buf;
-  int *line_ar_buf;
-  int ***line_ar_stats;
-  int **line_ar_stats_band_buf;
-  int *line_ar_stats_buf;
-  int** b6_line;
-  int* b6_line_buf;
-  float *atemp_line;
-  int8** qa_line;
-  int8* qa_line_buf;
-  char** mask_line;
-  char* mask_line_buf;
-  char **ddv_line;
-  char *ddv_line_buf;
+  int *line_out_buf = NULL;
+  int ***line_in = NULL;
+  int **line_in_band_buf = NULL;
+  int *line_in_buf = NULL;
+  int ***line_ar = NULL;
+  int **line_ar_band_buf = NULL;
+  int *line_ar_buf = NULL;
+  int ***line_ar_stats = NULL;
+  int **line_ar_stats_band_buf = NULL;
+  int *line_ar_stats_buf = NULL;
+  int** b6_line = NULL;
+  int* b6_line_buf = NULL;
+  float *atemp_line = NULL;
+  int8** qa_line = NULL;
+  int8* qa_line_buf = NULL;
+  char** mask_line = NULL;
+  char* mask_line_buf = NULL;
+  char **ddv_line = NULL;
+  char *ddv_line_buf = NULL;
   char **rot_cld[3],**ptr_rot_cld[3],**ptr_tmp_cld;
-  char **rot_cld_block_buf;
-  char *rot_cld_buf;
+  char **rot_cld_block_buf = NULL;
+  char *rot_cld_buf = NULL;
 
   Sr_stats_t sr_stats;
   Ar_stats_t ar_stats;
   Ar_gridcell_t ar_gridcell;
   int *prwv_in[NBAND_PRWV_MAX];
-  int *prwv_in_buf;
-  int *ozon_in;
+  int *prwv_in_buf = NULL;
+  int *ozon_in = NULL;
   
-  int nbpts,ipt;
-  float faot1;
+  int nbpts;
   int inter_aot[3];
-
-   float lamda[7]={486.,570.,660.,835.,1669.,0.,2207.};
-
   float scene_gmt;
 
-  Space_t *space;
+  Space_t *space = NULL;
   Space_def_t space_def;
   char *grid_name = "Grid";
   char *dem_name;
@@ -148,33 +144,23 @@ int main (int argc, const char **argv) {
   double sum_spres_anc,sum_spres_dem;
   int nb_spres_anc,nb_spres_dem;
   float ratio_spres;
-  float tmpflt_arr[4],tmpflt;
+  float tmpflt_arr[4] /*,tmpflt */;
   double coef;
   int tmpint;
   int nvalues,osize;
   int debug_flag;
 
 	sixs_tables_t sixs_tables;
-	int sixs_run;
-	char sixs_results_filename[256];
-
 	float center_lat,center_lon;
-	float aot550;
-	
 	char *charptr,tmpfilename[128];
-	FILE *fdtmp,*fdtmp2;
+	FILE *fdtmp/*, *fdtmp2 */;
 	
 	short *dem_array;
 	int dem_available;
 
-	float actual_rho_ray,actual_T_ray_up,actual_T_ray_down,actual_S_r;
-	float mus,muv,phi,tau_ray;
-	float rho_ray_P0,T_ray_down_P0,T_ray_up_P0,S_r_P0;
-	float tau_ray_sealevel[7]={0.16511,0.08614,0.04716,0.01835,0.00113,0.00037}; /* index=5 => band 7 */
-
 	cld_diags_t cld_diags;
 	
-float flat,flon,fts,ffs;
+float flat,flon/*,fts,ffs*/;
 double delta_y,delta_x;
 float adjust_north;
 
@@ -183,7 +169,7 @@ int no_ozone_file;
 short jday;
 
 /* Vermote additional variable declaration for the cloud mask May 29 2007 */
-int anom,it6;
+int anom;
 float t6,t6s_seuil;
 
 float calcuoz(short jday,float flat);
@@ -192,6 +178,7 @@ void swapbytes(void *val,int nbbytes);
 
 
 
+  printf ("\nRunning lndsr ....\n");
  debug_flag= DEBUG_FLAG;
 
   no_ozone_file=0;
@@ -858,7 +845,7 @@ void swapbytes(void *val,int nbbytes);
 	if (allocate_mem_atmos_coeff(nbpts,&atmos_coef))
         ERROR("Allocating memory for atmos_coef", "main");
 
-    printf("Compute Atmos Params with aot550=0.01\n"); fflush(stdout);
+    printf("Compute Atmos Params with aot550 = 0.01\n"); fflush(stdout);
 	update_atmos_coefs(&atmos_coef,&ar_gridcell, &sixs_tables,line_ar, lut,input->nband, 1);
 
   /* Read input first time and compute clear pixels stats for internal cloud screening */
@@ -1296,13 +1283,14 @@ bit 12: adjacent cloud
 	fclose(fdtmp);
 	unlink(tmpfilename); 
 	
-  /* Print the statistics */
+  /* Print the statistics, skip bands that don't exist */
 
   printf(" total pixels %ld\n", ((long)input->size.l * (long)input->size.s));
   printf(" aerosol coarse  nfill %ld  min  %d  max  %d\n", 
          ar_stats.nfill, ar_stats.ar_min, ar_stats.ar_max);
 
   for (ib = 0; ib < output->nband_tot; ib++) {
+    if (output->sds_sr[ib].name != NULL)
     printf(" sr %s  nfill %ld  nout_range %ld  min  %d  max  %d\n", 
             output->sds_sr[ib].name, 
 	    sr_stats.nfill[ib], sr_stats.nout_range[ib],
@@ -1337,7 +1325,7 @@ bit 12: adjacent cloud
     ERROR("freeing input file stucture", "main");
 
   if (!FreeInput(input_b6)) 
-    ERROR("freeing input file stucture", "main");
+    ERROR("freeing input_b6 file stucture", "main");
 
   if (!FreeLut(lut)) 
     ERROR("freeing lut file stucture", "main");
@@ -1394,7 +1382,7 @@ bit 12: adjacent cloud
 
   /* All done */
 
-  exit(EXIT_SUCCESS);
+  printf ("lndsr complete.\n");
 
   return (EXIT_SUCCESS);
 }
@@ -1549,7 +1537,7 @@ C      / First loop for time/
 }
 
 float get_dem_spres(short *dem,float lat,float lon) {
-	int i,j,idem,jdem;
+	int idem,jdem;
 	float dem_spres;
 		
 	idem=(int)((DEM_LATMAX-lat)/DEM_DLAT+0.5);
@@ -1710,14 +1698,13 @@ int update_gridcell_atmos_coefs(int irow,int icol,atmos_t *atmos_coef,Ar_gridcel
 void sun_angles (short jday,float gmt,float flat,float flon,float *ts,float *fs) {
       
       double mst,tst,tet,et,ha,delta;
-      double dlat,dlon,amuzero,elev,az,caz,azim;
+      double dlat,amuzero,elev,az,caz,azim;
       
       double A1=.000075,A2=.001868,A3=.032077,A4=.014615,A5=.040849;
       double B1=.006918,B2=.399912,B3=.070257,B4=.006758;
       double B5=.000907,B6=.002697,B7=.001480;
       
       dlat=(double)flat*M_PI/180.;
-      dlon=(double)flon*M_PI/180.;
 		                  
 /*      
       SOLAR POSITION (ZENITHAL ANGLE ThetaS,AZIMUTHAL ANGLE PhiS IN DEGREES)

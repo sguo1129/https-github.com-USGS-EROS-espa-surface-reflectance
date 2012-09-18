@@ -83,12 +83,13 @@
 
 /* Prototypes for initializing the GCTP projections */
 
-void for_init(long proj_num, long zone, double *proj_param, long sphere,
+/* void for_init(long proj_num, long zone, double *proj_param, long sphere,
               char *file27, char *file83, long *iflag, 
 	      long (*for_trans[MAX_PROJ + 1])());
 void inv_init(long proj_num, long zone, double *proj_param, long sphere,
               char *file27, char *file83, long *iflag, 
 	      long (*inv_trans[MAX_PROJ + 1])());
+*/
 
 /* Functions */
 

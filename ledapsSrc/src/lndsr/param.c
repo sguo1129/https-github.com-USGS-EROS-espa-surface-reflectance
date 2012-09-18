@@ -385,7 +385,6 @@ Param_t *GetParam(int argc, const char **argv)
 	  break;
         }
 		  this->cloud_flag= true;  /** NAZMI **/
-		  printf("cloud mask set to true\n");
         break;
 
       case PARAM_L5_CSM:

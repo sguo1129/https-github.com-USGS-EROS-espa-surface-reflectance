@@ -20,7 +20,7 @@ FILE* mout;      /* most of the log messages go here                         */
 Pbuf_t *pst;     /* Print message log */
 char pb[256];
 bool CloudMask(  
- 	         Input_t *input         /* input file for reflective bands   */
+                  Input_t *input         /* input file for reflective bands   */
                , Input_t *input_th      /* input file for thermal band       */
                , Output_t *output       /* output file                       */
                , Lut_t *lut             /* lut file                          */
@@ -66,13 +66,12 @@ bool CloudMask(
  unsigned char* clmaskb2p;
  unsigned char* clmaskb2c;
  unsigned char* clmaskb2m;
- unsigned char maskvalue;
  unsigned char* sive_cflag;
  unsigned int* sive_flag;
 /*--------------------------------------------------------------------------!*/
 /*-                                  ints                                  -!*/
 /*--------------------------------------------------------------------------!*/
-   int i						
+   int i                                                
      , ix,iy
      , totpix
      , xhalf
@@ -88,27 +87,21 @@ bool CloudMask(
      , count4x
      , count9 
      , count10
-     , count42					           /* int */
+     , count42                                                   /* int */
      , b6delete
      , count6
      , snowtab 
      , landtab 
      , index 
-     , index2 
      , bins
      , ibin
-     , bins1
-     , bins2
      , b6histogram[HISTSIZ]
-     , b6histogram2[HISTSIZ]
-     , histmin, histmax, histnum
      , cloudvalues 
      , cloudvalues2 
      , cloudval254
      , cloudval255
      , iclpercentorig                                      /* int */
      , cloudcut0125
-     , cloudcut05
      , cloudcut025
      , cloudcut175
      , cloudsum 
@@ -174,15 +167,10 @@ bool CloudMask(
       , clpercenta 
       , clpercentb 
       , result[6]
-      , result1[6]
-      , result2[6]
-      , result_temp[6]
       , b6min
       , b6max
       , b6max_thresh1_diff 
-      , b6min1
       , b6max1
-      , b6min2
       , b6max2
       , b6sd
       , shiftfact
@@ -434,6 +422,8 @@ bool CloudMask(
                      line_in[4][ix] == FILL_VALUE ||
                      therm_line[ix] == FILL_VALUE    )?  CLSTAT_F : CLSTAT_L;
 
+/* GAIL -- I think this would be better if we checked 
+   if (clmask[ix] == CLSTAT_F)  */
      if (  line_in[1][ix] == FILL_VALUE )
        {
        ib2buf[ix]=      0.0;
@@ -481,7 +471,7 @@ bool CloudMask(
 /*band 6/5 composite. eliminates ice - originally set at 225 (thresh_b56_hi)!*/
 /*--------------------------------------------------------------------------!*/
          if( b56_thresh < thresh_b56_hi ) 
-	   {
+           {
            count6++;
 /*--------------------------------------------------------------------------!*/
 /*- band 4/3 ratio. (equals about 1.0 for clouds), eliminates bright veg   -!*/
@@ -494,7 +484,7 @@ bool CloudMask(
 
              if ( b43ratio < b43_thresh )
                {
-               count3 = count3 + 1;
+               count3++;
 /*--------------------------------------------------------------------------!*/
 /*- 4/2 ratio for senescing vegetation, chlorophyll absorbtion lacking     -!*/
 /*--------------------------------------------------------------------------!*/
@@ -502,20 +492,20 @@ bool CloudMask(
 
                if ( b42ratio < b42_thresh ) 
                  {
-                 count42 = count42 + 1;
+                 count42++;
                  b45ratio = b4rflect / b5rflect;
 /*--------------------------------------------------------------------------!*/
 /*-  band 4/5 ratio. eliminates rocks and desert                           -!*/
 /*--------------------------------------------------------------------------!*/
                  if ( b45ratio > b45_thresh ) 
                    {
-                   count4 = count4 + 1;
+                   count4++;
                    clmaski2[ix] = 255;
                    clmaskb[ix] = b255;
 
                    if ( b56_thresh < thresh_b56_lo )
                      {
-                     count4x = count4x + 1;
+                     count4x++;
                      clmaskb[ix] = b254;
 
 
@@ -525,9 +515,9 @@ bool CloudMask(
                }                    /* b43 endif*/
              }                     /* b56 endif*/
            else
-	     {
+             {
              if ( b5rflect < 0.08 )clmaskb[ix] = b55;
-	     }
+             }
            }                      /* b6 endif*/
          else
            {
@@ -692,7 +682,7 @@ bool CloudMask(
  sprintf(pb,"-> unambiguous land total:   %8d",landtab);  pr(pst);
 /*--------------------------------------------------------------------------!*/
 /*- compute the cloud mean values and standard deviation but only if       -!*/
-/*- clouds were at half of percent level.			           -!*/
+/*- clouds were at half of percent level.                                   -!*/
 /*---------------------------------------------------------------------------*/
 /*- compute cloud mean values and standard deviation but only if clouds    -!*/
 /*- were at the half of percent level.                                     -!*/
@@ -719,16 +709,16 @@ bool CloudMask(
      for ( ix=0; ix<nps; ix++)
        {
        if ( clmaskb[ix] == b255 )
-	 {
+         {
          cloudval255++;
          clmaskb[ix]= b0;
          } 
        if ( clmaskb[ix] == b254 )
-	 {
+         {
          cloudvalues++;
          clmaskb[ix]=b255;
          virput( &b6clouds, b6tempeture[ix] );
-	 }
+         }
        }
      if ( !put_line(&clmaskb_File, (char*)clmaskb, iy) )
        ERROR("putline clmaskb file","csm" );
@@ -1631,13 +1621,13 @@ int i,j,num_above,num_below;
 /*                             fill histogram                              -!*/
 /*--------------------------------------------------------------------------!*/
       for (i=0; i<num; i++)
-	{
+        {
         float data= virget( vb,i );
         j= (int)data ;
         if ( j == 0 )
             j= HMIN;
          else if ( j < HMIN )
-	   {
+           {
            sprintf(pb,"bad histogram value=%d ",j);  pr(pst); 
            j= HMIN;
            num_below= num_below + 1;
@@ -1651,7 +1641,7 @@ int i,j,num_above,num_below;
          outhist[ j-1 ]= outhist[ j-1 ] + 1;
          if ( data < *omin )*omin= data;
          if ( data > *omax )*omax= data;
-	}
+        }
 /*--------------------------------------------------------------------------!*/
 /*                    check for histogram extent error                     -!*/
 /*--------------------------------------------------------------------------!*/
@@ -1666,9 +1656,9 @@ int i,j,num_above,num_below;
             ,num_above,HMAX);    pr(pst); 
         }
       if ( num_above > 0 || num_below > 0 )
-	{
+        {
         cenb(pst," histogram limit error"); 
-	}
+        }
 }
 /*--------------------------------------------------------------------------!*/
 /*--------------------------------------------------------------------------!*/

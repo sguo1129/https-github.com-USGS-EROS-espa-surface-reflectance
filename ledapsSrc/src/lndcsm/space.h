@@ -114,7 +114,7 @@ typedef struct {
   float pixel_size;     /* Pixel size (meters) */
   Map_coord_t ul_corner;  /* Map projection coordinates of the upper left 
                              corner of the pixel in the upper left corner 
-			     of the image */
+                             of the image */
   bool ul_corner_set;   /* Flag to indicate whether the upper left corner
                            has been set; 'true' = set; 'false' = not set */
   Img_coord_int_t img_size;  /* Image size (lines, samples) */
@@ -126,7 +126,7 @@ typedef struct {
                               and if it is, the ISIN nesting */
   double orientation_angle;  /* Orientation of the image with respect to 
                                 map north (radians).  A positive angle causes 
-				the image to be rotated counter-clockwise. */
+                                the image to be rotated counter-clockwise. */
 } Space_def_t;
 
 /* Structure to store the space information */

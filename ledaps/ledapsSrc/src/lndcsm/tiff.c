@@ -55,7 +55,7 @@ const short int COMPRESSION_FILL=0;
 const short int PHOTOINTERP_TAG=262;       /* IDF ENTRY 6*/
 const short int PHOTOINTERP_TYPE=3;
 const      int PHOTOINTERP_COUNT=1;
-      short int PHOTOINTERP= Photo;
+      short int PHOTOINTERP;
 const short int PHOTOINTERP_FILL=0;
 
 const short int STRIP_OFFSETS_TAG=273;     /* IDF ENTRY 7*/

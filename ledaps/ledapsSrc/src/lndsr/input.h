@@ -104,6 +104,7 @@ bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy);
 bool GetInputMeta(Input_t *this);
 
 InputMask_t *OpenInputMask(char *file_name);
+bool GetInputQALine(Input_t *this, int iline, int8 *line);
 bool GetInputMaskLine(InputMask_t *this, int iline, char *line);
 bool FreeInputMask(InputMask_t *this);
 bool CloseInputMask(InputMask_t *this);

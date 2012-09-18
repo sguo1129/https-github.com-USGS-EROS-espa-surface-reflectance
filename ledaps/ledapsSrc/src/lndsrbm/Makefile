@@ -1,5 +1,5 @@
 FC      = gfortran
-EXTRA   = -m32 -D_BSD_SOURCE
+EXTRA   = -Wall
 INCDIR  = -I. -I$(HDFINC)
 EXLIB   = -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz -lm
 EXE     = cmrbv1.0 compadjn comptemp xy2geo geo2xy SDSreader3.0

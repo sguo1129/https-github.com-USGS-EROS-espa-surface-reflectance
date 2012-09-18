@@ -1,9 +1,9 @@
-SYSTEM  = IRIS4
+#SYSTEM  = IRIS4
 #EXTRA	= -D$(SYSTEM) -lfastm
 #EXTRA   = -D_BSD_SOURCE -Wall
-EXTRA   = -m32 -D_BSD_SOURCE
+#EXTRA   = -m32 -D_BSD_SOURCE
 
-INCDIR  = -I. -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) -I$(HDFEOS_INC)
+INCDIR  = -I. -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(GCTPINC)
 ###INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(TIFFINC) -I$(GEOTIFF_INC)
 #NCFLAGS  = -mips3 -xansi -fullwarn -r10000 -g $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) -r10000 -g $(EXTRA) $(INCDIR)
@@ -11,13 +11,12 @@ INCDIR  = -I. -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) -I$(HDFEOS_INC)
 #NCFLAGS  = $(CFLAGS) -g $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) -O3 $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) -O3  -DIRIS4 $(INCDIR)
-NCFLAGS  = $(CFLAGS) -g $(INCDIR)
+NCFLAGS  = $(CFLAGS) -Wall $(INCDIR)
 
 #EXLIB   = -lmalloc_ss
-EXLIB	= -L$(GEOTIFF_LIB) -lgeotiff \
-          -L$(TIFFLIB) -ltiff \
-          -L$(HDFEOS_LIB) -lhdfeos -lgctp \
-          -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
+EXLIB	= -L$(GCTPLIB) -lgctp \
+          -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff \
+          -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 

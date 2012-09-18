@@ -398,8 +398,6 @@ int LSutmfor(double *x, double *y, double lon, double lat)
 {
 
 double delta_lon;	/* Delta longitude (Given longitude - center 	*/
-double theta;		/* angle					*/
-double delta_theta;	/* adjusted longitude				*/
 double mlfn();		/* function to compute small m			*/
 double sin_phi, cos_phi;/* sin and cos value				*/
 double al, als;		/* temporary values				*/
@@ -407,7 +405,7 @@ double b;		/* temporary values				*/
 double c, t, tq;	/* temporary values				*/
 double con, n, ml;	/* cone constant, small m			*/
   
-  double dl, dp, dy, dx;
+  double dy, dx;
 
   lat *= D2R;
   lon *= D2R;

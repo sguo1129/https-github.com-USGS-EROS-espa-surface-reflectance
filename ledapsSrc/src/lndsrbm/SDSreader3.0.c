@@ -17,6 +17,7 @@
 #include <string.h>
 #include <strings.h>
 #include <math.h>
+#include <ctype.h>
 #include "mfhdf.h"
 /*#include "struct.h"
 #include "globals.h"
@@ -63,27 +64,18 @@ float NR[MAXSITES], NC[MAXSITES];
 
 int main(int argc, char **argv)
 {
-FILE *fdSDSlistfile;
 FILE *fd, *fdout;
 FILE *fdExtsrc[MAXCRITERIA];
 FILE *fddebug;
 short ret, i;
 int32 which_SDS[MAXBANDS];
 short which_filter[MAXCRITERIA];
-intn ref;
-char *attr;
-int32 n_type;
-int32 j, ii, jj, file_id, out_id, sds_outid, cr_sds_id, sds_id, n_gattr, n_sets, nn_sets, count, rank;
-char label[MAXLENGTH], unit[MAXLENGTH], format[MAXLENGTH];
-char coordsys[MAXLENGTH], attrib[MAXLENGTH];
-float64 cal[MAXBANDS], cale, off[MAXBANDS], offe;
-int32 dims[10], outdims[2], outstart[2], xdims[MAXDIMS], SDS_dims[MAXDIMS], number_type[MAXBANDS], nt, nattr, xsds;
-int32 w_number_type[MAXBANDS];
+int32 j, ii, jj, file_id, out_id, sds_outid, cr_sds_id, sds_id, n_gattr, n_sets, nn_sets, rank;
+int32 dims[10], outdims[2], outstart[2], xdims[MAXDIMS], SDS_dims[MAXDIMS], nt, nattr, xsds;
 int32 filter_type;
 int32 SDS_type[MAXBANDS];
 int32 SDS_filtertype[MAXCRITERIA];
-int32 index_in_file[MAXBANDS];
-long n_rows, n_cols, n_to_skip, save_bin, save_out, save_HDFout;
+long n_rows, n_cols, save_bin, save_out, save_HDFout;
 char name[MAXLENGTH];
 char SDSinfile[MAXBANDS][MAXLENGTH];
 char sds_table[MAXLENGTH*MAXBANDS];
@@ -125,7 +117,7 @@ float ts, fs, tv, fv;
 int32 crit_file_id[MAXCRITERIA];
 char otherHDFfile[MAXLENGTH];
 float subsample_factor[MAXCRITERIA];
-short here, match, skipper;
+short here;
 short take_it;
 short go;
 int irow, icol;
@@ -223,7 +215,7 @@ n_SDSs = 0;
 except = 0;
 n_sites = 0;
 n_criteria = aggreg = agg_thresh = 0;
-skipper = 1; get_angles = 0;
+get_angles = 0;
 save_bin = save_out = save_HDFout = ref_SDS = 0;
 
 ret = process_arg(argc, argv, paramfileline);
@@ -473,7 +465,7 @@ if (USE_ALL_SDSs) {
                    SDS_type[take_it] = nt;
                    SDS_offset[take_it] = (int32)j;
                    /*strcpy(SDSinfile[take_it++], name);*/
-	           sprintf(SDSinfile[take_it++], "%s_%03d\0", name, j);
+	           sprintf(SDSinfile[take_it++], "%s_%03d", name, j);
 		 }
 		 }
 	              }
@@ -495,7 +487,7 @@ if (USE_ALL_SDSs) {
                          SDS_type[take_it] = nt;
                          SDS_offset[take_it] = (int32)j;
                          /*strcpy(SDSinfile[take_it++], name);*/
-			 sprintf(SDSinfile[take_it++], "%s_%03d\0", name, j);
+			 sprintf(SDSinfile[take_it++], "%s_%03d", name, j);
 			 }
 	                                                          }
 		    }
@@ -551,7 +543,7 @@ else {   /* Find all the SDSs-to-be-processed in the HDF file;
                            which_SDS[take_it] = (int32)i;
                            SDS_type[take_it] = nt;
                            SDS_offset[take_it] = (int32)jj;
-		           sprintf(SDSnames[take_it++], "%s_%03d\0", SDSnames[j], jj);
+		           sprintf(SDSnames[take_it++], "%s_%03d", SDSnames[j], jj);
 			   }
 			}
 	                     }
@@ -571,7 +563,7 @@ else {   /* Find all the SDSs-to-be-processed in the HDF file;
                                which_SDS[take_it] = (int32)i;
                                SDS_type[take_it] = nt;
                                SDS_offset[take_it] = (int32)jj;
-		               sprintf(SDSnames[take_it++], "%s_%03d\0", SDSnames[j], jj);
+		               sprintf(SDSnames[take_it++], "%s_%03d", SDSnames[j], jj);
 			       }
 	                                                              }
 			  }
@@ -705,7 +697,7 @@ for (j=0;j<n_criteria;j++) {
 	   }
        else {
            printf("Error: file '%s' has a size that is not an integral ", SDStofilter[j]);
-	   printf("multiple of (%d * %d), cannot process\n", n_rows, n_cols);
+	   printf("multiple of (%ld * %ld), cannot process\n", n_rows, n_cols);
 	   exit(-5);
             }
          }
@@ -783,14 +775,14 @@ for (ii=0;ii<n_sites;ii++) {
     *********/
    if (ULr >= n_rows) {
      printf("Error: Requested upper-left row value, %d\n", ULr);
-     printf("       Total number of rows in data, %d\n", n_rows-1);
+     printf("       Total number of rows in data, %ld\n", n_rows-1);
      exit(-5);
                       }
    if (overall_row0 >= n_rows) overall_row0 = 0;
    
    if (ULc >= n_cols) {
      printf("Error: Requested upper-left column value, %d\n", ULc);
-     printf("       Total number of pixels in a row of data, %d\n", n_cols-1);
+     printf("       Total number of pixels in a row of data, %ld\n", n_cols-1);
      exit(-5);
                       }
    if (overall_col0 >= n_cols) overall_col0 = 0;
@@ -1294,7 +1286,7 @@ for (ii=0;ii<n_sites;ii++) {
    /* Report results to user 
     ***************************/
    if (VERBOSE) {
-      sprintf(sds_table,"\n     Site %d\n     Criteria selected %d out of %d pixels %s:\n", 
+      sprintf(sds_table,"\n     Site %d\n     Criteria selected %ld out of %d pixels %s:\n", 
             ii, n_kept, nr*nc, (aggreg == 1 ? "(aggregated)\0":"\0") );
       for (j=0;j<n_SDSs;j++) {
          if (SDS_offset[j] == -1) 
@@ -1316,7 +1308,7 @@ for (ii=0;ii<n_sites;ii++) {
        else
            sprintf(resultstring+strlen(resultstring),"UL row, column; (%d %d); n rows, columns; (%d %d), ", 
                  (short)ULR[ii], (short)ULC[ii], (short)NR[ii], (short)NC[ii]);
-       sprintf(resultstring+strlen(resultstring),"n_samples, %d\n",n_kept);
+       sprintf(resultstring+strlen(resultstring),"n_samples, %ld\n",n_kept);
        sprintf(resultstring+strlen(resultstring),"SDS name");
        for (j=0;j<longest-7;j++) sprintf(resultstring+strlen(resultstring)," "); 
        sprintf(resultstring+strlen(resultstring),"mean      SD\n");
@@ -1341,7 +1333,7 @@ for (ii=0;ii<n_sites;ii++) {
      else 
        sprintf(resultstring,"\0");
      
-     sprintf(resultstring+strlen(resultstring),"%02d %05d %05d ", ii, n_kept, nr*nc);
+     sprintf(resultstring+strlen(resultstring),"%02d %05ld %05d ", ii, n_kept, nr*nc);
      for (j=0;j<n_SDSs;j++) 
            sprintf(resultstring+strlen(resultstring),"%09.3f %09.3f ", SDS_avg[j], SDS_SD[j]);
      sprintf(resultstring+strlen(resultstring),"\n");
@@ -1374,8 +1366,8 @@ for (ii=0;ii<n_sites;ii++) {
        
         for (li=0L;li<k;li++) {   /* for each pixel... */
            if (keepmask[li] > 0) {
-              fprintf(fdout,"ASC %4d %4d ", li/nc, li%nc);
-              if (VERBOSE) printf("ASC %4d %4d ", li/nc, li%nc);
+              fprintf(fdout,"ASC %4ld %4ld ", li/nc, li%nc);
+              if (VERBOSE) printf("ASC %4ld %4ld ", li/nc, li%nc);
               for (j=0;j<n_SDSs;j++) {
 		 if ((SDS_type[j] == DFNT_FLOAT32)||(SDS_type[j] == DFNT_FLOAT64)) {
                     fprintf(fdout,"%8.4e ", SDS_image_D[j][li]);
@@ -1402,7 +1394,7 @@ for (ii=0;ii<n_sites;ii++) {
        
         for (li=0L;li<k;li++) {   /* for each pixel... */
            if (keepmask[li] > 0) {
-              printf("ASC %4d %4d ", li/nc, li%nc);
+              printf("ASC %4ld %4ld ", li/nc, li%nc);
               for (j=0;j<n_SDSs;j++) {
 		 if ((SDS_type[j] == DFNT_FLOAT32)||(SDS_type[j] == DFNT_FLOAT64)) {
                     printf("%8.4e ", SDS_image_D[j][li]);
@@ -1548,15 +1540,9 @@ short SDSread(int32 file_id, int32 offset, int32 SDS_index, void *image, short U
 {  /* this routine assumes SDS_index is the index of the SDS you want, and the SDSs are 2-dim */
 int32 sds_id;
 int32 start2[MAXDIMS];  
-int32 stride2[MAXDIMS] = {1,1};  
 int32 edge2[MAXDIMS];
-int32 dims2[MAXDIMS];
 int32 start3[MAXDIMS+1];  
-int32 stride3[MAXDIMS+1] = {1,1,1};  
 int32 edge3[MAXDIMS+1];
-int32 dims3[MAXDIMS+1];
-char name[100];
-int32 rank, nt, nattr;
 
 if ((sds_id = SDselect(file_id, SDS_index)) == -1) {
     printf("SDSread Error; finding SDS number %d from file\n", SDS_index);
@@ -1624,8 +1610,7 @@ int n_lines = 0;
 
 char argv[100][150];
 char lastfilename[150];
-int i, j, list_idx, crit_idx, argc, ai;
-int in_list, in_crit;
+int i, j, argc;
 int in_arg, en_lines, n_quotes, in_quotes;
 void get_site_overall_dims(char *string);
 
@@ -1646,8 +1631,6 @@ if (( *newfileindex = calloc(n_lines, sizeof(int))) == (int *)NULL) {
 
 rewind(fdparam);
 
-list_idx = crit_idx = 0;
-in_list = in_crit = 0;
 in_arg = n_quotes = in_quotes = en_lines =  0;
 argc = -1;
 
@@ -2507,9 +2490,6 @@ float  *SDS_image_f;
 double *SDS_image_d;
 double *SDS_image;
 long li;
-char filename[50];
-char extfilename[50];
-FILE *fdwr;
 int subs = 0;
 long subs_k;
 
@@ -3252,8 +3232,7 @@ void process_dim_ids(int32 sd_id1, int32 id_out)
 /* This routine copies dimension IDs from sd_id1 to id_out. 
  */
 int32 id1;
-int32 n_attr, n_sets, count, number_type;
-char name1[MAXLENGTH];
+int32 n_attr, count, number_type;
 char dim_name[MAXLENGTH];
 
 id1 = SDgetdimid(sd_id1, 0);
@@ -3275,16 +3254,11 @@ void process_local_attributes(int32 sd_id1, int32 id_out)
 /* This routine copies attributes from sd_id1 to id_out. 
  */
       
-int32 i, j, jj;
+int32 j;
 int32 id1;
-short equal;
-int32 n_attr1, n_sets1, count1, rank1, dims1[5], number_type1;
+int32 n_attr1, count1, rank1, dims1[5], number_type1;
 char name1[MAXLENGTH];
-char attrib[MAXLENGTH], attrib1[MAXLENGTH];
-char label[MAXLENGTH], tag[MAXLENGTH];
-short *contents;
-short ii;
-char *newstring;
+char attrib1[MAXLENGTH];
 char *charattr;
 uchar8 *ucharattr;
 int16 *shortattr;
@@ -3446,17 +3420,11 @@ void process_global_attributes(int32 sd_id1, int32 id_out)
 /* This routine copies attributes from sd_id1 to id_out. 
  */
       
-int32 i, j, jj;
+int32 i, j;
 int32 id1;
-short equal;
 int start;
-int32 n_attr1, n_sets1, count, count1, rank1, dims1[5], number_type1;
-char name1[MAXLENGTH];
+int32 n_attr1, n_sets1, count, count1, number_type1;
 char attrib[MAXLENGTH], attrib1[MAXLENGTH];
-char label[MAXLENGTH], tag[MAXLENGTH];
-short *contents;
-short ii;
-char *newstring;
 char *charattr;
 uchar8 *ucharattr;
 int16 *shortattr;
@@ -3478,9 +3446,7 @@ char *oldstructmetadata;
 int NEWShave[4], newshave, structhave, switch_metadata, n_cols_original, n_lines_original;
 float NEWSvals[4], rez;
 enum{N,E,W,S};
-char projstring[100];
-char line[MAXLENGTH], objs[MAXLENGTH];
-char lhs[MAXLENGTH], rhs[MAXLENGTH];
+char line[MAXLENGTH];
 void get_a_line(char *text, int *start, char *line);
 int get_RHS(char *line);
 void put_RHS_str(char *line, char  *x);
