@@ -9,8 +9,8 @@ that developed for the MODIS instrument. This package includes three basic modul
 data from digital numbers (DN) to surface reflectance. The three steps include:
 
 a). Calibrate digital number (DN) to top-of-atmosphere (TOA) reflectance
-b). Detect cloud pixels based on the TOA reflectance
-c). Correct to surface reflectance from TOA reflectance and ancillary data sets
+b). Correct to surface reflectance from TOA reflectance and ancillary data sets
+c). Detect cloud pixels based on the surface reflectance
 
 Please check Ledaps web site for more detailed information:
 http://ledaps.nascom.nasa.gov/
@@ -42,7 +42,7 @@ INPUTS
  
 OUTPUTS
 
-        * Metadata file (*.carbon_met.txt)
+	* Metadata file (*.carbon_met.txt)
 	* Calibration input (lndcal.*.txt)
 	* Cloud detection input (lndcsm.*.txt)
 	* Surface reflectance input (lndsr.*.txt)
@@ -160,7 +160,9 @@ NOTES
 	and not visible to end users.   
 
 
-2.3. Cloud Detection 
+2.3. Cloud Detection  (Please note: this application is no longer used as part of the
+    processing flow in ESPA at the USGS EROS.  The cloud mask from the surface reflectance
+    product is more accurate.)
 
 
 NAME 
@@ -250,16 +252,9 @@ NOTES
 	* EP/TOMS ozone data and NCEP REANALYSIS data are available from 1980 to 2007. 
 	They are sorted by years and saved in different sub-directory. 
 
-	* Surface reflectance bit packed QA flags are
-	  0     unused
-	  1     valid data (0=yes, 1=no)
-	  2     ACCA cloud bit (1=cloudy, 0=clear)
-	  3     unused
-	  4     ACCA snow mask
-	  5     land mask based on DEM (1=land, 0=water)
-	  6     DDV
-	  7-15  unused
-
+	* Surface reflectance QA flags are now represented as individual bands with values of
+    on (255) or off (0) for cloud, cloud mask, cloud shadow, adjacent cloud, snow, land/water, fill,
+    and dark dense vegetation.
  
 
 2.5. Internal Cloud Mask 
@@ -275,19 +270,6 @@ USAGE
 
 	
 OUTPUTS (new cloud mask bits) 
-	Surface reflectance bit packed QA flags are
-	  0     unused
-	  1     valid data (0=yes, 1=no)
-	  2     ACCA cloud bit (1=cloudy, 0=clear)
-	  3     unused
-	  4     ACCA snow mask
-	  5     land mask based on DEM (1=land, 0=water)
-	  6     DDV
-	  7     unused
-	  8     internal cloud mask (1=cloudy, 0=clear)
-	  9     cloud shadow
-	  10    snow mask
-	  11    land/water mask based on spectral test
-	  12    adjacent cloud
-	  13-15 unused
-
+	Surface reflectance QA flags are now represented as individual bands with values of on (255)
+    or off (0) for cloud, cloud mask, cloud shadow, adjacent cloud, snow, land/water, fill,
+    and dark dense vegetation.

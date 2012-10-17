@@ -1,25 +1,87 @@
-updates on January 10, 2011
-- changed DEM data from "tbase.bin" (binary) to "CMGDEM.hdf" (HDF format)
-- used sea level pressure instead of surface pressure
-- updated REANALYSIS ancillary data (using sea level pressure)
-- updated ancillary data set up to 2010 
+Updates on October 24, 2012 - USGS EROS
+---------------------------------------
+lndpm:
+- lndcsm is no longer called as part of the surface reflectance processing; the
+  internal surface reflectance cloud mask is used instead.  Therefore the
+  cloud snow/mask is no longer sent as a parameter for lndsr.
+- Updated lndpm based on mods provided by Feng Gao from 1/18/2012.
+  -- restores the solar zenith angle bug fix from the past for NLAP_W0 format
+     (Greg Ederer)
+  -- fixes a bug when writing the UTM zone (south) into the ENVI hdr file
+     (Greg Ederer)
+  -- added processing for Landsat-4 TM (Feng Gao)
+- Updated the metadata tags to work with the newly released LPGS metadata
+  as well as continuing to support the old metadata tags.
+- Cleaned up warning messages from compilation.
+- Reset the version to 1.0.0 as this is our first official version of
+  LEDAPS for the ESPA system.
+- Changed the DataProvider to USGS/EROS.
 
-updates on October 15, 2010
-- included the internal surface reflectance based cloud mask detection modules 
+lndcal:
+- Modified calibration of band 6 to flag the saturated thermal pixels in the
+  output brightness temperature product.  This is consistent with flagging the
+  saturated pixels in the reflective bands.
+- Modified lndcal to write the QA bits for the lndth product (brightness
+  temperature product), including appropriate metadata for the QA band.  The
+  QA bits include flags for both fill pixels and for saturated band 6 pixels,
+  consistent with the QA bits for the reflective bands in the lndcal output.
+- Cleaned up some compiler warnings and minor bugs when freeing some of the
+  data arrays.
+- Reset the version to 1.0.0 as this is our first official version of
+  LEDAPS for the ESPA system.
+
+lndcsm:
+- No longer use the source code as part of the ESPA LEDAPS processing flow.
+
+lndsr:
+- Cleaned up some compiler warnings and minor bugs when freeing some of the
+  data arrays.
+- Updated the metadata output to include the surface reflectance based QA bits.
+- Reset the version to 1.0.0 as this is our first official version of LEDAPS
+  for the ESPA system.
+- Removed lndcsm input for cloud mask.  Will use only the internal cloud mask.
+- QA bits are no longer output as a packed set of bits, but instead a separate
+  band is written for the cloud, shadow, fill, etc. QA information and each
+  pixel is either on or off.
+- Cleaned up some of the screen outputs to make the information more concise.
+
+lndsrbm:
+- cmrbv1.0.f used a hard coded pixel size of 28.5.  This has been modified
+  to use the pixel size read from the scene metadata.
+- Updated to handle the new single QA bands vs. the previous packed bit QA band.
+- Cleaned up some of the screen outputs to make the information more concise.
+
+bin:
+- Modified do_ledaps.csh to no longer call lndcsm as part of the LEDAPS
+  processing flow.
+
+
+Updates on January 10, 2011
+---------------------------
+- Changed DEM data from "tbase.bin" (binary) to "CMGDEM.hdf" (HDF format)
+- Used sea level pressure instead of surface pressure
+- Updated REANALYSIS ancillary data (using sea level pressure)
+- Updated ancillary data set up to 2010 
+
+
+Updates on October 15, 2010
+---------------------------
+- Included the internal surface reflectance based cloud mask detection modules 
   (lndsrbm)in this release
-- appended thermal brightness temperature (lndth) to surface reflectance file (lndsr)
-  using lndapp program
-- added DEM_FILE definition in the parser program and included global DEM data 
-  "tbase.bin" in ancillary data directory (require downloading new ancillary data)
-- updated ancillary data set until September 2010
-- removed "MTL" from output filename if it exists 
-- moved "bin" directory one level up (same level as src and doc) and revised 
+- Appended thermal brightness temperature (lndth) to surface reflectance file
+  (lndsr) using lndapp program
+- Added DEM_FILE definition in the parser program and included global DEM data 
+  "tbase.bin" in ancillary data directory (require downloading new ancillary
+  data)
+- Updated ancillary data set until September 2010
+- Removed "MTL" from output filename if it exists 
+- Moved "bin" directory one level up (same level as src and doc) and revised 
   installation script (env.sh) 
-- made "6S" modules (DISCOM.f, OS.f, and INTERP.f) to compatible in g95 compiler 
+- Made "6S" modules (DISCOM.f, OS.f, and INTERP.f) compatible in g95 compiler 
   (g77 in past), now both 6S modules and lndsrbm cloud mask Fortran code 
   can be compiled in g95 
-- added new script "do_ledaps.csh" to run all Ledaps modules automatically like
+- Added new script "do_ledaps.csh" to run all Ledaps modules automatically like
   do_ledaps.csh <Landsat_Meta_File>
-- used actual LMIN, LMAX, QCALMIN and QCALMAX values for ETM+ L1T data (LPGS) 
+- Used actual LMIN, LMAX, QCALMIN and QCALMAX values for ETM+ L1T data (LPGS) 
   if they exist, otherwise still use HIGH/LOW gain settings  
 

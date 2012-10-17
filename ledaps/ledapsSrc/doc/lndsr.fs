@@ -12,16 +12,22 @@ Scientific Data Sets:
    band5
    band7
    atmos_opacity
-   lndsr_QA
+   fill_QA
+   DDV_QA
+   cloud_QA
+   cloud_shadow_QA
+   snow_QA
+   land_water_QA
+   adjacent_cloud_QA
    band6 
 
 
 Essential SDSes
 ---------------
 The essential SDS layers include surface reflectance for band 1-5 and 7 and quality flag. 
-Each SDS layer is written as signed 16-bit integer type (short int) in 2-D data layer.  
+Each image data SDS layer is written as signed 16-bit integer type (short int) in 2-D data layer.  
  
-SDS_name	long_name		valid_range	_FillValue	scale_factor 
+SDS_name	long_name			valid_range		_FillValue	scale_factor 
 band1		band 1 reflectance	-2000, 12000	-9999		0.0001
 band2		band 2 reflectance	-2000, 12000    -9999		0.0001
 band3		band 3 reflectance	-2000, 12000    -9999		0.0001
@@ -32,37 +38,19 @@ band7		band 7 reflectance	-2000, 12000    -9999		0.0001
 Data Conversion
 actual_reflectance = file_digital_number * scale_factor
 
-Surface reflectance quality flags are saved in the bit packed format
+Surface reflectance quality flags are saved as unsigned bytes in individual bands with values either on (255) or off (0). For example
 
-SDS_name	long_name		valid_range	_FillValue
-lndsr_QA	lndsr_QA		0, 32767        -1	
+SDS_name	long_name		valid_range
+fill_QA		fill_QA			0, 255
+cloud_QA	cloud_QA		0, 255
 
-Bits are numbered from right to left(bit 0 = LSB, bit 15 = MSB):
-Bit   Description
-0     unused
-1     valid data (0=yes, 1=no)
-2     ACCA cloud bit (1=cloudy, 0=clear)
-3     unused
-4     ACCA snow mask
-5     land mask based on DEM (1=land, 0=water)
-6     DDV
-7     unused
-8     internal cloud mask (1=cloudy, 0=clear)
-9     cloud shadow
-10    snow mask
-11    land/water mask based on spectral test
-12    adjacent cloud
-13-15 unused
-
-(Note that bits 0-7 are reserved for the ACCA cloud mask algorithm
-bits 8-15 are reserved for the internal surface reflectance based mask) 
 
 Optional SDSes 
 --------------
 The optional SDS layer include band 6 brightness temperature     
 (after using lndapp or lndsrbm.ksh)
-SDS_name     long_name		    unit	 valid_range	_FillValue	scale_factor 
-band 6	     band 6 temperature	    celsius	 -7000,7000	-9999		0.01
+SDS_name     long_name		        unit	 valid_range	_FillValue	scale_factor 
+band6	     band 6 temperature	    celsius	 -7000,7000		-9999		0.01
 
 Data Conversion
 actual_temperature = file_digital_number * scale_factor
@@ -73,32 +61,32 @@ Global Attributes
 Global attributes include metadata information parsed from input Landsat scene. An example
 global metadata for a Landsat 7 ETM+ scene (p15r33) acquired on October 5, 2001 looks like:
 
-                :DataProvider = "UMD" ;
-                :Satellite = "LANDSAT_7" ;
-                :Instrument = "ETM" ;
-                :AcquisitionDate = "2001-10-05T17:42:00.000000Z" ;
-                :Level1ProductionDate = "2002-12-30T00:00:00.000000Z" ;
-                :SolarZenith = 48.210518f ;
-                :SolarAzimuth = 152.53194f ;
-                :WRS_System = "2" ;
-                :WRS_Path = 15s ;
-                :WRS_Row = 33s ;
-                :NumberOfBands = '\6' ;
-                :BandNumbers = '\1', '\2', '\3', '\4', '\5', '\7' ;
-                :ShortName = "L7ESR" ;
-                :LocalGranuleID = "L7ESR.a2001278.w2p015r033.020.2006356233850.hdf" ;
-                :ProductionDate = "2006-12-22T23:38:50Z" ;
-                :PGEVersion = "2.0.2" ;
-                :ProcessVersion = "2.0.2" ;
-                :WestBoundingCoordinate = -78.4317587424775 ;
-                :EastBoundingCoordinate = -75.41061199149598 ;
-                :NorthBoundingCoordinate = 39.94070883207912 ;
-                :SouthBoundingCoordinate = 37.84141476946945 ;
-                :ozone_source = "EARTHPROBE" ;
-                :OrientationAngle = 0. ;
-                :PixelSize = 28.5 ;
-                :HDFEOSVersion = "HDFEOS_V2.4" ;
-                :StructMetadata_0 = "GROUP=SwathStructure\n",
+        :DataProvider = "USGS/EROS" ;
+        :Satellite = "LANDSAT_7" ;
+        :Instrument = "ETM" ;
+        :AcquisitionDate = "2001-10-05T17:42:00.000000Z" ;
+        :Level1ProductionDate = "2002-12-30T00:00:00.000000Z" ;
+        :SolarZenith = 48.210518f ;
+        :SolarAzimuth = 152.53194f ;
+        :WRS_System = "2" ;
+        :WRS_Path = 15 ;
+        :WRS_Row = 33 ;
+        :NumberOfBands = '\6' ;
+        :BandNumbers = '\1', '\2', '\3', '\4', '\5', '\7' ;
+        :ShortName = "L7ESR" ;
+        :LocalGranuleID = "L7ESR.a2001278.w2p015r033.020.2006356233850.hdf" ;
+        :ProductionDate = "2006-12-22T23:38:50Z" ;
+        :PGEVersion = "2.0.2" ;
+        :ProcessVersion = "2.0.2" ;
+        :WestBoundingCoordinate = -78.4317587424775 ;
+        :EastBoundingCoordinate = -75.41061199149598 ;
+        :NorthBoundingCoordinate = 39.94070883207912 ;
+        :SouthBoundingCoordinate = 37.84141476946945 ;
+        :ozone_source = "EARTHPROBE" ;
+        :OrientationAngle = 0. ;
+        :PixelSize = 28.5 ;
+        :HDFEOSVersion = "HDFEOS_V2.4" ;
+        :StructMetadata_0 = "GROUP=SwathStructure\n",
     "END_GROUP=SwathStructure\n",
     "GROUP=GridStructure\n",
     "\tGROUP=GRID_1\n",
