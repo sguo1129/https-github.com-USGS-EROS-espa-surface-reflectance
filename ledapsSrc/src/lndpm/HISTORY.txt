@@ -1,5 +1,8 @@
 Revision:
 
+revision 1.0.2  09/18/2012 Gail Schmidt, USGS EROS
+- lndcsm will no longer be called and used as input to lndsr
+
 revision 1.0.1  09/11/2012 Gail Schmidt, USGS EROS
 - updated lndpm based on mods provided by Feng Gao from 1/18/2012
   -- restores the solar zenith angle bug fix from the past for NLAP_W0 format

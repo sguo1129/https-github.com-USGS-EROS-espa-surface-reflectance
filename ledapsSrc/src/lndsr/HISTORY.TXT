@@ -69,7 +69,7 @@ V2.0.5
 1. update to be compatible with changes to lndcal (saturation value)
 2. remove some debugging output
 
-V1.0.0
+V1.0.0 - USGS EROS
 =============================================================================
 1. Cleaned up some compiler warnings and minor bugs when freeing some of the
    data arrays.
@@ -77,3 +77,9 @@ V1.0.0
 3. Reset the version to 1.0.0 as this is our first official version of LEDAPS
    for the ESPA system.
 
+V1.0.1 - USGS EROS
+=============================================================================
+1. Removed lndcsm input for cloud mask.  Will use only the internal cloud mask.
+2. QA bits are no longer output as a packed set of bits, but instead a separate
+   band is written for the cloud, shadow, fill, etc. QA information and each
+   pixel is either on or off.

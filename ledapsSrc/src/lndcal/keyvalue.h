@@ -12,7 +12,7 @@ const Key_string_t Provider_string[PROVIDER_MAX] = {
   {(int)PROVIDER_MRLC01, "MRLC01"},
   {(int)PROVIDER_MRLC92, "MRLC92"},
   {(int)PROVIDER_USDA,   "USDA"},
-  {(int)PROVIDER_EROS,   "EROS"},
+  {(int)PROVIDER_EROS,   "USGS/EROS"},
   {(int)PROVIDER_CI,     "CI"},
   {(int)PROVIDER_Scott,  "Scott"} 
 };

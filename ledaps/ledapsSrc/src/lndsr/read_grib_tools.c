@@ -14,7 +14,7 @@ int read_grib_anc(t_ncep_ancillary *anc,int datatype) {
 	char where[50],tag[50],date[50];
 	int i,grib_ret,ny,nx;
 	short year,doy,month,day,hour,minute;
-	float time,sec;
+	float sec;
 	int read_grib_array(FILE *input, char *what, char *where, int *nx, int *ny, float **narray);
 	int read_grib_date(FILE *input, char *what, char *where, char *date);
 

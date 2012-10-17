@@ -31,6 +31,11 @@
       robert.e.wolfe.1@gsfc.nasa.gov    4400 Forbes Blvd.
       phone: 301-614-5508               Lanham, MD 20770  
 
+ ! Updates:
+   09/19/2012 Gail Schmidt, USGS EROS
+   Removed the cloud fill, water, land, shadow, snow, cloud values since the
+   ACCA product is no longer used
+
  ! Design Notes:
    1. Structure is declared for the 'input' data type.
   
@@ -62,12 +67,6 @@ typedef struct {
   int min_valid_sr;        /* Minimum valid surface reflectance */
   int max_valid_sr;        /* Maximum valid surface reflectance */
   Input_meta_t meta;       /* Input metadata */
-  int cloud_fill;          /* cloud_mask_fill_value */
-  int cloud_land;          /* cloud_mask_water_value */
-  int cloud_water;         /* cloud_mask_water_value */
-  int cloud_shadow;        /* cloud_mask_shadow_value */
-  int cloud_snow;          /* cloud_mask_snow_value */
-  int cloud_cloud;         /* cloud_mask_cloud_value */
   char* long_name_prefix;  /* long name prefix (append band num) */
   char* units;             /* units */
   double scale_factor;     /* scale factor */

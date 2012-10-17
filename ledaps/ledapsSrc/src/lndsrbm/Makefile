@@ -1,5 +1,5 @@
 FC      = gfortran
-EXTRA   = -Wall
+EXTRA   = -Wall -fno-range-check
 INCDIR  = -I. -I$(HDFINC)
 EXLIB   = -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz -lm
 EXE     = cmrbv1.0 compadjn comptemp xy2geo geo2xy SDSreader3.0
@@ -8,13 +8,13 @@ GEOLOC_DEPEND = LS_geoloc.o LS_geoloc_driver.c
 all : $(EXE)
 
 cmrbv1.0 : cmrbv1.0.f
-	$(FC) $(EXTRA) -g -o $@ $? $(INCDIR) $(EXLIB)
+	$(FC) $(EXTRA) -o $@ $? $(INCDIR) $(EXLIB)
 
 compadjn : compadjn.f
-	$(FC) $(EXTRA) -g -o $@ $?
+	$(FC) $(EXTRA) -o $@ $?
 
 comptemp : comptemp.f
-	$(FC) $(EXTRA) -g -o $@ $?
+	$(FC) $(EXTRA) -o $@ $?
 
 LS_geoloc.o : LS_geoloc.c
 	$(CC) $(EXTRA) -O0 -o $@ -c $?

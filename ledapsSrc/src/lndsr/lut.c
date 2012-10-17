@@ -21,24 +21,6 @@
 #define ADD_OFFSET_ERR   (0.0)
 #define CALIBRATED_NT    (DFNT_FLOAT32)
 
-/* old definition for ACCA they are incorrect 
-#define CLOUD_FILL   (0)
-#define CLOUD_LAND   (1)
-#define CLOUD_WATER  (2)
-#define CLOUD_SHADOW (3)
-#define CLOUD_SNOW   (4)
-#define CLOUD_CLOUD  (5)
-*/
-/* correct definition for ACCA */
-#define CLOUD_LAND   (0)
-#define CLOUD_CLOUD  (1)
-#define CLOUD_SHADOW (2)
-#define CLOUD_WATER  (4)
-#define CLOUD_SNOW   (8)
-#define CLOUD_FILL   (255)
-
-
-
 Lut_t *GetLut(char *file_name, int nband, Input_meta_t *meta, 
               Img_coord_int_t *input_size) {
   Lut_t *this;
@@ -69,13 +51,6 @@ Lut_t *GetLut(char *file_name, int nband, Input_meta_t *meta,
   this->ar_size.s = ((input_size->s - 1) / this->ar_region_size.s) + 1;
   this->min_valid_sr = MIN_VALID_SR;
   this->max_valid_sr = MAX_VALID_SR;
-
-  this->cloud_fill=       CLOUD_FILL;       /* cloud_mask_fill_value   */
-  this->cloud_land=       CLOUD_LAND;       /* cloud_mask_water_value  */
-  this->cloud_water=      CLOUD_WATER;      /* cloud_mask_water_value  */
-  this->cloud_shadow=     CLOUD_SHADOW;     /* cloud_mask_shadow_value */
-  this->cloud_snow=       CLOUD_SNOW;       /* cloud_mask_snow_value   */
-  this->cloud_cloud=      CLOUD_CLOUD;      /* cloud_mask_cloud_value  */
   this->scale_factor=     SCALE_FACTOR;     /* scale factor            */
   this->scale_factor_err= SCALE_FACTOR_ERR; /* scale factor error      */
   this->add_offset=       ADD_OFFSET;       /* add offset              */

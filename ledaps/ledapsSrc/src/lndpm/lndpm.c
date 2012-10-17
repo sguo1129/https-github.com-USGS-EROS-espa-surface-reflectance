@@ -14,6 +14,10 @@
  *
  * !Revision:
  *
+ *  revision 1.0.2  9/18/2012 Gail Schmidt, USGS EROS
+ *  - removed the code to setup files for lndcsm and to skip using the lndcsm
+ *    product as input to lndsr
+ *
  *  revision 1.0.1  9/11/2012 (revisions received from Feng Gao which he made
  *    (one 1/18/2012)
  *  - restores the solar zenith angle bug fix from the past for NLAP_W0 format
@@ -28,6 +32,7 @@
  *  - cleaned up warning messages from compilation
  *  - reset the version to 1.0.0 as this is our first official version of
  *    LEDAPS for the ESPA system
+ *  - changed the DataProvider to USGS/EROS
  *
  *  revision 1.5.7  10/22/2010 Feng Gao
  *  - included global DEM file for lndsr processing
@@ -214,7 +219,6 @@ int main(int argc, char *argv[])
   char  input[MAX_STRING_LENGTH];
   char  scene_name[MAX_STRING_LENGTH];
   char  lndcal_name[MAX_STRING_LENGTH];
-  char  lndcsm_name[MAX_STRING_LENGTH];
   char  lndsr_name[MAX_STRING_LENGTH];
   char  dem[MAX_STRING_LENGTH];
   char  ozone[MAX_STRING_LENGTH];
@@ -248,7 +252,6 @@ int main(int argc, char *argv[])
   }
   
   sprintf(lndcal_name, "lndcal.%s.txt", scene_name);
-  sprintf(lndcsm_name, "lndcsm.%s.txt", scene_name);
   sprintf(lndsr_name, "lndsr.%s.txt", scene_name);
 
   /* generate parameters for LEDAPS module from LPGS metadata file (ETM+) */
@@ -331,20 +334,6 @@ int main(int argc, char *argv[])
   fprintf(out, "END\n");
   fclose(out);
 
-  /* write input card for lndcsm module */
-  if((out=fopen(lndcsm_name, "w"))==NULL) {
-    DIE("open lndcsm input file for write");
-  }    
-  fprintf(out, "PARAMETER_FILE\n");
-  fprintf(out, "CSM_FILE = lndcsm.%s.hdf\n", scene_name);
-  fprintf(out, "REF_FILE = lndcal.%s.hdf\n", scene_name);
-  fprintf(out, "THERM_FILE = lndth.%s.hdf\n", scene_name);
-  fprintf(out, "PGEVersion = %s\n", PGE200_VERSION);
-  fprintf(out, "ProcessVersion = %s\n", MOD_CSM_VERSION);
-
-  fprintf(out, "END\n");
-  fclose(out);
-
   /* get year, month and day from acquisition date */
   tokenptr = strtok(acquisition_date, "-");
   sscanf(tokenptr, "%d", &year);
@@ -402,7 +391,6 @@ int main(int argc, char *argv[])
   if(fopen(ozone,"r")!=NULL)  // if not exist then use climatology estimation
     fprintf(out, "OZON_FIL = %s\n", ozone);
   fprintf(out, "PRWV_FIL = %s\n", reanalysis);
-  fprintf(out, "CSM_FILE = lndcsm.%s.hdf\n", scene_name);
   fprintf(out, "REF_FILE = lndcal.%s.hdf\n", scene_name);
   fprintf(out, "TEMP_FILE = lndth.%s.hdf\n", scene_name);
   fprintf(out, "SR_FILE = lndsr.%s.hdf\n", scene_name);
@@ -1571,7 +1559,7 @@ int create_ENVI_hdr_file(char *scene_name, METADATA *carbon_met)
 {
   int  ii=0, nn=0, zone=0;
   char tmpstr[MAX_STRING_LENGTH] = "\0";
-  char *ledaps_file[4]={"lndcal", "lndcsm", "lndth", "lndsr"};
+  char *ledaps_file[]={"lndcal", "lndth", "lndsr"};
   char *hemisphere = "North";
   FILE *out = (FILE *)NULL;
 
@@ -2144,12 +2132,13 @@ int conv_date(int *mm, int *dd, int yyyy)
 /* write geo-reference information to ENVI header file */
 int writeENVIHeader(char scene_name[], int nrows, int ncols, double ulxy[], double res, int zone)
 {
-  int  i;
+  int  i, nn=0;
   char tmpstr[MAX_STRING_LENGTH] = "\0";
-  char *ledaps_file[4]={"lndcal", "lndcsm", "lndth", "lndsr"};
+  char *ledaps_file[]={"lndcal", "lndth", "lndsr"};
   FILE *out;
 
-  for(i=0; i<4; i++) {
+  nn = sizeof(ledaps_file) / sizeof(char*);
+  for(i=0; i<nn; i++) {
     sprintf(tmpstr, "%s.%s.hdf.hdr", ledaps_file[i], scene_name);
     if((out=fopen(tmpstr, "w"))==NULL) {
       DIE( "Write ENVI header file %s error!", tmpstr);

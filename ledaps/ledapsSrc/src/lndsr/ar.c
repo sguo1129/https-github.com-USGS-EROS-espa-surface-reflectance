@@ -23,9 +23,10 @@ void csalbr(float *tau_ray,float *actual_S_r);
 int compute_aot(int band,float rho_toa,float rho_surf_est,float ts,float tv, float phi, float uoz, float uwv, float spres,sixs_tables_t *sixs_tables,float *aot);
 int update_gridcell_atmos_coefs(int irow,int icol,atmos_t *atmos_coef,Ar_gridcell_t *ar_gridcell, sixs_tables_t *sixs_tables,int **line_ar,Lut_t *lut,int nband, int bkgd_aerosol);
 
-bool Ar(int il_ar,Lut_t *lut, Img_coord_int_t *size_in, int ***line_in, bool mask_flag, 
-        char **mask_line, char **ddv_line, int **line_ar, int **line_ar_stats, Ar_stats_t *ar_stats,
-		  Ar_gridcell_t *ar_gridcell,sixs_tables_t *sixs_tables) 
+bool Ar(int il_ar,Lut_t *lut, Img_coord_int_t *size_in, int ***line_in, 
+        char **ddv_line, int **line_ar, int **line_ar_stats,
+        Ar_stats_t *ar_stats, Ar_gridcell_t *ar_gridcell,
+        sixs_tables_t *sixs_tables) 
 {
 /***
 ddv_line contains results of cloud_screening when this routine is called
@@ -144,13 +145,6 @@ compute wv transmittance for band 7
         		is_fill= true; 
 		}
 
-/***
-exclude clouds & snow pixels flagged by the external cloud mask (ACCA)
-***/
-    	if ( mask_flag ) {
-           if ( mask_line[il][is]==lut->cloud_snow  || 
-         	 mask_line[il][is]==lut->cloud_cloud   ) is_fill= true; 
-        }
 /***
 exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 ***/
@@ -362,7 +356,7 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 ***/
 		if (update_gridcell_atmos_coefs(il_ar,is_ar,&atmos_coef_ar,ar_gridcell,sixs_tables,line_ar,lut,6, 0))
 			return false;
-		printf("is this going here ? \n");	
+//		printf("is this going here ? \n");	
 		ib=2; /*  test with red band */
 		nb_red_obs=0;
 		nb_negative_red=0;
@@ -400,12 +394,12 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 			}
 			}
 		}
-		printf(" percent negative %f \n",(float)nb_negative_red/(float)nb_red_obs);
+//		printf(" percent negative %f \n",(float)nb_negative_red/(float)nb_red_obs);
 /*		if (((float)nb_negative_red/(float)nb_red_obs) > 0.3) { Eric Change for test*/
 		if (((float)nb_negative_red/(float)nb_red_obs) > 0.01) {
 			line_ar[0][is_ar]=lut->aerosol_fill;
 			line_ar_stats[0][is_ar]=-100;
-			printf("I FOUND A BAD ONE\n");
+//			printf("I FOUND A BAD ONE\n");
 #ifdef DEBUG_AR
 	  		if (fd_ar_diags!=NULL)
       			fprintf(fd_ar_diags," -1. %f\n",((float)nb_negative_red/(float)nb_red_obs));
@@ -574,7 +568,7 @@ int compute_aot(int band,float toarhoblue,float toarhored,float ts,float tv, flo
 		*aot=sixs_tables->aot_wavelength[1][iaot-1]-temp1/slope;
 		
 	    }
-        printf(" variables in compaot toarhored %f toarhoblue %f aot %f\n",toarhored,toarhoblue,*aot);
+//        printf(" variables in compaot toarhored %f toarhoblue %f aot %f\n",toarhored,toarhoblue,*aot);
         if (*aot < 0.01)
                 *aot=0.01;
 

@@ -11,7 +11,7 @@ INCDIR  = -I. -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(GCTP
 #NCFLAGS  = $(CFLAGS) -g $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) -O3 $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) -O3  -DIRIS4 $(INCDIR)
-NCFLAGS  = $(CFLAGS) -g -Wall $(INCDIR)
+NCFLAGS  = $(CFLAGS) -Wall $(INCDIR)
 
 #EXLIB   = -lmalloc_ss
           
