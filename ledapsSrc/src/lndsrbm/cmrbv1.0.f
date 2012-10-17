@@ -1,3 +1,9 @@
+cccccccccccccccccccc
+c Modified on 10/16/2012 by Gail Schmidt, USGS EROS
+c - pass in the pixel size from the file metadata vs. hard coding it to 28.5
+c - modified to process individual cloud QA bands vs. the previous single
+c   QA band with packed bits
+cccccccccccccccccccc
          Program readl7sr
          
          character*200 filein
@@ -13,14 +19,20 @@
          parameter (DFNT_CHAR8 = 4)
          parameter (mnc=9000)
          parameter (mnr=9000)
+         integer(1) QA_ON, QA_OFF
+         parameter (QA_OFF=INT(0,1))
+         parameter (QA_ON=INT(255,1))
 
-         integer(2), allocatable :: qa(:,:)
+         integer(1), allocatable :: cloud_qa(:,:)
+         integer(1), allocatable :: cloud_shad_qa(:,:)
+         integer(1), allocatable :: cloud_adja_qa(:,:)
+         integer(1), allocatable :: snow_qa(:,:)
+         integer(1), allocatable :: tmpbit_qa(:,:)
          integer(2), allocatable :: temp(:,:)
          integer(2), allocatable :: band1(:,:)
          integer(2), allocatable :: band3(:,:)
          integer(2), allocatable :: band2(:,:)
          integer(2), allocatable :: band5(:,:)
-         integer*2 cloud,cloudadja,cloudshad,tmpbit,snow
          real tclear,ts,tv,fs,tcloud,cfac,cldh,pixsize,tna
          real fack,facl
          character*80 sds_name
@@ -34,24 +46,16 @@
          real t6
          integer cldhmin,cldhmax
          
-         cloud=8
-         cloudadja=12
-         cloudshad=9
-         snow=10
-         tmpbit=13
          cfac=6.
          dtr=atan(1.)/45.
          pixsize=28.5 
          
-         
-         
          call getarg(1,filein)
          ii=index(filein," ")-1
-         write(6,*) "temp clear [k] , ts,tv,fs,truenorthadjustement "
-         read(5,*)  tclear,ts,tv,fs,tna
+         write(6,*) "temp clear [k] , ts,tv,fs,truenorthadj,pixsize"
+         read(5,*)  tclear,ts,tv,fs,tna,pixsize
+         write(6,*)  tclear,ts,tv,fs,tna,pixsize
          tclear=tclear-273.0
-         
-        
                  
 cc Read from the HDF file 
          sd_id= sfstart(filein(1:ii),DFACC_RDWR)
@@ -62,91 +66,115 @@ cc Read from the HDF file
      &  "WW can not open input ",filein
           stop
           endif
+
 c reading qa       
 c allocate memory for qa
-       sds_index = 7
+       sds_index = 9
        sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
+       write(6,*) "cloud sds_id", sds_id
        status= sfginfo(sds_id, sds_name, rank, dim_sizes, data_type,
      s  n_attrs)
        write(6,*) "sdsname ",sds_name
        write(6,*) dim_sizes(1),dim_sizes(2)
        nc= dim_sizes(1)
        nr=dim_sizes(2)
-        allocate (qa(nc,nr),stat=ierr)
-        allocate (temp(nc,nr),stat=ierr)
-        allocate (band1(nc,nr),stat=ierr)
-        allocate (band2(nc,nr),stat=ierr)
-        allocate (band3(nc,nr),stat=ierr)
-        allocate (band5(nc,nr),stat=ierr)
+       allocate (cloud_qa(nc,nr),stat=ierr)
+       allocate (cloud_shad_qa(nc,nr),stat=ierr)
+       allocate (cloud_adja_qa(nc,nr),stat=ierr)
+       allocate (snow_qa(nc,nr),stat=ierr)
+       allocate (tmpbit_qa(nc,nr),stat=ierr)
+       allocate (temp(nc,nr),stat=ierr)
+       allocate (band1(nc,nr),stat=ierr)
+       allocate (band2(nc,nr),stat=ierr)
+       allocate (band3(nc,nr),stat=ierr)
+       allocate (band5(nc,nr),stat=ierr)
 
-cc read qa  data 
+cc read cloud qa data 
        start(1)=0
        start(2) = 0
        edges(1) = nc
        edges(2) = nr
        stride(1) = 1
        stride(2) = 1
-       status = sfrdata(sds_id, start, stride, edges,qa)
+       status = sfrdata(sds_id, start, stride, edges, cloud_qa)
        write(6,*) "status", status
-c reading temperature       
-       sds_index = 8
+c reading cloud shadow qa data
+       sds_index = 10
        sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,temp)
+       write(6,*) "cloud shadow sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, cloud_shad_qa)
+       write(6,*) "status", status
+c reading adjacent cloud qa data
+       sds_index = 13
+       sds_id    = sfselect(sd_id, sds_index)
+       write(6,*) "adjacent cloud sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, cloud_adja_qa)
+       write(6,*) "status", status
+c reading snow qa data
+       sds_index = 11
+       sds_id    = sfselect(sd_id, sds_index)
+       write(6,*) "snow qa sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, snow_qa)
+       write(6,*) "status", status
+c reading for tmpbit is not necessary since it doesn't exist in the lndsr
+c product and it is set to zero below before using
+
+c reading temperature       
+       sds_index = 14
+       sds_id    = sfselect(sd_id, sds_index)
+       write(6,*) "temperature sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, temp)
        write(6,*) "status", status
 c reading band1 (blue)
        sds_index =0
        sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,band1)
-       write(6,*) "status", status
-c reading band3 (red)
-       sds_index =2
-       sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,band3)
-       write(6,*) "status", status
-c reading band5 (swir)
-       sds_index =4
-       sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,band5)
+       write(6,*) "band 1 sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, band1)
        write(6,*) "status", status
 c reading band2 (green)
        sds_index =1
        sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,band2)
+       write(6,*) "band 2 sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, band2)
+       write(6,*) "status", status
+c reading band3 (red)
+       sds_index =2
+       sds_id    = sfselect(sd_id, sds_index)
+       write(6,*) "band 3 sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, band3)
+       write(6,*) "status", status
+c reading band5 (swir)
+       sds_index =4
+       sds_id    = sfselect(sd_id, sds_index)
+       write(6,*) "band 5 sds_id", sds_id
+       status = sfrdata(sds_id, start, stride, edges, band5)
        write(6,*) "status", status
 
-
 c printing some values for checking out
-       i=3953
-       j=3153
-       write(6,*) " i,j ", i,j
-       write(6,*) "qa(j,i) ",qa(j,i)
-       write(6,*) "btest ", btest(qa(j,i),cloud),
-     s   btest(qa(j,i),cloudshad)
-       write(6,*) "temp(j,i) ",temp(j,i)
-       write(6,*) "band1(j,i) ",band1(j,i)
-       write(6,*) "band3(j,i) ",band3(j,i)
-       write(6,*) "band5(j,i) ",band5(j,i)
-
+c       i=3953
+c       j=3153
+c       write(6,*) " i,j ", i,j
+c       write(6,*) "cloud_qa(j,i) ",cloud_qa(j,i)
+c       write(6,*) "cloud_shad_qa(j,i) ",cloud_shad_qa(j,i)
+c       write(6,*) "cloud_adja_qa(j,i) ",cloud_adja_qa(j,i)
+c       write(6,*) "snow_qa(j,i) ",snow_qa(j,i)
+c       write(6,*) "{garbage} tmpbit_qa(j,i) ",tmpbit_qa(j,i)
+c       write(6,*) "temp(j,i) ",temp(j,i)
+c       write(6,*) "band1(j,i) ",band1(j,i)
+c       write(6,*) "band3(j,i) ",band3(j,i)
+c       write(6,*) "band5(j,i) ",band5(j,i)
        
-       
-c note i is the line and j is the collumn  
+c note i is the line and j is the column  
        write(6,*) "resetting cloud,cloudadja,cloudshad bits,tmpbit"
        do i=1,nr
        do j=1,nc
 c reset cloud,cloud shadow,adjacent cloud bit
-       if (btest(qa(j,i),cloud)) qa(j,i)=qa(j,i)-(2**cloud)
-       if (btest(qa(j,i),cloudadja)) qa(j,i)=qa(j,i)-(2**cloudadja)
-       if (btest(qa(j,i),cloudshad)) qa(j,i)=qa(j,i)-(2**cloudshad)
-       if (btest(qa(j,i),tmpbit)) qa(j,i)=qa(j,i)-(2**tmpbit)
+       cloud_qa(j,i) = 0
+       cloud_adja_qa(j,i) = 0
+       cloud_shad_qa(j,i) = 0
+       tmpbit_qa(j,i) = 0
        enddo
        enddo
-       
        
 c update the cloud mask
        write(6,*) "updating cloud mask"
@@ -162,16 +190,16 @@ c compute the average temperature of the clear data
        nbval=nbval+1
        anom=band1(j,i)-band3(j,i)/2.
        t6=temp(j,i)/100.
-       if (btest(qa(j,i),snow)) then
+       if (snow_qa(j,i).eq.QA_ON) then
        continue
        else
        if ((anom.gt.300.).and.(band5(j,i).gt.300)
      s   .and.(t6.lt.tclear)) then
-       qa(j,i)=qa(j,i)+(2**cloud)
+       cloud_qa(j,i)=QA_ON
        nbcloud=nbcloud+1
        else
        if ((band1(j,i).gt.3000).and.(t6.lt.tclear)) then
-       qa(j,i)=qa(j,i)+(2**cloud)
+       cloud_qa(j,i)=QA_ON
        nbcloud=nbcloud+1
        else
        mclear=mclear+t6/10000.
@@ -197,15 +225,16 @@ c update the adjacent cloud bit
        write(6,*) "updating adjacent cloud bit"
        do i=1,nr
        do j=1,nc
-       if (btest(qa(j,i),cloud)) then
+       if (cloud_qa(j,i).eq.QA_ON) then
 c       write(6,*) "i found a cloud at ",i,j,"with t=",temp(j,i)/100.
        do k=i-5,i+5
        do l=j-5,j+5
        if ((k.ge.1).and.(k.le.nr).and.(l.ge.1).and.(l.le.nc)) then
-       if (btest(qa(l,k),cloudadja).OR.btest(qa(l,k),cloud)) then
+       if ((cloud_adja_qa(l,k).eq.QA_ON).or.(cloud_qa(l,k).eq.QA_ON))
+     & then
        continue
        else
-       qa(l,k)=qa(l,k)+(2**cloudadja)
+       cloud_adja_qa(l,k)=QA_ON
        endif
        endif
        enddo
@@ -220,10 +249,10 @@ C compute cloud shadow
        facl=sin(fs*dtr)*tan(ts*dtr)/pixsize
        do i=1,nr
        do j=1,nc
-       if ((i.eq.5948).and.(j.eq.5291)) then
-       write(6,*) "we are at 5948,5291"
-       endif
-       if (btest(qa(j,i),cloud)) then
+c       if ((i.eq.5948).and.(j.eq.5291)) then
+c       write(6,*) "we are at 5948,5291"
+c       endif
+       if (cloud_qa(j,i).eq.QA_ON) then
            tcloud=temp(j,i)/100.
            cldh=(tclear-tcloud)*1000./cfac
            if (cldh.lt.0.) cldh=0.
@@ -238,8 +267,9 @@ C compute cloud shadow
      &            .and.(l.le.nc)) then
             if ((band5(l,k).lt.800).and.
      &            ((band2(l,k)-band3(l,k)).lt.100)) then
-            if (btest(qa(l,k),cloudadja).OR.btest(qa(l,k),cloud)
-     &       .or.btest(qa(l,k),cloudshad)) then
+            if ((cloud_adja_qa(l,k).eq.QA_ON).or.
+     &            (cloud_qa(l,k).eq.QA_ON).or.
+     &            (cloud_shad_qa(l,k).eq.QA_ON)) then
              continue
              else
 c store the value of band5 as well as the l and k value
@@ -255,7 +285,7 @@ c store the value of band5 as well as the l and k value
              if (mband5.lt.9999) then
              l=mband5l
              k=mband5k
-             qa(l,k)=qa(l,k)+(2**cloudshad)
+             cloud_shad_qa(l,k)=QA_ON
              endif
          endif
          enddo
@@ -264,18 +294,18 @@ c dilate the cloud shadowc
        write(6,*) "dilating cloud shadow"
        do i=1,nr
        do j=1,nc
-       if (btest(qa(j,i),cloudshad)) then
+       if (cloud_shad_qa(j,i).eq.QA_ON) then
        do k=i-3,i+3
        do l=j-3,j+3
        if ((k.ge.1).and.(k.le.nr).and.(l.ge.1).and.(l.le.nc)) then
-       if (btest(qa(l,k),cloudadja).OR.btest(qa(l,k),cloud)
-     &   .OR.btest(qa(l,k),cloudshad)) then
+       if ((cloud_adja_qa(l,k).eq.QA_ON).or.(cloud_qa(l,k).eq.QA_ON)
+     &   .or.(cloud_shad_qa(l,k).eq.QA_ON)) then
        continue
        else
-       if (btest(qa(l,k),tmpbit)) then
+       if (tmpbit_qa(l,k).eq.QA_ON) then
        continue
        else
-       qa(l,k)=qa(l,k)+(2**tmpbit)
+       tmpbit_qa(l,k)=QA_ON
        endif
        endif
        endif
@@ -288,27 +318,42 @@ c update the cloud shadow
        write(6,*) "updating cloud shadow"
        do i=1,nr
        do j=1,nc
-       if (btest(qa(j,i),tmpbit)) then
-       qa(j,i)=qa(j,i)+(2**cloudshad)
-       qa(j,i)=qa(j,i)-(2**tmpbit)
+       if (tmpbit_qa(j,i).eq.QA_ON) then
+       cloud_shad_qa(j,i)=QA_ON
+       tmpbit_qa(j,i)=QA_OFF
        endif
        enddo
        enddo
        
-       
-c updating the qa and closing
-        sds_index=7
+c updating the cloud qa and closing SDS
+        sds_index=9
         sds_id= sfselect(sd_id,sds_index)
-        status=sfwdata(sds_id, start, stride,edges,qa)
-        write(6,*) "status", status
+        status=sfwdata(sds_id, start, stride,edges,cloud_qa)
+        write(6,*) "write cloud qa status", status
         status = sfendacc(sds_id)
-        write(6,*) "status", status
+        write(6,*) "close cloud qa status", status
+c updating the cloud shadow qa and closing SDS
+        sds_index=10
+        sds_id= sfselect(sd_id,sds_index)
+        status=sfwdata(sds_id, start, stride,edges,cloud_shad_qa)
+        write(6,*) "write cloud shadow qa status", status
+        status = sfendacc(sds_id)
+        write(6,*) "close cloud shadow qa status", status
+c updating the adjacent cloud qa and closing SDS
+        sds_index=13
+        sds_id= sfselect(sd_id,sds_index)
+        status=sfwdata(sds_id, start, stride,edges,cloud_adja_qa)
+        write(6,*) "write adjacent cloud qa status", status
+        status = sfendacc(sds_id)
+        write(6,*) "close adjacent cloud qa status", status
 c update the global attribute to reflect cloud processing
-         status=sfscatt(sd_id, "Cloud Mask Algo Version ",DFNT_CHAR8,
+        status=sfscatt(sd_id, "Cloud Mask Algo Version ",DFNT_CHAR8,
      s  22, "CMReflectanceBasedv1.0")
-         write(6,*) "status write attribute", status
+        write(6,*) "status write attribute", status
 c close HDF file
        status = sfend(sd_id)
-       deallocate(qa,temp,band1,band3,band2,band5)
+       deallocate(cloud_qa,cloud_shad_qa,cloud_adja_qa,snow_qa,
+     &   tmpbit_qa)
+       deallocate(temp,band1,band2,band3,band5)
        stop
        end

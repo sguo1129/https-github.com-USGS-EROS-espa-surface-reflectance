@@ -1,10 +1,17 @@
 #! /bin/sh
+###########################################################################
 # shell script file to update the cloud mask
 #
+# Modified on 10/16/2012 by Gail Schmidt, USGS EROS
+# - obtain the pixel size from the HDF metadata and pass it to the cmrbv1.0
+#   executable vs. hard coding the pixel size to 28.5
+###########################################################################
+lndsr_inp=$1
+echo "Processing metadata file: '$lndsr_inp'"
+
 # where is this executable?
 exe_dir=`echo $0 | sed -e "s|/[^/]*$||"`
 
-lndsr_inp=$1
 if test -z "$lndsr_inp"
 then
   echo "FAIL  : no input filename"
@@ -118,8 +125,16 @@ adjnorth=`$exe_dir/compadjn $deltax $deltay`
 echo $adjnorth
 ts=`grep SolarZenith tmp.meta | awk '{print $3}' | sed -e "s/f//"`
 fs=`grep SolarAzimuth tmp.meta | awk '{print $3}' | sed -e "s/f//"`
-echo $tclear $ts 0.0 $fs $adjnorth
-echo $tclear $ts 0.0 $fs $adjnorth >anc-$case
+
+# get the pixel size
+pixsize=`grep PixelSize tmp.meta | awk '{print $3}' | sed -e "s/f//"`
+echo $pixsize
+
+# write values needed for updating the cloud mask
+echo $tclear $ts 0.0 $fs $adjnorth $pixsize
+echo $tclear $ts 0.0 $fs $adjnorth $pixsize >anc-$case
+
+# update the cloud mask
 echo "Updating cloud mask"
 $exe_dir/cmrbv1.0 $filein <anc-$case
 

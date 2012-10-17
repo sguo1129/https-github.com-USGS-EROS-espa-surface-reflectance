@@ -1,4 +1,4 @@
-9/13/2012   Gail Schmidt, USGS
+9/13/2012   Gail Schmidt, USGS EROS
 1. Modified calibration of band 6 to flag the saturated thermal pixels in the
    output brightness temperature product.  This is consistent with flagging the
    saturated pixels in the reflective bands.

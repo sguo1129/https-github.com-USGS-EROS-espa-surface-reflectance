@@ -83,9 +83,6 @@ typedef enum {
   PARAM_L5_REF,
   PARAM_L7_REF,
   PARAM_KTM_FILE,
-  PARAM_CSM_FILE,
-  PARAM_L5_CSM,
-  PARAM_L7_CSM,
   PARAM_TEMP_FILE,
   PARAM_SR_FILE,
   PARAM_SR1_FILE,
@@ -107,9 +104,6 @@ Key_string_t Param_string[PARAM_MAX] = {
   {(int)PARAM_L5_REF,    "L5_FILE"},
   {(int)PARAM_L7_REF,    "L7_FILE"},
   {(int)PARAM_KTM_FILE,  "KTM_FILE"},
-  {(int)PARAM_CSM_FILE,  "CSM_FILE"},
-  {(int)PARAM_L5_CSM,    "L5_CSM"},
-  {(int)PARAM_L7_CSM,    "L7_CSM"},
   {(int)PARAM_SR_FILE,   "SR_FILE"},
   {(int)PARAM_TEMP_FILE, "TEMP_FILE"},
   {(int)PARAM_SR1_FILE,  "SR1_FILE"},
@@ -220,7 +214,6 @@ Param_t *GetParam(int argc, const char **argv)
   this->num_ozon_files   = 0;            /* number of OZONe hdf files */
   this->dem_file = (char *)NULL;
   this->dem_flag = false;
-  this->cloud_flag= false;
   this->thermal_band=false;
 
   /* Populate the data structure */
@@ -364,69 +357,6 @@ Param_t *GetParam(int argc, const char **argv)
           error_string = "duplicating reflectance file name";
           break;
         }
-        break;
-
-      case PARAM_CSM_FILE:
-        if (key.nval <= 0) {
-          this->cloud_flag= false;
-	  break; 
-	} else if (key.nval > 1) {
-	  error_string = "too many cloud mask file names";
-	  break; 
-	}
-	if (key.len_value[0] < 1) {
-          this->cloud_flag= false;
-	  break;
-	}
-	key.value[0][key.len_value[0]] = '\0';
-        this->cloud_mask_file  = DupString(key.value[0]);
-	if (this->cloud_mask_file == (char *)NULL) {
-	  error_string = "duplicating cloud mask file name";
-	  break;
-        }
-		  this->cloud_flag= true;  /** NAZMI **/
-        break;
-
-      case PARAM_L5_CSM:
-        if (key.nval <= 0) {
-          this->cloud_flag= false;
-          break;
-        } else if (key.nval > 1) {
-          error_string = "too many cloud mask file names";
-          break;
-        }
-        if (key.len_value[0] < 1) {
-          this->cloud_flag= false;
-          break;
-        }
-        key.value[0][key.len_value[0]] = '\0';
-        this->cloud_mask_file  = DupString(key.value[0]);
-        if (this->cloud_mask_file == (char *)NULL) {
-          error_string = "duplicating cloud mask file name";
-          break;
-        }
-                  this->cloud_flag= true;  /** NAZMI **/
-        break;
-
-      case PARAM_L7_CSM:
-        if (key.nval <= 0) {
-          this->cloud_flag= false;
-          break;
-        } else if (key.nval > 1) {
-          error_string = "too many cloud mask file names";
-          break;
-        }
-        if (key.len_value[0] < 1) {
-          this->cloud_flag= false;
-          break;
-        }
-        key.value[0][key.len_value[0]] = '\0';
-        this->cloud_mask_file  = DupString(key.value[0]);
-        if (this->cloud_mask_file == (char *)NULL) {
-          error_string = "duplicating cloud mask file name";
-          break;
-        }
-                  this->cloud_flag= true;  /** NAZMI **/
         break;
 
       case PARAM_TEMP_FILE:

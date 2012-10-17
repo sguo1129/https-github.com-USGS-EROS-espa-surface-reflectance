@@ -9,9 +9,9 @@
  Revision 1.0 2001/05/08
  Robert Wolfe
  Original Version.
- Revision 1.1 2011/07/27
- Gail Schmidt - Updated metadata output to include the surface
-   reflectance-based QA bits.
+ Revision 1.1 2012/09/27
+ Gail Schmidt - Updated metadata to output information for each of the
+   individual QA bands vs. a single packed bit QA band.
 
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
@@ -143,7 +143,7 @@ Output_t *OpenOutput(char *file_name, int nband, int *iband,
 !Description: 'OutputFile' sets up the 'output' data structure, opens the
  output file for write access, and creates the output Science Data Set (SDS).
  
-!Input Parameters:thi
+!Input Parameters:this
  file_name      output file name
  nband          number of bands (SDSs) to be created
  sds_name       names of SDSs to be created
@@ -180,7 +180,9 @@ Output_t *OpenOutput(char *file_name, int nband, int *iband,
   int ir, ib;
   int nband_setup;
   char sds_name[40];
-  char *sds_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity","lndsr_QA","nb_dark_pixels","avg_dark_sr_b7","std_dark_sr_b7"};
+  char *sds_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity", "fill_QA", "DDV_QA",
+    "cloud_QA", "cloud_shadow_QA", "snow_QA", "land_water_QA",
+    "adjacent_cloud_QA", "nb_dark_pixels", "avg_dark_sr_b7", "std_dark_sr_b7"};
 
   /* Check parameters */
   
@@ -237,15 +239,17 @@ Output_t *OpenOutput(char *file_name, int nband, int *iband,
 
   nband_setup = 0;
   for (ib = 0; ib < this->nband_tot-3; ib++) {
-/*  for (ib = 0; ib < this->nband_tot; ib++) {  EV 9/7/2009 */
     sds = &this->sds_sr[ib];
-    sds->type = DFNT_INT16;
     sds->rank = 2;
-    if (ib < nband) {
+    sds->type = DFNT_INT16;
+    if (ib < nband) { /* Image bands */
       sprintf(sds_name, "%s%d", SDS_PREFIX, iband[ib]);
       sds->name = DupString(sds_name);
-    } else
+    } else { /* Extra bands - QA is unsigned 8-bit */
+      if (ib >= nband+FILL && ib <= nband+ADJ_CLOUD)
+        sds->type = DFNT_UINT8;
       sds->name = DupString(sds_name_extra[ib - nband]);
+    }
 
     if (sds->name == (char *)NULL) {
       error_string = "duplicating sds name";
@@ -486,6 +490,79 @@ bool PutOutputLine(Output_t *this, int iband, int iline, int *line)
   return true;
 }
 
+bool PutOutputLineU8(Output_t *this, int iband, int iline, int *line)
+/* 
+!C******************************************************************************
+
+!Description: 'WriteOutput' writes a line of data to the output file.
+ 
+!Input Parameters:
+ this           'output' data structure; the following fields are input:
+                   open, size, sds.id
+ iline          output line number
+ buf            buffer of data to be written (needs to be converted to uint8
+                first)
+
+!Output Parameters:
+ this           'output' data structure; the following fields are modified:
+ (returns)      status:
+                  'true' = okay
+		  'false' = error return
+
+!Team Unique Header:
+
+ ! Design Notes:
+   1. An error status is returned when:
+       a. the file is not open for access
+       b. the line number is invalid (< 0; >= 'this->size.l')
+       b. an error occurs when writting to the SDS.
+   2. Error messages are handled with the 'RETURN_ERROR' macro.
+   3. 'OutputFile' must be called before this routine is called.
+
+!END****************************************************************************
+*/
+{
+  int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
+  uint8 *my_buf;
+  void *buf;
+  int is;
+
+  /* Check the parameters */
+
+  if (this == (Output_t *)NULL) 
+    RETURN_ERROR("invalid input structure", "PutOutputLineU8", false);
+  if (!this->open)
+    RETURN_ERROR("file not open", "PutOutputLineU8", false);
+  if (iband < 0  ||  iband >= this->nband_tot)
+    RETURN_ERROR("invalid band number", "PutOutputLineU8", false);
+  if (iline < 0  ||  iline >= this->size.l)
+    RETURN_ERROR("invalid line number", "PutOutputLineU8", false);
+
+  /* Allocate memory for the uint8 buffer */
+
+  my_buf = (uint8 *) calloc (this->size.s, sizeof (uint8));
+  if (my_buf == NULL)
+    RETURN_ERROR("unable to allocate memory", "PutOutputLineU8", false);
+
+  /* Convert the int16 data to uint8 */
+
+  for (is = 0; is < this->size.s; is++) 
+    my_buf[is] = (uint8)line[is];
+  buf = (void *)my_buf;
+
+  /* Write the data */
+
+  start[0] = iline;
+  start[1] = 0;
+  nval[0] = 1;
+  nval[1] = this->size.s;
+
+  if (SDwritedata(this->sds_sr[iband].id, start, NULL, nval, buf) == HDF_ERROR)
+    RETURN_ERROR("writing output", "PutOutputLineU8", false);
+  
+  return true;
+}
+
 bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
                  Lut_t *lut, Geo_bounds_t* bounds)
 /* 
@@ -525,35 +602,25 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
 /*double dval[1];     */
   double dval[NBAND_SR_MAX];
   char *string
-     , short_name[10]
-     , local_granule_id[100]
+     , short_name[250]
+     , local_granule_id[250]
      , production_date[MAX_DATE_LEN + 1]
-     , pge_ver[10]
-     , process_ver[10]
-     , long_name[60]
+     , pge_ver[100]
+     , process_ver[100]
+     , long_name[250]
     ;
   int ib;
-  char *sds_name_extra[NBAND_SR_EXTRA] = {"aot_band1","lndsr_QA","nb_dark_pixels","avg_dark_sr_b7","std_dark_sr_b7"};
+  char *sds_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity", "fill_QA", "DDV_QA",
+    "cloud_QA", "cloud_shadow_QA", "snow_QA", "land_water_QA",
+    "adjacent_cloud_QA", "nb_dark_pixels", "avg_dark_sr_b7", "std_dark_sr_b7"};
+  char *QA_on[NBAND_SR_EXTRA] = {"N/A", "fill", "dark dense vegetation",
+    "cloud", "cloud shadow", "snow", "water", "adjacent cloud", "N/A", "N/A",
+    "N/A"};
+  char *QA_off[NBAND_SR_EXTRA] = {"N/A", "not fill", "clear", "clear",
+    "clear", "clear", "land", "clear", "N/A", "N/A", "N/A"};
   char* units_b;
   char*  message;
-  char lndsr_QAMAP[]=
-    {"\n\tBits are numbered from right to left(bit 0 = LSB, bit 15 = MSB):\n"
-     "\tBit    Description\n"
-     "\t0      Fill (1 = fill pixel, 0 = not fill)\n"
-     "\t1      Data Quality Flag (0 = valid QA data, 1 = invalid QA data)\n"
-     "\t2      ACCA-Based Cloud Mask (1 = cloudy, 0 = clear)\n"
-     "\t3      ACCA-Based Cloud Shadow Mask (1 = cloud shadow, 0 = clear)\n"
-     "\t4      ACCA-Based Snow Mask (1 = snow, 0 = clear)\n"
-     "\t5      DEM-Based Land/Water Mask (1 = land, 0 = water)\n"
-     "\t6      Dense Dark Vegetation (DDV) (1 = DDV, 0 = clear)\n"
-     "\t7      unused\n"
-     "\t8      Surface Reflectance-Based Cloud Mask (1 = cloudy, 0 = clear)\n"
-     "\t9      Surface Reflectance-Based Cloud Shadow Mask (1 = cloud shadow, 0 = clear)\n"
-     "\t10     Surface Reflectance-Based Snow Mask (1 = snow, 0 = clear)\n"
-     "\t11     Spectral Test-Based Land/Water Mask (1 = land, 0 = water)\n"
-     "\t12     Surface Reflectance-Based Adjacent Cloud (1 = adjacent cloud, 0 = clear)\n"
-     "\t13-15  unused\n\0"};
-
+  char lndsr_QAMAP[1000];
 
   /* Check the parameters */
 
@@ -646,9 +713,7 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
     dval[0] = (double)meta->irow;
     if (!PutAttrDouble(this->sds_file_id, &attr, dval))
       RETURN_ERROR("writing attribute (WRS row)", "PutMetadata", false);
-
   }
-
 
   attr.type = DFNT_INT8;
   attr.nval = 1;
@@ -691,14 +756,16 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
   if (!PutAttrString(this->sds_file_id, &attr, production_date))
     RETURN_ERROR("writing attribute (production date)", "PutMetadata", false);
 
-  if (sprintf(pge_ver, "%s", param->PGEVersion) < 0) RETURN_ERROR("creating PGEVersion","PutMetadata", false);
+  if (sprintf(pge_ver, "%s", param->PGEVersion) < 0)
+    RETURN_ERROR("creating PGEVersion","PutMetadata", false);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(pge_ver);
   attr.name = OUTPUT_PGEVERSION;
   if (!PutAttrString(this->sds_file_id, &attr, pge_ver))
     RETURN_ERROR("writing attribute (PGE Version)", "PutMetadata", false);
 
-  if (sprintf(process_ver, "%s", param->ProcessVersion) < 0) RETURN_ERROR("creating ProcessVersion","PutMetadata", false);
+  if (sprintf(process_ver, "%s", param->ProcessVersion) < 0)
+    RETURN_ERROR("creating ProcessVersion","PutMetadata", false);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(process_ver);
   attr.name = OUTPUT_PROCESSVERSION;
@@ -738,9 +805,11 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
 /*for (ib = 0; ib < NBAND_REFL_MAX; ib++) {     */
 /*  for (ib = 0; ib < NBAND_SR_MAX; ib++) { EV 9/7/2009 */
   for (ib = 0; ib < NBAND_SR_MAX-3; ib++) {
+//printf ("DEBUG: SDS metadata for band %d\n", ib);
 
   sprintf(long_name, lut->long_name_prefix, meta->iband[ib]); 
   if (ib >= NBAND_REFL_MAX){sprintf(long_name,"%s", DupString(sds_name_extra[ib - NBAND_REFL_MAX])); }
+//printf ("DEBUG: long name: %s\n", long_name);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(long_name);
   attr.name = OUTPUT_LONG_NAME;
@@ -748,107 +817,102 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
     RETURN_ERROR("writing attribute (long name)", "PutMetadata", false);
 
   attr.type = DFNT_CHAR8;
-if((ib != 7) && ( ib != 6)){
-  attr.nval = strlen(lut->units);
-  attr.name = OUTPUT_UNITS;
-  if (!PutAttrString(this->sds_sr[ib].id, &attr, lut->units))
-    RETURN_ERROR("writing attribute (units ref)", "PutMetadata", false);
-} else {
-  units_b=DupString("bit field");
-  attr.nval = strlen(units_b);
-  attr.name = OUTPUT_UNITS;
-  if (!PutAttrString(this->sds_sr[ib].id, &attr, units_b))
-    RETURN_ERROR("writing attribute (units ref)", "PutMetadata", false);  
-}
+  if (ib <= nband) {  /* reflective bands and atmos_opacity */
+    attr.nval = strlen(lut->units);
+    attr.name = OUTPUT_UNITS;
+    if (!PutAttrString(this->sds_sr[ib].id, &attr, lut->units))
+      RETURN_ERROR("writing attribute (units ref)", "PutMetadata", false);
+  } else {  /* QA bands */
+    units_b=DupString("quality/feature classification");
+    attr.nval = strlen(units_b);
+    attr.name = OUTPUT_UNITS;
+    if (!PutAttrString(this->sds_sr[ib].id, &attr, units_b))
+      RETURN_ERROR("writing attribute (units ref)", "PutMetadata", false);  
+  }
   attr.type = DFNT_INT16;
   attr.nval = 2;
   attr.name = OUTPUT_VALID_RANGE;
   dval[0] = (double)lut->min_valid_sr;
   dval[1] = (double)lut->max_valid_sr;
-  if(ib == 7){
+  if(ib >= nband+FILL && ib <= nband+ADJ_CLOUD) { /* QA bands */
      dval[0] = (double)(0);
-     dval[1] = (double)(32767);
+     dval[1] = (double)(255);
   }
   if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
     RETURN_ERROR("writing attribute (valid range ref)","PutMetadata",false);
 
-  attr.type = DFNT_INT16;
-  attr.nval = 1;
-  attr.name = OUTPUT_FILL_VALUE;
-  dval[0] = (double)lut->output_fill;
-  if(ib == 7){ dval[0] = (double)(-1); }
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (valid range ref)","PutMetadata",false);
+  if (ib <= nband) {  /* reflective bands and atmos_opacity */
+    attr.type = DFNT_INT16;
+    attr.nval = 1;
+    attr.name = OUTPUT_FILL_VALUE;
+    dval[0] = (double)lut->output_fill;
+    if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
+      RETURN_ERROR("writing attribute (valid range ref)","PutMetadata",false);
 
-if((ib != 7) && ( ib != 6)){          /* the following does not apply for qa */
-  attr.type = DFNT_INT16;
-  attr.nval = 1;
-  attr.name = OUTPUT_SATU_VALUE;
-  dval[0] = (double)lut->out_satu;
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (saturate value ref)","PutMetadata",false);
-}
+    attr.type = DFNT_INT16;
+    attr.nval = 1;
+    attr.name = OUTPUT_SATU_VALUE;
+    dval[0] = (double)lut->out_satu;
+	if (ib != nband+ATMOS_OPACITY) /* doesn't apply for atmos opacity */
+      if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
+        RETURN_ERROR("writing attribute (saturate value ref)","PutMetadata",false);
 
-  attr.type = DFNT_FLOAT64;
-  attr.nval = 1;
-  attr.name = OUTPUT_SCALE_FACTOR;
-  dval[0] = (double)lut->scale_factor;
-  if ( ib == 6 ) dval[0] = (double) 0.001;
-  if((ib != 7) && ( ib != 6)){ 
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (scale factor ref)", "PutMetadata", false);
-  }
+    attr.type = DFNT_FLOAT64;
+    attr.nval = 1;
+    attr.name = OUTPUT_SCALE_FACTOR;
+    dval[0] = (double)lut->scale_factor;
+    if (ib == nband+ATMOS_OPACITY)
+      dval[0] = (double) 0.001;
+    if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
+      RETURN_ERROR("writing attribute (scale factor ref)", "PutMetadata", false);
   
-  if ( ib == 6 ) {
-  attr.type = DFNT_FLOAT64;
-  attr.nval = 1;
-  attr.name = OUTPUT_SCALE_FACTOR;
-  dval[0] = (double) 0.001;
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (scale factor ref)", "PutMetadata", false);
-    }
-    
-  attr.type = DFNT_FLOAT64;
-  attr.nval = 1;
-  attr.name = OUTPUT_ADD_OFFSET;
-  dval[0] = (double)lut->add_offset;
- if((ib != 7) && ( ib != 6)){
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (add offset ref)", "PutMetadata", false);
- }
-  attr.type = DFNT_FLOAT64;
-  attr.nval = 1;
-  attr.name = OUTPUT_SCALE_FACTOR_ERR;
-  dval[0] = (double)lut->scale_factor_err;
-if((ib != 7) && ( ib != 6)){
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (scale factor err ref)", "PutMetadata", false);
-}
-  attr.type = DFNT_FLOAT64;
-  attr.nval = 1;
-  attr.name = OUTPUT_ADD_OFFSET_ERR;
-  dval[0] = (double)lut->add_offset_err;
- if((ib != 7) && ( ib != 6)){
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (add offset err ref)", "PutMetadata", false);
- }
-  attr.type = DFNT_FLOAT32;
-  attr.nval = 1;
-  attr.name = OUTPUT_CALIBRATED_NT;
-  dval[0] = (double)lut->calibrated_nt;
- if((ib != 7) && ( ib != 6)){
-  if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
-    RETURN_ERROR("writing attribute (calibrated nt ref)","PutMetadata",false);
- }
+    if (ib != nband+ATMOS_OPACITY) { /* don't apply for atmos opacity */
+      attr.type = DFNT_FLOAT64;
+      attr.nval = 1;
+      attr.name = OUTPUT_ADD_OFFSET;
+      dval[0] = (double)lut->add_offset;
+      if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
+        RETURN_ERROR("writing attribute (add offset ref)", "PutMetadata", false);
+  
+      attr.type = DFNT_FLOAT64;
+      attr.nval = 1;
+      attr.name = OUTPUT_SCALE_FACTOR_ERR;
+      dval[0] = (double)lut->scale_factor_err;
+      if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
+        RETURN_ERROR("writing attribute (scale factor err ref)", "PutMetadata", false);
+  
+      attr.type = DFNT_FLOAT64;
+      attr.nval = 1;
+      attr.name = OUTPUT_ADD_OFFSET_ERR;
+      dval[0] = (double)lut->add_offset_err;
+      if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
+        RETURN_ERROR("writing attribute (add offset err ref)", "PutMetadata", false);
+  
+      attr.type = DFNT_FLOAT32;
+      attr.nval = 1;
+      attr.name = OUTPUT_CALIBRATED_NT;
+      dval[0] = (double)lut->calibrated_nt;
+      if (!PutAttrDouble(this->sds_sr[ib].id, &attr, dval))
+        RETURN_ERROR("writing attribute (calibrated nt ref)","PutMetadata",false);
+    } /* end if not atmos opacity */
+  } /* end if no QA bands */
 
-  if(ib == 7){ 
+  if (ib >= nband+FILL && ib <= nband+ADJ_CLOUD) {
+//printf ("DEBUG: Writing lndsr_QAMAP for band %d\n", ib);
     attr.type = DFNT_CHAR8;
+    sprintf (lndsr_QAMAP,
+      "\n\tQA pixel values are either off or on:\n"
+      "\tValue  Description\n"
+      "\t0\t%s\n"
+      "\t255\t%s", QA_off[ib-nband], QA_on[ib-nband]);
     message=DupString(lndsr_QAMAP);
+//printf ("DEBUG: %s\n", lndsr_QAMAP);
     attr.nval = strlen(message);
-    attr.name = "QAbitmap index\0";
+    attr.name = "QA index";
     if (!PutAttrString(this->sds_sr[ib].id, &attr, message))
-      RETURN_ERROR("writing attribute (units ref)", "PutMetadata", false);
+      RETURN_ERROR("writing attribute (QA index)", "PutMetadata", false);
    }
- }
+  }  /* end for ib */
+
   return true;
 }

@@ -1,15 +1,13 @@
-
 #include "sr.h"
 #include "ar.h"
 #include "const.h"
 #include "sixs_runs.h"
 
-
 extern atmos_t atmos_coef;
 int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,atmos_t *interpol_atmos_coef); 
 
-bool Sr(Lut_t *lut, int nsamp, int il, int **line_in,  bool mask_flag, 
-        char* mask_line, int **line_out, Sr_stats_t *sr_stats) 
+bool Sr(Lut_t *lut, int nsamp, int il, int **line_in, int **line_out,
+        Sr_stats_t *sr_stats) 
 {
   int is;
   bool is_fill, not_fill;
@@ -38,53 +36,13 @@ bool Sr(Lut_t *lut, int nsamp, int il, int **line_in,  bool mask_flag,
     for (ib = 0; ib < lut->nband; ib++) {
       if (line_in[ib][is] == lut->in_fill) {
         not_fill = false;
-	break;
+        break;
       }
     }
-/*
-    if (not_fill)
-     / * line_out[iband_ar][is] = ArInterp(lut, &loc, line_ar); * /
-      line_out[iband_ar][is] = line_ar[i_aot][j_aot];
-    else
-      line_out[iband_ar][is] = lut->aerosol_fill;
-*/
-/*
-    if (not_fill) {
-      for (ib = 0; ib < lut->nband; ib++) { 
-        if (line_in[ib][is] == lut->in_fill) {
-	  is_fill = true;
-          line_out[ib][is] = lut->output_fill;
-          sr_stats->nfill[ib]++;
-	} else  
-	  line_out[ib][is] = line_in[ib][is];
-      }
-      sr_stats->nfill[iband_ar]++;
-      continue;
-    } else {
-      if (sr_stats->first[iband_ar]) {
-
-        sr_stats->sr_min[iband_ar] = sr_stats->sr_max[iband_ar] = 
-	  line_out[iband_ar][is];
-        sr_stats->first[iband_ar] = false;
-
-      } else {
-
-        if (line_out[iband_ar][is] < sr_stats->sr_min[iband_ar])
-          sr_stats->sr_min[iband_ar] = line_out[iband_ar][is];
-
-        if (line_out[iband_ar][is] > sr_stats->sr_max[iband_ar])
-          sr_stats->sr_max[iband_ar] = line_out[iband_ar][is];
-      } 
-    }
-*/
     is_fill = false;
 
 /*
 NAZMI 6/2/04 : correct even cloudy pixels
-
-    if ( mask_flag && (
-         mask_line[is]==lut->cloud_snow || 
-         mask_line[is]==lut->cloud_cloud ) )is_fill= true; 
 
 */
 	 SrInterpAtmCoef(lut, &loc, &atmos_coef,&interpol_atmos_coef);

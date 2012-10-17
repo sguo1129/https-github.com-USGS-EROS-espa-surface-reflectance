@@ -107,7 +107,7 @@ bool GetSDSInfo(int32 sds_file_id, Myhdf_sds_t *sds)
 {
   int32 dims[MYHDF_MAX_RANK];
 
-  printf("SDS name %s\n",sds->name);
+//  printf("SDS name %s\n",sds->name);
   sds->index = SDnametoindex(sds_file_id, sds->name);
   if (sds->index == HDF_ERROR)
     RETURN_ERROR("getting sds index", "GetSDSInfo", false);

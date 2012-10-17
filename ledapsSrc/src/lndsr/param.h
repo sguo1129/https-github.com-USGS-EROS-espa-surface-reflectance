@@ -66,7 +66,6 @@ typedef struct {
   char *param_file_name;   /* Parameter file name             */
   char *input_file_name;   /* Input image file name           */
   char *lut_file_name;     /* Lookup table file name          */
-  char *cloud_mask_file;   /* cloud mask file name            */
   char *temp_file_name;    /* Thermal Band 6 file name        */
   bool thermal_band;       /* True if thermal band file available */
   char *output_file_name;  /* Output image HDF file name      */
@@ -75,7 +74,6 @@ typedef struct {
   char *ozon_file_name;    /* Ozone hdf file names  */
   char *PGEVersion;        /* PGE Version                     */
   char *ProcessVersion;    /* Process Version                 */
-  bool cloud_flag;         /* false if not cloud mask present */
   int  num_ncep_files;     /* number of NCEP files            */
   int  num_prwv_files;     /* number of PRWV hdf files        */
   int  num_ozon_files;     /* number of Ozone hdf files       */
