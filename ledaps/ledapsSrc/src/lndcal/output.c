@@ -10,6 +10,12 @@
  Robert Wolfe
  Original Version.
 
+ Revision 1.1 2012/10/18
+ Gail Schmidt
+ Modified PutMetadata* to mark the bits that are actually set and not set
+   (i.e. for lndcal, bit 6 actually isn't set and for lndth, bit 6 and fill
+    are the only pixels that are set).
+
  Revision 1.1 2012/08/01
  Gail Schmidt
  Modified OpenOutput to make sure the Output_t->buf array doesn't go past
@@ -598,7 +604,7 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
      "\t3      Band 3 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
      "\t4      Band 4 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
      "\t5      Band 5 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
-     "\t6      Band 6 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
+     "\t6      Band 6 Data Saturation Flag (not set)\n"
      "\t7      Band 7 Data Saturation Flag (0 = valid data, 1 = saturated data)\n\0"};
 
   /* Check the parameters */
@@ -954,13 +960,13 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
     {"\n\tBits are numbered from right to left(bit 0 = LSB, bit 7 = MSB):\n"
      "\tBit    Description\n"
      "\t0      Data Fill Flag (0 = valid data, 1 = invalid data)\n"
-     "\t1      Band 1 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
-     "\t2      Band 2 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
-     "\t3      Band 3 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
-     "\t4      Band 4 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
-     "\t5      Band 5 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
+     "\t1      Band 1 Data Saturation Flag (not set)\n"
+     "\t2      Band 2 Data Saturation Flag (not set)\n"
+     "\t3      Band 3 Data Saturation Flag (not set)\n"
+     "\t4      Band 4 Data Saturation Flag (not set)\n"
+     "\t5      Band 5 Data Saturation Flag (not set)\n"
      "\t6      Band 6 Data Saturation Flag (0 = valid data, 1 = saturated data)\n"
-     "\t7      Band 7 Data Saturation Flag (0 = valid data, 1 = saturated data)\n\0"};
+     "\t7      Band 7 Data Saturation Flag (not set)\n\0"};
 
   /* Check the parameters */
 
