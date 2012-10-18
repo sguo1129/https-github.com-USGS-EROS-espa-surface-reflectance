@@ -1,7 +1,7 @@
 Installation Guide 
 (tested in Linux bash, August 2012)
 
-1. Install dependent libraries - GCTP, HDF4, HDF-EOS4, TIFF, GEOTIFF
+1. Install dependent libraries - GCTP, HDF4, HDF-EOS2, TIFF, GeoTIFF
 
 2. Set up environment.  Can look at and modify ledapsSrc/src/env.sh or add
 the following to your bash shell.  For C shell, use 'setenv VAR "directory"'.
@@ -48,7 +48,7 @@ download Landsat files and then run following commands separately
 lndpm <Landsat_meta_file>
 lndcal <lndcal_input_text>
 lndsr <lndsr_input_text>
-lndsrbm.ksh <lndsr_input_text> (optional)
+lndsrbm.ksh <lndsr_input_text>
 
 OR simply run the combined commands to generate all (includes lndsrbm)
 do_ledaps.csh <Landsat_meta_file>
@@ -72,7 +72,7 @@ $BIN/lndsr lndsr.$meta.txt
 $BIN/lndsrbm.ksh lndsr.$meta.txt
 +++++++++++++++
 
-5. Output
+5. Check output
 lndcal.*.hdf: top-of-atmosphere (TOA) reflectance in HDF format
 lndth.*.hdf: thermal brightness temperature in HDF format
 lndsr.*.hdf: surface reflectance in HDF format
