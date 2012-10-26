@@ -1,9 +1,9 @@
 #SYSTEM  = IRIS4
 #EXTRA	= -D$(SYSTEM) -lfastm
 #EXTRA   = -DLINUX -D_BSD_SOURCE -Wall
-#EXTRA   = -DLINUX -D_BSD_SOURCE -m32
+EXTRA   = -DLINUX -D_BSD_SOURCE
 
-INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(GCTPINC)
+INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFEOS_GCTPINC)
 #NCFLAGS  = -mips3 -xansi -fullwarn -r10000 -g $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) -r10000 -g $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) -r10000 -O3 $(EXTRA) $(INCDIR)
@@ -11,8 +11,8 @@ NCFLAGS  = $(CFLAGS) -Wall -O $(EXTRA) $(INCDIR)
 #NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
 #EXLIB   = -lmalloc_ss
-EXLIB	= -L$(GCTPLIB) -lgctp \
-          -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
+EXLIB	= -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
+          -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
@@ -50,5 +50,4 @@ install:
 .c.o:
 	$(CC) $(EXTRA) $(NCFLAGS) -c $< -o $@
 .f.o:
-#	gfortran -m32 -c $< -o $@
 	gfortran -c $< -o $@

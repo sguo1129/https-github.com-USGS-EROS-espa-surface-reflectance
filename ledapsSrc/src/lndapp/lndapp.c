@@ -300,11 +300,13 @@ int openForWrite(GRID_SR *sr, GRID_SR *th)
   
   /* check if band 6 already existed */
   if ((index=SDnametoindex(sr->SD_ID, th->sdsName))<0) {
-    printf("Information: band6 already exists in the surface reflectance file."
-        "  The SDS won't be recreated but will be overwritten.\n");
     exist = 0;
   }
-  else exist = 1;
+  else {
+    exist = 1;
+    printf("Information: band6 already exists in the surface reflectance file."
+        "  The SDS won't be recreated but will be overwritten.\n");
+  }
 
   if((SDend(sr->SD_ID)) == FAILURE) {
     printf("SDend for %s error!\n", sr->fileName);
