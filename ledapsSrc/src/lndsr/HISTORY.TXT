@@ -77,9 +77,16 @@ V1.0.0 - USGS EROS
 3. Reset the version to 1.0.0 as this is our first official version of LEDAPS
    for the ESPA system.
 
-V1.0.1 - USGS EROS
+V1.0.0 - USGS EROS
 =============================================================================
 1. Removed lndcsm input for cloud mask.  Will use only the internal cloud mask.
 2. QA bits are no longer output as a packed set of bits, but instead a separate
    band is written for the cloud, shadow, fill, etc. QA information and each
    pixel is either on or off.
+
+V1.0.0  10/26/2012 - USGS EROS
+=============================================================================
+1. Modified the application to utilize the GCTP library delivered with the
+   HDF-EOS library, since that version of the GCTP library is now needed to
+   link code with HDF-EOS.
+

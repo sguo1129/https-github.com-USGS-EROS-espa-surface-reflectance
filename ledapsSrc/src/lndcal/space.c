@@ -19,6 +19,11 @@
  Robert Wolfe
  Added support for data that is not oriented to map north.
 
+ Gail Schmidt, USGS EROS, 2012/10/25
+ Modified to work with the HDF-EOS version of GCTP, which is required to
+ link with the HDF-EOS libraries.  The for_init and inv_init variables
+ are ints instead of longs.  space.c and space.h were modified.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Labatory for Terrestrial Physics (Code 922) at the 
@@ -82,14 +87,13 @@
 
 /* Prototypes for initializing the GCTP projections */
 
-/*void for_init(long proj_num, long zone, double *proj_param, long sphere,
-              char *file27, char *file83, long *iflag, 
-              long (*for_trans[MAX_PROJ + 1])());
-void inv_init(long proj_num, long zone, double *proj_param, long sphere,
-              char *file27, char *file83, long *iflag, 
-              long (*inv_trans[MAX_PROJ + 1])());
-*/
-
+int for_init( int outsys, int outzone, double *outparm, int outdatum, 
+    char *fn27, char *fn83, int *iflg,
+    int (*for_trans[])(double, double, double *, double *));
+int inv_init( int insys, int inzone, double *inparm, int indatum,
+    char *fn27, char *fn83, int *iflg,
+    int (*inv_trans[])(double, double, double*, double*));
+ 
 /* Functions */
 
 Space_t *SetupSpace(Space_def_t *space_def)
@@ -126,10 +130,10 @@ Space_t *SetupSpace(Space_def_t *space_def)
   Space_t *this;
   char file27[28] = "FILE27";
   char file83[28] = "FILE83";
-  long (*for_trans[MAX_PROJ + 1])();
-  long (*inv_trans[MAX_PROJ + 1])();
+  int (*for_trans[MAX_PROJ + 1])();
+  int (*inv_trans[MAX_PROJ + 1])();
   int ip;
-  long iflag;
+  int iflag;
 
   /* Verify some of the space definition parameters */
   

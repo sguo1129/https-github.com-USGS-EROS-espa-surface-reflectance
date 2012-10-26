@@ -1,3 +1,8 @@
+10/26/2012  Gail Schmidt, USGS EROS
+1. Modified the application to utilize the GCTP library delivered with the
+   HDF-EOS library, since that version of the GCTP library is now needed to
+   link code with HDF-EOS.
+
 9/13/2012   Gail Schmidt, USGS EROS
 1. Modified calibration of band 6 to flag the saturated thermal pixels in the
    output brightness temperature product.  This is consistent with flagging the

@@ -58,8 +58,8 @@ case="$case.txt"
 echo "appending thermal file $fileth to lndsr file $filein"
 $exe_dir/lndapp -sr $filein -th $fileth
 
-# work with metadata
-ncdump -h $filein > tmp.meta
+# work with metadata (ncdump will be in the local directory)
+$exe_dir/ncdump -h $filein > tmp.meta
 
 # compute lat,long of the center of the scene
 cat tmp.meta | grep Coordinate >tmp.updatecm

@@ -10,9 +10,9 @@ CFLAGS = -Wall
 
 TARGET = lndapp
 
-INC = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(GCTPINC)
+INC = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
 
-LIB = -L$(GCTPLIB) -lgctp -L$(HDFEOS_LIB) -lhdfeos \
+LIB = -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
       -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz -lm
 
 OBJ = lndapp.o
@@ -38,5 +38,4 @@ install:
 	$(CC) $(CFLAGS) $(ADD_CFLAGS) $(INC) -c $< -o $@
 
 #******************* End of make file *******************************
-
 

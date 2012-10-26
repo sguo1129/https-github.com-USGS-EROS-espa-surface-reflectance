@@ -1,18 +1,18 @@
 Installation Guide 
 (tested in Linux bash, August 2012)
 
-1. Install dependent libraries - GCTP, HDF4, HDF-EOS2, TIFF, GeoTIFF
+1. Install dependent libraries - HDF-EOS GCTP, HDF4, HDF-EOS2, TIFF, GeoTIFF
 
 2. Set up environment.  Can look at and modify ledapsSrc/src/env.sh or add
 the following to your bash shell.  For C shell, use 'setenv VAR "directory"'.
-export GCTP_INC="path_to_GCTP_include_files"
-export GCTP_LIB="path_to_GCTP_libraries"
-export TIFF_INC="path_to_TIFF_include_files"
-export TIFF_LIB="path_to_TIFF_libraries"
+export HDFEOS_GCTPINC="path_to_HDFEOS_GCTP_include_files"
+export HDFEOS_GCTPLIB="path_to_HDFEOS_GCTP_libraries"
+export TIFFINC="path_to_TIFF_include_files"
+export TIFFLIB="path_to_TIFF_libraries"
 export GEOTIFF_INC="path_to_GEOTIFF_include_files"
 export GEOTIFF_LIB="path_to_GEOTIFF_libraries"
-export HDF_INC="path_to_HDF_include_files"
-export HDF_LIB="path_to_HDF_libraries"
+export HDFINC="path_to_HDF_include_files"
+export HDFLIB="path_to_HDF_libraries"
 export HDFEOS_INC="path_to_HDFEOS_include_files"
 export HDFEOS_LIB="path_to_HDFEOS_libraries"
 export BIN="path_to_directory_for_LEDAPS_binaries"
@@ -33,9 +33,10 @@ cmrbv1.0  compadjn  comptemp  geo2xy SDSreader3.0 xy2geo
 
 * Note that new cloud mask program (lndsrbm) calls command 
 "ncdump" which is a standard HDF command. This release includes 
-a linux version ncdump command in your path. You need replace 
-ncdump program if it runs from different OS systems. If you don't 
-want to run optional lndsr-based cloud mask (lndsrbm), you will 
+a linux version ncdump command in your path. You need to replace 
+the ncdump program in the bin directory if it is not compatible
+with your OS system. The current ncdump is a Linux binary.  If you
+don't want to run optional lndsr-based cloud mask (lndsrbm), you will 
 not need the ncdump program.
 
 3. Setup environment

@@ -89,9 +89,10 @@
  *
  */
 
+#define _GNU_SOURCE
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 #include <stdarg.h>
 #include <sys/types.h>
 #include <dirent.h>
