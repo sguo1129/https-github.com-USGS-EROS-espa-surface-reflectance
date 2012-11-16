@@ -92,7 +92,9 @@ USAGE
 
 INPUTS
 
-	Landsat metadata file defined in the calibration input parameter file (created by lndpm)
+	* Landsat metadata file defined in the calibration input parameter file (created by lndpm)
+    * Landsat L1G product
+    * GOLD/GOLD_2003 and GNEW ancillary files
 
 OUTPUTS
 
@@ -215,9 +217,9 @@ INPUTS
 
 	* TOA spectral bands reflectance
 	* TOA thermal band brightness temperature
-	* cloud mask file produced by lndcsm
 	* NASA's EP/TOMS ozone data 
 	* NOAA NCEP's reanalysis data (pressure, water, air temperature)
+    * GCM DEM
 	
 OUTPUTS
 
@@ -262,7 +264,7 @@ NOTES
 
 NAME 
 
-      	lndsrbm.ksh: perform surface reflectance based cloud mask (srbm)detection and produce additional cloud mask bits (8-15) for surface reflectance file 
+      	lndsrbm.ksh: perform surface reflectance based cloud mask (srbm) detection and produce additional cloud mask bits (8-15) for surface reflectance file 
 
 USAGE
 

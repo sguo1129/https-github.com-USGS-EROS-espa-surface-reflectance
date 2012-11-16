@@ -1,5 +1,10 @@
 Revision:
 
+revision 1.1.0  11/13/2012  Gail Schmidt, USGS EROS
+- modified to DIE vs. WARN if the ancillary products (REANALYSIS, EP/TOMS, or
+  DEM) do not exist.
+- modified the metadata filename to be *.metadata.txt vs. *.carbon_met.txt.
+
 revision 1.0.0  10/26/2012  Gail Schmidt, USGS EROS
 - modified the application to utilize the GCTP library delivered with the
   HDF-EOS library, since that version of the GCTP library is now needed to
