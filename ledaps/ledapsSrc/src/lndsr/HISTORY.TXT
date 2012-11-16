@@ -90,3 +90,9 @@ V1.0.0  10/26/2012 - USGS EROS
    HDF-EOS library, since that version of the GCTP library is now needed to
    link code with HDF-EOS.
 
+V1.1.0  11/13/2012 - USGS EROS
+=============================================================================
+1. Modified the application to make sure no other QA bits are if the current
+   pixel is fill.
+
+

@@ -11,6 +11,7 @@ echo "Processing metadata file: '$lndsr_inp'"
 
 # where is this executable?
 exe_dir=`echo $0 | sed -e "s|/[^/]*$||"`
+echo "lndsrbm.ksh exe_dir: '$exe_dir'"
 
 if test -z "$lndsr_inp"
 then
@@ -90,21 +91,23 @@ then
 scenetime=`echo $scenetime | awk '{print $1+24}'`
 echo "WARNING WE ASSUME THE DATE IS GMT IS IT?"
 fi
-echo $scenetime
+#echo $scenetime
+echo "Scene time: '$scenetime'"
 cat tmp.airtemp
 tclear=`$exe_dir/comptemp $scenetime <tmp.airtemp`
-echo $tclear
+echo "tclear: '$tclear'"
 
 # compute scene orientation
 # get row and col of image center
 ccol=`grep  "XDim_Grid =" tmp.meta | tail -1 | awk '{print $3/2}'`
 crow=`grep  "YDim_Grid =" tmp.meta | tail -1 | awk '{print $3/2}'`
-echo $ccol $crow
+#echo $ccol $crow
+echo "Center col/row: '$ccol' '$crow'"
 # compute lat,long of the center
 str=`$exe_dir/xy2geo $filein $ccol $crow`
 clat=`echo $str | awk '{print $9}'`
 clon=`echo $str | awk '{print $7}'`
-echo $clat $clon
+echo "Center lat/long: '$clat' '$clon'"
 # compute lat,lon of the point 100 pixels north from the center 
 cpcol=$ccol
 cprow=`echo $crow | awk '{print $1-100}'`
@@ -117,18 +120,18 @@ cplon=$clon
 str=`$exe_dir/geo2xy $filein $cplon $cplat`
 cscol=`echo $str | awk '{print $9}'`
 csrow=`echo $str | awk '{print $7}'`
-echo $cscol $csrow
+echo "cscol/csrow: '$cscol' '$csrow'"
 deltay=`echo $csrow $crow | awk '{print $2-$1}'`
 deltax=`echo $cscol $ccol | awk '{print $1-$2}'`
-echo $deltax $deltay
+echo "delta x/y: '$deltax' '$deltay'"
 adjnorth=`$exe_dir/compadjn $deltax $deltay`
-echo $adjnorth
+echo "Northern adjustment: '$adjnorth'"
 ts=`grep SolarZenith tmp.meta | awk '{print $3}' | sed -e "s/f//"`
 fs=`grep SolarAzimuth tmp.meta | awk '{print $3}' | sed -e "s/f//"`
 
 # get the pixel size
 pixsize=`grep PixelSize tmp.meta | awk '{print $3}' | sed -e "s/f//"`
-echo $pixsize
+echo "Pixel size: '$pixsize'"
 
 # write values needed for updating the cloud mask
 echo $tclear $ts 0.0 $fs $adjnorth $pixsize

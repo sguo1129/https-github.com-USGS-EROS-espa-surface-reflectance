@@ -1,5 +1,8 @@
 /**************************************************************************
 ! Developers:
+  Modified on 11/9/2012 by Gail Schmidt, USGS EROS
+  Modified to make sure no QA bits are set to on if the current pixel is fill
+
   Modified on 9/20/2012 by Gail Schmidt, USGS EROS
   Modified the packed QA band to be individual QA bands with pixels set to
   on or off.  NOTE - this requires mods to downstream processing (lndsrbm)
@@ -588,7 +591,7 @@ int main (int argc, const char **argv) {
   if (!no_ozone_file) {
    for (i=0;i<anc_O3.nblayers;i++)
      for (j=0;j<anc_O3.nbrows*anc_O3.nbcols;j++)
-      anc_O3.data[i][j] /= 1000.;  /* convert to Dobson */
+      anc_O3.data[i][j] /= 1000.;  /* convert to cm-atm */
    }
 
    /* read DEM file */
@@ -814,9 +817,11 @@ int main (int argc, const char **argv) {
      }
   }
   if (dem_available) {
+/* ratio_spres not used at this time -- Gail Schmidt 11/7/2012
      ratio_spres=1.;
      if ((nb_spres_anc > 0)&&(nb_spres_dem>0)) 
         ratio_spres=(float)((sum_spres_anc/nb_spres_anc)/(sum_spres_dem/nb_spres_dem));
+*/
 /*	printf("Ratio pressure %f\n",ratio_spres);*/
      for (il_ar = 0; il_ar < lut->ar_size.l;il_ar++) 
         for (is_ar=0;is_ar < lut->ar_size.s; is_ar++) 
@@ -824,7 +829,6 @@ int main (int argc, const char **argv) {
  /*             ar_gridcell.spres[il_ar*lut->ar_size.s+is_ar]=ar_gridcell.spres_dem[il_ar*lut->ar_size.s+is_ar]*ratio_spres; Vermote 11/23/2010*/
               ar_gridcell.spres[il_ar*lut->ar_size.s+is_ar]=ar_gridcell.spres_dem[il_ar*lut->ar_size.s+is_ar]*ar_gridcell.spres[il_ar*lut->ar_size.s+is_ar]/1013.;
   }
-
 
 /* Compute atmospheric coefs for the whole scene with aot550=0.01 for use in internal cloud screening : NAZMI */
 	nbpts=lut->ar_size.l*lut->ar_size.s;
@@ -1176,7 +1180,7 @@ int main (int argc, const char **argv) {
         line_out[lut->nband+LAND_WATER][is] = QA_OFF;   /* land */
         line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
 
-		if (line_in[0][0][is] != lut->in_fill) {
+		if (line_in[0][0][is] != lut->in_fill) {  /* check band 1 for fill */
 			ArInterp(lut, &loc, line_ar, inter_aot); 
 			line_out[lut->nband][is] = inter_aot[0];
         /**
@@ -1209,18 +1213,6 @@ int main (int argc, const char **argv) {
 #endif
         if (ddv_line[0][is]&0x80)
             line_out[lut->nband+SNOW][is] = QA_ON;  /* set internal snow mask bit */
-
-	   	line_out[lut->nband+NB_DARK][is]=line_ar_stats[i_aot][0][j_aot];
-	  	line_out[lut->nband+AVG_DARK][is]=line_ar_stats[i_aot][1][j_aot];
-	   	line_out[lut->nband+STD_DARK][is]=line_ar_stats[i_aot][2][j_aot];
-		} else {
-	   	line_out[lut->nband][is]=lut->aerosol_fill;
-	   	line_out[lut->nband+FILL][is] = QA_ON;  /* set fill bit */
-	   	line_out[lut->nband+NB_DARK][is]=0;
-	  	line_out[lut->nband+AVG_DARK][is]=lut->in_fill;
-	   	line_out[lut->nband+STD_DARK][is]=lut->in_fill;
-		}
-
         /* try to redo the cloud mask Vermote May 29 2007 */
         /* reset cloud shadow and cloud adjacent bits - these are set
            again in lndsrbm */
@@ -1235,6 +1227,17 @@ int main (int argc, const char **argv) {
 			line_out[lut->nband+CLOUD][is] = QA_ON;  /* set internal cloud mask bit */
         else
             line_out[lut->nband+CLOUD][is] = QA_OFF;  /* reset internal cloud mask */
+
+	   	line_out[lut->nband+NB_DARK][is]=line_ar_stats[i_aot][0][j_aot];
+	  	line_out[lut->nband+AVG_DARK][is]=line_ar_stats[i_aot][1][j_aot];
+	   	line_out[lut->nband+STD_DARK][is]=line_ar_stats[i_aot][2][j_aot];
+		} else {
+	   	line_out[lut->nband][is]=lut->aerosol_fill;
+	   	line_out[lut->nband+FILL][is] = QA_ON;  /* set fill bit */
+	   	line_out[lut->nband+NB_DARK][is]=0;
+	  	line_out[lut->nband+AVG_DARK][is]=lut->in_fill;
+	   	line_out[lut->nband+STD_DARK][is]=lut->in_fill;
+		}
     } /* for is */
   /* Write each output band */
 

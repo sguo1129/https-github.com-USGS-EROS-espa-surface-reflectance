@@ -14,6 +14,11 @@
  *
  * !Revision:
  *
+ *  revision 1.0.3  11/9/2012 Gail Schmidt, USGS EROS
+ *  - modified the application to DIE vs. WARN if the ancillary products
+ *    (REANALYSIS, EP/TOMS, or DEM) do not exist
+ *  - modified lndpm to change the carbon_met.txt filename to metadata.txt
+ *
  *  revision 1.0.2  9/18/2012 Gail Schmidt, USGS EROS
  *  - removed the code to setup files for lndcsm and to skip using the lndcsm
  *    product as input to lndsr
@@ -94,6 +99,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <dirent.h>
 #include <sys/stat.h>
@@ -215,6 +221,7 @@ int create_carbon_met_file(char *file_name, METADATA *carbon_met);
 int main(int argc, char *argv[])
 {
   int  year, month, day, ret;
+  bool anc_missing = false;
 
   /* file names */
   char  input[MAX_STRING_LENGTH];
@@ -298,7 +305,7 @@ int main(int argc, char *argv[])
   }
 
   fprintf(out, "PARAMETER_FILE\n");
-  fprintf(out, "HEADER_FILE = %s.carbon_met.txt\n", scene_name);
+  fprintf(out, "HEADER_FILE = %s.metadata.txt\n", scene_name);
   fprintf(out, "REF_FILE = lndcal.%s.hdf\n", scene_name);
   fprintf(out, "THERM_FILE = lndth.%s.hdf\n", scene_name);
   if(ret == TM) {
@@ -357,6 +364,7 @@ int main(int argc, char *argv[])
   else
   {
     WARN("could not find DEM ancillary data: %s\n  check ANC_PATH environment variable", dem);
+    anc_missing = true;
   }
 
   sprintf(ozone, "TOMS_%d%03d.hdf", year, day);
@@ -369,6 +377,7 @@ int main(int argc, char *argv[])
   else
   {
     WARN("could not find TOMS ancillary data: %s\n  check ANC_PATH environment variable", ozone);
+    anc_missing = true;
   }
     
   sprintf(reanalysis, "REANALYSIS_%d%03d.hdf", year, day);
@@ -381,7 +390,13 @@ int main(int argc, char *argv[])
   else
   {
     WARN("could not find REANALYSIS ancillary data: %s\n  check ANC_PATH environment variable", reanalysis);
+    anc_missing = true;
   }
+
+  /* check to see if missing ancillary data */
+  if (anc_missing) {
+    DIE("verify the missing ancillary data products, then try reprocessing");
+  }    
 
   /* write input card for lndsr module */
   if((out=fopen(lndsr_name, "w"))==NULL) {
@@ -484,7 +499,7 @@ int getMetaFromLPGS(char input[], char scene_name[], char acquisition_date[])
   if((in=fopen(input, "r"))==NULL)
     DIE( "Can't open input metadata file %s", input);
   
-  sprintf(met_name, "%s.carbon_met.txt", scene_name);
+  sprintf(met_name, "%s.metadata.txt", scene_name);
   if((out=fopen(met_name, "w"))==NULL)
     DIE( "Can't open output header file for write %s", met_name);
 
@@ -862,7 +877,7 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
     DIE( "Can't open input metadata file %s", input);
 
 
-  sprintf(met_name, "%s.carbon_met.txt", scene_name);
+  sprintf(met_name, "%s.metadata.txt", scene_name);
   if((out=fopen(met_name, "w"))==NULL)
     DIE( "Can't open output header file for write %s", met_name);
 
@@ -1532,7 +1547,7 @@ int create_carbon_met_file(char *scene_name, METADATA *carbon_met)
   char met_fname[MAX_STRING_LENGTH] = "";
   
   /* build carbon_met filename from scene name */
-  sprintf(met_fname, "%s.carbon_met.txt", scene_name);
+  sprintf(met_fname, "%s.metadata.txt", scene_name);
   
   fh = fopen(met_fname, "w");
   if (! fh)
@@ -1783,7 +1798,7 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
     DIE( "Can't open input metadata file %s", input);
 
 
-  sprintf(met_name, "%s.carbon_met.txt", scene_name);
+  sprintf(met_name, "%s.metadata.txt", scene_name);
   if((out=fopen(met_name, "w"))==NULL)
     DIE( "Can't open output header file for write %s", met_name);
 

@@ -1,3 +1,24 @@
+Updates on November 16, 2012 - USGS EROS
+---------------------------------------
+lndpm:
+- Modified to DIE vs. WARN if the ancillary products (REANALYSIS, EP/TOMS, or
+  DEM) do not exist.
+- Modified the metadata filename to be *.metadata.txt vs. *.carbon_met.txt.
+
+lndsr:
+- Modified to make sure no other QA bits are set on if the current pixel is
+  a fill pixel.
+
+lndsrbm:
+- Modified to use the fill_QA band to determin if the current pixel is fill.
+- Cloud-related QA pixels are not set to on if the current pixel is fill.
+- Added error checking to the file write/close tasks.
+- Use snfindex from the HDF libraries to find the index of the specified SDS
+  rather than relying on hard-coded SDS index values.
+
+bin:
+- Added a do_ledaps.py script for better scripting control.
+
 Updates on October 17, 2012 - USGS EROS
 ---------------------------------------
 lndpm:
