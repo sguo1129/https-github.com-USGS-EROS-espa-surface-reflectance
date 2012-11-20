@@ -20,37 +20,25 @@ int read_ozone(char* fname, short int** data, int* doy, int* year, int* nlats,
 int main(int argc,char **argv) {
   int32 sdsout_id;
   int32 dimout_id;
-	int32 sdin_id,sdout_id,sds_id,dim_id,hdf_ind;
-	int32 nb_datasets,nb_globattrs;
-	int32 status,index,count,dims[MAX_VAR_DIMS],start[MAX_VAR_DIMS];
-        int32 edge[MAX_VAR_DIMS];
-	int32 attr_index;
-	int32 rank,data_type,attributes;
-	int32 dim_index,dim_sizes[MAX_VAR_DIMS];
-	int32 sds_r1,sds_r2,sds_r3,sds_t3,sds_t4,sds_qc;
-	int32 sds_lat,sds_lon,sds_ts,sds_tv,sds_phi;
-	float32 ul_lat,ul_lon,lr_lat,lr_lon;
-	char name[MAX_NC_NAME];
-	char names[2][MAX_NC_NAME];
-	VOIDP buffer;
-	char label[200], unit[200], format[200], coordsys[200];
-	int write_metadata;
-	float32 scalef=1.0;
-	float32 addoff=0.0;
-        char* oz_units= "Dobson";
-	int16 doy;
+  int32 sdout_id;
+  int32 index,count,start[MAX_VAR_DIMS];
+  int32 edge[MAX_VAR_DIMS];
+  int32 rank,data_type;
+  int32 dim_sizes[MAX_VAR_DIMS];
+  char name[MAX_NC_NAME];
+  char names[2][MAX_NC_NAME];
+  int write_metadata;
+  float32 scalef=1.0;
+  float32 addoff=0.0;
+  char* oz_units= "Dobson";
+  int16 doy;
 
-   int32  num_lones,vgroup_id;  
-   int32 *ref_array;    
-   char   vgroup_name[VGNAMELENMAX], vgroup_class[VGNAMELENMAX];	
-	char list_of_sds[4][10]={"pres","pr_wtr"};
-   int idoy,year,nlats,nlons;
-   float minlat, minlon, maxlat, maxlon, latsteps,lonsteps;
-   short int* data;
-   int i,ival;
-   int16 base_date[3];
-   float lat_array[1024], lon_array[1024];
-   char* platform= argc>3 ? argv[3] : (char*) "Earthprobe";
+  int idoy,year,nlats,nlons;
+  float minlat, minlon, maxlat, maxlon, latsteps,lonsteps;
+  short int* data;
+  int16 base_date[3];
+  float lat_array[1024], lon_array[1024];
+  char* platform= argc>3 ? argv[3] : (char*) "Earthprobe";
 
 
 	if (argc<3) {
@@ -112,12 +100,12 @@ int main(int argc,char **argv) {
 		Write Day Of Year to output
 ****/
                 base_date[0]= year; base_date[1]=1; base_date[2]=1;
-		status = SDsetattr(sdout_id, "base_date", DFNT_INT16,3,base_date);
-		status = SDsetattr(sdout_id, "Day Of Year", DFNT_INT16,1,&doy);
+		SDsetattr(sdout_id, "base_date", DFNT_INT16,3,base_date);
+		SDsetattr(sdout_id, "Day Of Year", DFNT_INT16,1,&doy);
 		
                 count=strlen(platform)+1;
 		printf("*** platform=(%s) len=%d ***\n",platform,count);
- 		status=SDsetattr(sdout_id,"Platform",DFNT_CHAR8,count,(void*)platform);
+ 		SDsetattr(sdout_id,"Platform",DFNT_CHAR8,count,(void*)platform);
 /****
 		Copy lat/lon SDS
 ****/
@@ -207,7 +195,8 @@ int main(int argc,char **argv) {
 /****
 		Close input & output
 ****/
-	status = SDend(sdout_id);
+	SDend(sdout_id);
+	return 0;
 }
 
 
@@ -219,12 +208,12 @@ int read_ozone(char* fname, short int** out_data, int* doy, int* year, int* nlat
 { 
  FILE *fp;
  char line[MAX_STR_LEN+1];
- char dtype[10],month[4],valbuf[4],cyear[5];
+ char dtype[10],month[4],valbuf[4];
  char c_day_of_month[3];
  int day_of_month;
  int irow,icol,i,ival;
- int answer,ilat;
- int len,number;
+ int ilat;
+ int number;
  short int* data;
  float mylat;
  float comp_lat,comp_lon;
@@ -237,7 +226,7 @@ int read_ozone(char* fname, short int** out_data, int* doy, int* year, int* nlat
  */
 
  fp = fopen(fname, "r");
- len = GetLine(fp,line);
+ GetLine(fp,line);
  sscanf(line," Day: %3d ",doy);
  strncpy(month,&line[10],3); month[3]='\0';
  strncpy(c_day_of_month,&line[14],2); c_day_of_month[2]='\0';
@@ -246,7 +235,7 @@ int read_ozone(char* fname, short int** out_data, int* doy, int* year, int* nlat
  *year= atoi( &line[18] );
  printf("year=%d month=%s day_of_month=%d\n",*year,month,day_of_month);
 
- len = GetLine(fp,line);
+ GetLine(fp,line);
  sscanf(line," Longitudes:  %3d bins centered on %7f W to %7f E  (%5f ", 
         nlons, minlon, maxlon, lonsteps);
  /* OMI data used different index - Feng */
@@ -259,7 +248,7 @@ int read_ozone(char* fname, short int** out_data, int* doy, int* year, int* nlat
  *minlon *= (hemisphere1=='S'||hemisphere1=='W'?-1.0:1.0);
  *maxlon *= (hemisphere2=='S'||hemisphere2=='W'?-1.0:1.0);
 
- len = GetLine(fp,line);
+ GetLine(fp,line);
  sscanf(line," Latitudes :  %3d bins centered on %7f S to %7f N  (%4f ",
         nlats, minlat, maxlat, latsteps);
  /* OMI data used different index - Feng */
@@ -289,7 +278,7 @@ int read_ozone(char* fname, short int** out_data, int* doy, int* year, int* nlat
    ival=0;
    for (icol=0; icol<NLINE; icol++)
      {
-     len= GetLine(fp,line);
+     GetLine(fp,line);
      for ( i=0; i<(icol<(NLINE-1)?longline:shortline); i++ )
        {
        
