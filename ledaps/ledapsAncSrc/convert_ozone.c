@@ -2,20 +2,22 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
-
+#include "hdf4_netcdf.h"
 #include "hdf.h"
 #include "mfhdf.h"
+
 #define PRINT_FLAG (0)
 #define MAX_STR_LEN (1024)
+
 /* NLINE changed for OMI (1 degree res.) */
 /*#define NLINE (12)*/
 int NLINE, longline, shortline;
-
 int verbose;
 int GetLine(FILE *fp, char *s);
 int read_ozone(char* fname, short int** data, int* doy, int* year, int* nlats,
                int* nlons, float* minlat, float* minlon, float* maxlat,
-               float* maxlon, float* latsteps, float* lonsteps, float* lat_array, float* lon_array);
+               float* maxlon, float* latsteps, float* lonsteps,
+               float* lat_array, float* lon_array);
 
 int main(int argc,char **argv) {
   int32 sdsout_id;

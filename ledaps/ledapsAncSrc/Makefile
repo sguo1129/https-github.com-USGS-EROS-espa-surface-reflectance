@@ -1,16 +1,16 @@
-EXTRA   = -Wall
+CC = gcc
+EXTRA   = -ansi
 
 INCDIR  = -I. -I$(HDFINC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
-EXLIB	= -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
-MATHLIB = -lm
-LOADLIB = $(EXLIB) $(MATHLIB)
+#EXLIB  = -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
+LIB = -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz -lm
 
-TARGET1	= convert_ozone
+TARGET1 = convert_ozone
 OBJ1    = convert_ozone.o
 
-TARGET2	= ncep_reanalysis_surface_repackage
+TARGET2 = ncep_repackage
 OBJ2    = ncep_reanalysis_surface_repackage.o
 
 all: $(TARGET1) $(TARGET2)
@@ -18,12 +18,12 @@ all: $(TARGET1) $(TARGET2)
 $(OBJ1): $(INC1)
 
 $(TARGET1): $(OBJ1)
-	$(CC) $(EXTRA) -o $(TARGET1) $(OBJ1) $(LOADLIB)
+	$(CC) $(EXTRA) $(OBJ1) -o $(TARGET1) $(LIB)
 
 $(OBJ2): $(INC2)
 
 $(TARGET2): $(OBJ2)
-	$(CC) $(EXTRA) -o $(TARGET2) $(OBJ2) $(LOADLIB)
+	$(CC) $(EXTRA) $(OBJ2) -o $(TARGET2) $(LIB)
 
 clean:
 	rm -f *.o $(TARGET1) $(TARGET2)
@@ -35,4 +35,4 @@ install:
 # Rules
 #
 .c.o:
-	$(CC) $(EXTRA) $(NCFLAGS) -c $< -o $@
+	$(CC) $(NCFLAGS) -c $< -o $@

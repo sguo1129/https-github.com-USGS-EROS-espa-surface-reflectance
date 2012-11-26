@@ -4,9 +4,9 @@
 #include <ctype.h>
 #include <string.h>
 
+#include "hdf4_netcdf.h"
 #include "hdf.h"
 #include "mfhdf.h"
-#include "netcdf.h"
 
 int verbose;
 int copy_sds(int32 sdin_id,char *sds_name,int32 first_time_index,int32 sdout_id);
