@@ -1,5 +1,9 @@
 /**************************************************************************
 ! Developers:
+  Modified on 11/23/2012 by Gail Schmidt, USGS EROS
+  Modified bug in cld_diags.std_b7_clear to be based on the sqrt of band 7
+  and not temperature band 6
+
   Modified on 11/9/2012 by Gail Schmidt, USGS EROS
   Modified to make sure no QA bits are set to on if the current pixel is fill
 
@@ -151,7 +155,7 @@ int main (int argc, const char **argv) {
   t_ncep_ancillary anc_O3,anc_WV,anc_SP,anc_ATEMP;
   double sum_spres_anc,sum_spres_dem;
   int nb_spres_anc,nb_spres_dem;
-  float ratio_spres;
+  /* float ratio_spres; */
   float tmpflt_arr[4] /*,tmpflt */;
   double coef;
   int tmpint;
@@ -933,7 +937,7 @@ int main (int argc, const char **argv) {
 				cld_diags.avg_b7_clear[il][is] = sum_value/cld_diags.nb_t6_clear[il][is];
 				if (cld_diags.nb_t6_clear[il][is] > 1) {
 					cld_diags.std_b7_clear[il][is] = (sumsq_value-(sum_value*sum_value)/cld_diags.nb_t6_clear[il][is])/(cld_diags.nb_t6_clear[il][is]-1);
-					cld_diags.std_b7_clear[il][is]=sqrt(fabs(cld_diags.std_t6_clear[il][is]));
+					cld_diags.std_b7_clear[il][is]=sqrt(fabs(cld_diags.std_b7_clear[il][is]));
 				} else
 					cld_diags.std_b7_clear[il][is]=0;
 			} else {
