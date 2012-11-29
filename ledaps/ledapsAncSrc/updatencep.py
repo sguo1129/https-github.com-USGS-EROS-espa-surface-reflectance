@@ -24,8 +24,8 @@ START_YEAR = 1978
 #   year - year to determine if it is a leap year (integer)
 #
 # Returns:
-#     1 - yes, this is a leap year
-#     0 - no, this is not a leap year
+#     True - yes, this is a leap year
+#     False - no, this is not a leap year
 #
 # Notes:
 ############################################################################
@@ -33,13 +33,13 @@ def isLeapYear (year):
     if (year % 4) == 0:
         if (year % 100) == 0:
             if (year % 400) == 0:
-                return 1
+                return True
             else:
-                return 0
+                return False
         else:
-            return 1
+            return True
     else:
-        return 0
+        return False
 
 
 ############################################################################
@@ -136,7 +136,7 @@ def executeNcep (fullinputpath, outputdir, year, clean):
     if year == now.year:
         day_of_year = now.timetuple().tm_yday
     else:
-        if isLeapYear (year):
+        if isLeapYear (year) == True:
             day_of_year = 366   
         else:
             day_of_year = 365
