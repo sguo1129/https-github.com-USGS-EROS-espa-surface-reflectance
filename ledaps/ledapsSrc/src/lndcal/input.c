@@ -97,7 +97,7 @@ Key_string_t Header_string[HEADER_MAX] = {
   {(int)HEADER_START,     "HEADER_FILE"},
   {(int)HEADER_FILE_TYPE, "FILE_TYPE"},
   {(int)HEADER_PROIVDER,  "DATA_PROVIDER"},
-  {(int)HEADER_SAT,       "SATTELITE"},
+  {(int)HEADER_SAT,       "SATELLITE"},
   {(int)HEADER_INST,      "INSTRUMENT"},
   {(int)HEADER_ACQ_DATE,  "ACQUISITION_DATE"},
   {(int)HEADER_ACQ_TIME,  "ACQUISITION_TIME"},

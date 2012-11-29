@@ -1,5 +1,8 @@
 Revision:
 
+revision 1.1.1  11/30/2012  Gail Schmidt, USGS EROS
+- changed spelling of SATTELITE to SATELLITE
+
 revision 1.1.0  11/13/2012  Gail Schmidt, USGS EROS
 - modified to DIE vs. WARN if the ancillary products (REANALYSIS, EP/TOMS, or
   DEM) do not exist.

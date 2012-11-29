@@ -1,3 +1,26 @@
+Updates on November 30, 2012 - USGS EROS
+---------------------------------------
+lndpm:
+- Corrected spelling of SATTELITE to SATELLITE in the output metadata.txt file
+
+lndcal:
+- Corrected spelling of SATTELITE to SATELLITE in the output metadata.txt file
+
+lndsr:
+- Fixed a bug in cld_diags.std_b7_clear to be based on the sqrt of band 7
+  and not the band 6 temperature.
+
+bin:
+- Modified do_ledaps.py to be a class and to allow an -l or --logfile option
+  to write the output to a log file.
+- Added a findAncillary method to the Ledaps class to determine if the
+  required EP/TOMS and NCEP REANALYSIS ancillary files exist for the specified
+  year (all days) or year/DOY.
+
+ledapsAncSrc:
+- Added source code and scripts to download and process the NCEP and EP/TOMS
+  ozone ancillary products.
+
 Updates on November 16, 2012 - USGS EROS
 ---------------------------------------
 lndpm:
