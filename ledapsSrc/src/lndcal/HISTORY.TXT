@@ -1,3 +1,6 @@
+11/30/2012  Gail Schmidt, USGS EROS
+1. Corrected spelling of SATTELITE to SATELLITE.
+
 10/26/2012  Gail Schmidt, USGS EROS
 1. Modified the application to utilize the GCTP library delivered with the
    HDF-EOS library, since that version of the GCTP library is now needed to
