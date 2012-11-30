@@ -142,46 +142,69 @@ class Ledaps():
             tomsFile = "%s/EP_TOMS/ozone_%d/TOMS_%d%s.hdf" % (ancdir, year, year, dayofyear)
             if os.path.isfile(ncepFile) and os.path.isfile(tomsFile):
                 doyList.append(True)
-#                print "DEBUG: Exists - " + ncepFile
-#                print "DEBUG: Exists - " + tomsFile
             else:
                 doyList.append(False)
-#                print "DEBUG: NO Exists - " + ncepFile
-#                print "DEBUG: NO Exists - " + tomsFile
 
         # return the True/False list
         return doyList
 
 
-    def runLedaps (self):
-        # get the command line argument for the metadata file
-        parser = OptionParser()
-        parser.add_option ("-f", "--metfile", type="string", dest="metfile",
-            help="name of Landsat MTL file", metavar="FILE")
-        parser.add_option ("--usebin", dest="usebin", default=False,
-            action="store_true",
-            help="use BIN environment variable as the location of LEDAPS apps")
-        parser.add_option ("-l", "--logfile", type="string", dest="logfile",
-            help="name of optional log file", metavar="FILE")
-        (options, args) = parser.parse_args()
+    ########################################################################
+    # Description: runLedaps will use the parameters passed for metafile,
+    # logfile, and usebin.  If metafile is None (i.e. not specified) then
+    # the command-line parameters will be parsed for this information.
+    # The LEDAPS applications are then executed on the specified metadata
+    # file.  If a log file was specified, then the output from each LEDAPS
+    # application will be logged to that file.
+    #
+    # Inputs:
+    #   metafile - name of the Landsat metadata file to be processed
+    #   logfile - name of the logfile for logging information; if None then
+    #       the output will be written to stdout
+    #   usebin - this specifies if the LEDAPS exes reside in the $BIN
+    #       directory; if None then the LEDAPS exes are expected to be in
+    #       the PATH
+    #
+    # Returns:
+    #     ERROR - error running the LEDAPS applications
+    #     SUCCESS - successful processing
+    #
+    # Notes:
+    #######################################################################
+    def runLedaps (self, metafile=None, logfile=None, usebin=None):
+        # if no parameters were passed then get the info from the
+        # command line
+        if metafile == None:
+            # get the command line argument for the metadata file
+            parser = OptionParser()
+            parser.add_option ("-f", "--metafile", type="string",
+                dest="metafile",
+                help="name of Landsat MTL file", metavar="FILE")
+            parser.add_option ("--usebin", dest="usebin", default=False,
+                action="store_true",
+                help="use BIN environment variable as the location of LEDAPS apps")
+            parser.add_option ("-l", "--logfile", type="string", dest="logfile",
+                help="name of optional log file", metavar="FILE")
+            (options, args) = parser.parse_args()
     
-        # validate the command-line options
-        meta_file = options.metfile        # Name of the metadata file
-        if meta_file == None:
-            parser.error ("missing meta_file command-line argument");
-            return ERROR
+            # validate the command-line options
+            usebin = options.usebin          # should $BIN directory be used
+            logfile = options.logfile        # name of the log file
+            metafile = options.metafile      # name of the metadata file
+            if metafile == None:
+                parser.error ("missing metafile command-line argument");
+                return ERROR
         
         # open the log file if it exists; use line buffering for the output
-        log_file = options.logfile         # Name of the log file
         log_handler = None
-        if log_file != None:
-            log_handler = open (log_file, 'w', buffering=1)
-        msg = 'LEDAPS processing of Landsat metadata file: %s' % meta_file
+        if logfile != None:
+            log_handler = open (logfile, 'w', buffering=1)
+        msg = 'LEDAPS processing of Landsat metadata file: %s' % metafile
         logIt (msg, log_handler)
         
         # should we expect the lnd* applications to be in the PATH or in the
         # BIN directory?
-        if options.usebin:
+        if usebin:
             # get the BIN dir environment variable
             bin_dir = os.environ.get('BIN')
             bin_dir = bin_dir + '/'
@@ -193,8 +216,14 @@ class Ledaps():
             msg = 'LEDAPS executables expected to be in the PATH'
             logIt (msg, log_handler)
         
+        # make sure the metadata file exists
+        if not os.path.isfile(metafile):
+            msg = "Error: metadata file does not exist or is not accessible: " + metafile
+            logIt (msg, log_handler)
+            return ERROR
+
         # parse the metadata filename, strip off the _MTL.txt or _MTL.met
-        meta = re.sub('\.txt$', '', meta_file)
+        meta = re.sub('\.txt$', '', metafile)
         meta = re.sub('\.met$', '', meta)
         meta = re.sub('_MTL', '', meta)
         msg = 'Processing meta basefile: %s' % meta
@@ -202,7 +231,7 @@ class Ledaps():
         
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
-        cmdstr = "%slndpm %s" % (bin_dir, meta_file)
+        cmdstr = "%slndpm %s" % (bin_dir, metafile)
 #        print 'lndpm command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
@@ -245,7 +274,7 @@ class Ledaps():
         # successful completion
         msg = 'Completion of LEDAPS.'
         logIt (msg, log_handler)
-        if log_file != None:
+        if logfile != None:
             log_handler.close()
         return SUCCESS
 
