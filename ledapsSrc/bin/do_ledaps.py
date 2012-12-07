@@ -64,6 +64,10 @@ def logIt (msg, log_handler):
 #   Created the Ledaps class and added modules to run the LEDAPS code and
 #       determine if the proper ancillary data exists for a requested year
 #       and year/doy.
+#   Updated on 12/6/2012 by Gail Schmidt, USGS/EROS
+#   Modified the run_ledaps method to change to the metadata directory
+#       before running the LEDAPS software, and then return to the current
+#       directory upon successful or failure exit.
 #
 # Usage: do_ledaps.py --help prints the help message
 ############################################################################
@@ -170,6 +174,10 @@ class Ledaps():
     #     SUCCESS - successful processing
     #
     # Notes:
+    #   1. The script obtains the path of the metadata file and changes
+    #      directory to that path for running the LEDAPS code.  If the
+    #      metafile directory is not writable, then this script exits with
+    #      an error.
     #######################################################################
     def runLedaps (self, metafile=None, logfile=None, usebin=None):
         # if no parameters were passed then get the info from the
@@ -222,56 +230,79 @@ class Ledaps():
             logIt (msg, log_handler)
             return ERROR
 
-        # parse the metadata filename, strip off the _MTL.txt or _MTL.met
-        meta = re.sub('\.txt$', '', metafile)
+        # parse the metadata filename, strip off the _MTL.txt or _MTL.met.
+        # use the base metadata filename and not the full path.
+        base_metafile = os.path.basename (metafile)
+        meta = re.sub('\.txt$', '', base_metafile)
         meta = re.sub('\.met$', '', meta)
         meta = re.sub('_MTL', '', meta)
         msg = 'Processing meta basefile: %s' % meta
         logIt (msg, log_handler)
         
+        # get the path of the MTL file and change directory to that location
+        # for running this script.  save the current working directory for
+        # return to upon error or when processing is complete.  Note: use
+        # abspath to handle the case when the filepath is just the filename
+        # and doesn't really include a file path (i.e. the current working
+        # directory).
+        mydir = os.getcwd()
+        metadir = os.path.dirname (os.path.abspath (metafile))
+        if not os.access(metadir, os.W_OK):
+            msg = 'Path of metadata file is not writable: %s.  LEDAPS needs write access to the metadata directory.' % metadir
+            logIt (msg, log_handler)
+            return ERROR
+        msg = 'Changing directories for LEDAPS processing: %s' % metadir
+        logIt (msg, log_handler)
+        os.chdir (metadir)
+
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
-        cmdstr = "%slndpm %s" % (bin_dir, metafile)
-#        print 'lndpm command: %s' % cmdstr
+        cmdstr = "%slndpm %s" % (bin_dir, base_metafile)
+#        print 'DEBUG: lndpm command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndpm.  Processing will terminate.'
             logIt (msg, log_handler)
+            os.chdir (mydir)
             return ERROR
         
         cmdstr = "%slndcal lndcal.%s.txt" % (bin_dir, meta)
-#        print 'lndcal command: %s' % cmdstr
+#        print 'DEBUG: lndcal command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndcal.  Processing will terminate.'
             logIt (msg, log_handler)
+            os.chdir (mydir)
             return ERROR
         
         cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, meta)
-#        print 'lndsr command: %s' % cmdstr
+#        print 'DEBUG: lndsr command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndsr.  Processing will terminate.'
             logIt (msg, log_handler)
+            os.chdir (mydir)
             return ERROR
         
         cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, meta)
-#        print 'lndsrbm command: %s' % cmdstr
+#        print 'DEBUG: lndsrbm command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndsrbm.  Processing will terminate.'
             logIt (msg, log_handler)
+            os.chdir (mydir)
             return ERROR
         
-        # successful completion
+        # successful completion.  return to the original directory.
+        os.chdir (mydir)
         msg = 'Completion of LEDAPS.'
         logIt (msg, log_handler)
         if logfile != None:
