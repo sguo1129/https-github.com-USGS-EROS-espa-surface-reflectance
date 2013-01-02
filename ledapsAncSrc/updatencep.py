@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+############################################################################
+# Updated on 12/27/2012 by Gail Schmidt, USGS EROS
+#   Modified the wget retrievals to limit the number of retries to 5 in the
+#   case of a download or connection problem.
+############################################################################
 import sys
 import os.path
 import ftplib
@@ -234,8 +239,11 @@ def downloadNcep (sourcefilename, destination):
         print "%s does not exist... creating" % destination
         os.makedirs(destination, 0777)
 
-    # get the file from the ftp site and download it to the destination
-    cmd = 'wget %s' % url
+    # get the file from the ftp site and download it to the destination.
+    # if there is a problem with the connection, then retry up to 5 times.
+    # Note: if you don't like the wget output, --quiet can be used to
+    # minimize the output info.
+    cmd = 'wget --tries=5 %s' % url
     subprocess.call(cmd, shell=True, cwd=destination)
 
     # make sure the file exists and download was successful
