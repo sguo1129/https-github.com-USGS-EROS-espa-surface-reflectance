@@ -16,11 +16,14 @@
  *  first on 8/28/2006  - produce a separate combined HDF file 
  *  revised on 7/2/2010 - update original lndsr file to prepare input 
  *          for stand-alone Ledaps package that include SR based mask 
+ *  revised on 12/26/2012 - update to write a fill QA SDS for the thermal
+ *          band, called band6_fill_QA
  */
 
 #include <stdio.h>
 #include <math.h>
 #include <string.h>
+#include "bool.h"
 #include "hdf.h"
 #include "mfhdf.h"
 #include "HdfEosDef.h"
@@ -29,6 +32,8 @@
 #define Max_StrLen  1000
 #define FAILURE     -1
 #define SUCCESS     1
+#define QA_OFF 0
+#define QA_ON  255
 
 typedef struct {
 
@@ -52,18 +57,20 @@ typedef struct {
 
 void usage(char *);
 int  getMetaInfo(GRID_SR *);
-int  openForWrite(GRID_SR *sr, GRID_SR *th);
-int  cleanUp(GRID_SR *sr);
+int  openForWrite(GRID_SR *sr, GRID_SR *sr_qa, GRID_SR *th);
+int  openForWriteQA(GRID_SR *sr);
+int  closeUp(GRID_SR *sr, bool close);
 
 /*#define DEBUG*/
 
 int main(int argc, char *argv[])
 {
-  int i, irow, ret;
+  int i, irow, icol, ret;
   int32 start[2];
   int32 length[2];
-  int16 *buf;
-  GRID_SR sr, th;
+  int16 *buf = NULL;
+  uint8 *qa_buf = NULL;
+  GRID_SR sr, sr_qa, th;
 
   if(argc != 5) {
     usage(argv[0]);
@@ -109,9 +116,22 @@ int main(int argc, char *argv[])
     exit(1);
   }
   
-  /* create output and write metadata */
-  printf("Updating lndsr file for creating/modifying band6 SDS ...\n");
-  if((ret=openForWrite(&sr, &th))==FAILURE) {
+  qa_buf = calloc(th.ncols, sizeof(uint8));
+  if(!qa_buf) {
+    printf("Memory allocation error\n");
+    exit(1);
+  }
+  
+  /* create the thermal band and thermal fill QA band */
+  printf("Updating lndsr file for creating/modifying band6 SDS and band6 QA "
+    "SDS...\n");
+  strcpy (sr_qa.fileName, sr.fileName);
+  strcpy (sr_qa.sdsName, "band6_fill_QA");
+  strcpy (sr_qa.longName, "band6_fill_QA");
+  strcpy (sr_qa.units, "quality/feature classification");
+  sr_qa.range[0] = 0;
+  sr_qa.range[1] = 255;
+  if((ret=openForWrite(&sr, &sr_qa, &th))==FAILURE) {
     printf("Open for write error\n");
     exit(1);
   }
@@ -121,6 +141,7 @@ int main(int argc, char *argv[])
   else
     printf("Updating band6 for line --- ");
 
+  /* loop through each row of data */
   for(irow=0; irow<sr.nrows; irow++) {
     printf("%4d\b\b\b\b",irow);
    
@@ -138,12 +159,28 @@ int main(int argc, char *argv[])
       printf("Error: writing to combined file error irow: %d\n", irow);
       exit(1);
     }
+
+    /* compute the fill QA values for the thermal band */
+    memset (qa_buf, QA_OFF, sr.ncols);
+    for(icol=0; icol<sr.ncols; icol++) {
+      if (buf[icol] == th.fillValue)
+        qa_buf[icol] = QA_ON;
+    }
+
+    if((SDwritedata(sr_qa.band_id, start, NULL, length, qa_buf)) == FAILURE) {
+      printf("Error: writing QA to combined file error irow: %d\n", irow);
+      exit(1);
+    }
   } /* end of irow */
 
-  /* clean up files */
-  cleanUp(&sr);
-  cleanUp(&th);
+  /* close HDF files */
+  closeUp(&sr_qa, false);  /* don't close HDF file, just end access to SDS */
+  closeUp(&sr, true);
+  closeUp(&th, true);
+
+  /* Free buffers */
   free(buf);
+  free(qa_buf);
   printf("\n");
   return EXIT_SUCCESS;      /* success */
 }
@@ -281,16 +318,17 @@ int getMetaInfo(GRID_SR *sr) {
   printf("fillV:%d\n", sr->fillValue); 
 #endif
 
-  cleanUp(sr);
+  closeUp(sr, true);
   return SUCCESS;
 }
 
 
 /* create output HDF file and open sds_id for write */
-int openForWrite(GRID_SR *sr, GRID_SR *th)
+int openForWrite(GRID_SR *sr, GRID_SR *sr_qa, GRID_SR *th)
 {
   int ret, index, exist;
   int32 GDfid, GDid; 
+  char lndsr_QAMAP[1000];
   
   /* open hdf file and check if thermal band has already been appended */  
   if ((sr->SD_ID = SDstart(sr->fileName, DFACC_READ))<0) {
@@ -326,12 +364,21 @@ int openForWrite(GRID_SR *sr, GRID_SR *th)
     return FAILURE;
   }
 
+  /* Create the new SDS for the thermal band in the Grid, if it doesn't already
+     exist */
   if(exist == 0) {
     ret = GDdeffield(GDid, th->sdsName, "YDim,XDim", DFNT_INT16, HDFE_NOMERGE);
     if(ret==FAILURE){
       printf ("Not successful in defining %s SDS", th->sdsName);
       return FAILURE;
     }
+  }
+  
+  /* Create the new SDS for the thermal QA in the Grid */
+  ret = GDdeffield(GDid, sr_qa->sdsName, "YDim,XDim", DFNT_UINT8, HDFE_NOMERGE);
+  if(ret==FAILURE){
+    printf ("Not successful in defining %s SDS", sr_qa->sdsName);
+    return FAILURE;
   }
   
   /* detach grid */
@@ -348,12 +395,13 @@ int openForWrite(GRID_SR *sr, GRID_SR *th)
     return FAILURE;
   }
  
-  /* open hdf file and get sds_id from given sds_name and then write metedata */  
+  /* open hdf file */
   if ((sr->SD_ID = SDstart(sr->fileName, DFACC_RDWR))<0) {
     printf("Can't open file %s",sr->fileName);
     return FAILURE;
   }
   
+  /* get sds_id from given thermal sds_name and then write metedata */
   if ((index = SDnametoindex(sr->SD_ID, th->sdsName))<0) {
     printf("Not successful in convert SR sdsName band6 to index");
     return FAILURE;
@@ -391,6 +439,47 @@ int openForWrite(GRID_SR *sr, GRID_SR *th)
     return FAILURE;
   } 
 
+  /* get sds_id from given thermal QA sds_name and then write metedata */
+  if ((index = SDnametoindex(sr->SD_ID, sr_qa->sdsName))<0) {
+    printf("Not successful in converting SR sdsName %s to index",
+      sr_qa->sdsName);
+    return FAILURE;
+  }
+  sr_qa->band_id = SDselect(sr->SD_ID, index);
+
+  /* write SDS metadata */
+  ret = SDsetattr(sr_qa->band_id, "long_name", DFNT_CHAR8,
+    strlen(sr_qa->longName), sr_qa->longName);
+  if (ret == FAILURE) {
+    printf("Can't write SR long_name for SDS %s\n", sr_qa->sdsName);
+    return FAILURE;
+  } 
+    
+  ret = SDsetattr(sr_qa->band_id, "units", DFNT_CHAR8, strlen(sr_qa->units),
+    sr_qa->units);
+  if (ret == FAILURE) {
+    printf("Can't write SR units for SDS %s", sr_qa->sdsName);
+    return FAILURE;
+  } 
+
+  ret = SDsetattr(sr_qa->band_id, "valid_range", DFNT_INT16, 2, sr_qa->range);
+  if (ret == FAILURE) {
+    printf ("Can't write SR valid_range for SDS %s", sr_qa->sdsName);
+    return FAILURE;
+  } 
+  
+  sprintf (lndsr_QAMAP,
+    "\n\tQA pixel values are either off or on:\n"
+    "\tValue  Description\n"
+    "\t0\tnot fill\n"
+    "\t255\tfill");
+  ret = SDsetattr(sr_qa->band_id, "QA index", DFNT_CHAR8, strlen(lndsr_QAMAP),
+    lndsr_QAMAP);
+  if (ret == FAILURE) {
+    printf ("Can't write SR QA map for SDS %s", sr_qa->sdsName);
+    return FAILURE;
+  } 
+
   /* open thermal hdf file and get sds_id from given sds_name */  
   if ((th->SD_ID = SDstart(th->fileName, DFACC_READ))<0) {
     printf("Can't open file %s\n",th->fileName);
@@ -407,20 +496,111 @@ int openForWrite(GRID_SR *sr, GRID_SR *th)
 }
 
 
-int cleanUp(GRID_SR *sr) 
+/* create output sds_id for writing the thermal fill QA.  It's assumed the
+   HDF file is already open from working with the band6 SDS. */
+int openForWriteQA(GRID_SR *sr_qa)
 {
+  int ret, index;
+  int32 GDfid, GDid; 
+  char lndsr_QAMAP[1000];
+  
+  /* create output use HDF-EOS functions */
+  GDfid = GDopen(sr_qa->fileName, DFACC_RDWR);
+  if (GDfid == FAILURE){
+    printf("Not successful in opening grid file %s", sr_qa->fileName);
+    return FAILURE;
+  }
+  
+  GDid = GDattach(GDfid, "Grid");
+  if(GDid == FAILURE) {
+    printf("Not successful in attaching to the Grid for %s", sr_qa->fileName);
+    return FAILURE;
+  }
 
+  /* Create the new SDS for the thermal QA in the Grid */
+  ret = GDdeffield(GDid, sr_qa->sdsName, "YDim,XDim", DFNT_UINT8, HDFE_NOMERGE);
+  if(ret==FAILURE){
+    printf ("Not successful in defining %s SDS", sr_qa->sdsName);
+    return FAILURE;
+  }
+  
+  /* detach grid */
+  ret = GDdetach(GDid);
+  if(ret==FAILURE){
+    printf ("Failed to detach grid.");
+    return FAILURE;
+  }
+
+  /* close for grid access */
+  ret = GDclose(GDfid);
+  if(ret==FAILURE){
+    printf ("GD-file close failed.");
+    return FAILURE;
+  }
+ 
+  /* open hdf file and get sds_id from given sds_name and then write metedata */
+  if ((sr_qa->SD_ID = SDstart(sr_qa->fileName, DFACC_RDWR))<0) {
+    printf("Can't open file %s",sr_qa->fileName);
+    return FAILURE;
+  }
+  
+  if ((index = SDnametoindex(sr_qa->SD_ID, sr_qa->sdsName))<0) {
+    printf("Not successful in converting SR sdsName %s to index", sr_qa->sdsName);
+    return FAILURE;
+  }
+  sr_qa->band_id = SDselect(sr_qa->SD_ID, index);
+
+  /* write SDS metadata */
+  ret = SDsetattr(sr_qa->band_id, "long_name", DFNT_CHAR8, strlen(sr_qa->longName),
+    sr_qa->longName);
+  if (ret == FAILURE) {
+    printf("Can't write SR long_name for SDS %s\n", sr_qa->sdsName);
+    return FAILURE;
+  } 
+    
+  ret = SDsetattr(sr_qa->band_id, "units", DFNT_CHAR8, strlen(sr_qa->units), sr_qa->units);
+  if (ret == FAILURE) {
+    printf("Can't write SR units for SDS %s", sr_qa->sdsName);
+    return FAILURE;
+  } 
+
+  ret = SDsetattr(sr_qa->band_id, "valid_range", DFNT_INT16, 2, sr_qa->range);
+  if (ret == FAILURE) {
+    printf ("Can't write SR valid_range for SDS %s", sr_qa->sdsName);
+    return FAILURE;
+  } 
+  
+  sprintf (lndsr_QAMAP,
+    "\n\tQA pixel values are either off or on:\n"
+    "\tValue  Description\n"
+    "\t0\tnot fill\n"
+    "\t255\tfill");
+  ret = SDsetattr(sr_qa->band_id, "QA index", DFNT_CHAR8, strlen(lndsr_QAMAP),
+    lndsr_QAMAP);
+  if (ret == FAILURE) {
+    printf ("Can't write SR QA map for SDS %s", sr_qa->sdsName);
+    return FAILURE;
+  } 
+
+  return 0;  /* QA SDS doesn't already exist */
+}
+
+
+int closeUp(GRID_SR *sr, bool close) 
+{
   if((SDendaccess(sr->band_id)) == FAILURE) {
     printf("SDendaccess for %s aot error!\n", sr->fileName);
     return FAILURE;
   }
 
-  if((SDend(sr->SD_ID)) == FAILURE) {
-    printf("SDend for %s error!\n", sr->fileName);
-    return FAILURE;
+  if (close) {
+    if((SDend(sr->SD_ID)) == FAILURE) {
+      printf("SDend for %s error!\n", sr->fileName);
+      return FAILURE;
+    }
   }
-  return SUCCESS;
 
+  return SUCCESS;
 }
 
 

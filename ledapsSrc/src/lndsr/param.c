@@ -27,6 +27,10 @@
  Robert Wolfe
  Added separate output SDS name.
 
+ Revision 1.5 2012/12/27
+ Gail Schmidt, USGS/EROS
+ Added support for reading the metadata filename from the parameter file
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -85,6 +89,7 @@ typedef enum {
   PARAM_KTM_FILE,
   PARAM_TEMP_FILE,
   PARAM_SR_FILE,
+  PARAM_META_FILE,
   PARAM_SR1_FILE,
   PARAM_NCEP_FILE,
   PARAM_PRWV_FILE,
@@ -105,6 +110,7 @@ Key_string_t Param_string[PARAM_MAX] = {
   {(int)PARAM_L7_REF,    "L7_FILE"},
   {(int)PARAM_KTM_FILE,  "KTM_FILE"},
   {(int)PARAM_SR_FILE,   "SR_FILE"},
+  {(int)PARAM_META_FILE, "META_FILE"},
   {(int)PARAM_TEMP_FILE, "TEMP_FILE"},
   {(int)PARAM_SR1_FILE,  "SR1_FILE"},
   {(int)PARAM_NCEP_FILE, "NCEP_FIL"},
@@ -384,7 +390,6 @@ Param_t *GetParam(int argc, const char **argv)
         }
         break;
 
-
       case PARAM_SR_FILE:
         if (key.nval <= 0) {
 	  error_string = "no Kal/Thomas file name";
@@ -422,6 +427,26 @@ Param_t *GetParam(int argc, const char **argv)
         if (this->output_file_name == (char *)NULL) {
           error_string = "duplicating Kal/Thomas file name";
           break;
+        }
+        break;
+
+      case PARAM_META_FILE:
+        if (key.nval <= 0) {
+	      error_string = "no Meta file name";
+	      break; 
+        } else if (key.nval > 1) {
+	      error_string = "too many Meta file names";
+	      break; 
+        }
+	    if (key.len_value[0] < 1) {
+	      error_string = "no Meta file name";
+	      break;
+	    }
+	    key.value[0][key.len_value[0]] = '\0';
+        this->metadata_file_name = DupString(key.value[0]);
+	    if (this->metadata_file_name == (char *)NULL) {
+	      error_string = "duplicating Meta file name";
+	      break;
         }
         break;
 

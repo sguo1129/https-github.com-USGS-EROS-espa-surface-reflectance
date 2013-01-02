@@ -24,6 +24,10 @@
  link with the HDF-EOS libraries.  The for_init and inv_init variables
  are ints instead of longs.  space.c and space.h were modified.
 
+ Gail Schmidt, USGS EROS, 2012/12/7
+ Modified DataField values in the metadata to be one-based so they align
+ correctly with band6 when it is appended on in lndsrbm.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Labatory for Terrestrial Physics (Code 922) at the 
@@ -1058,7 +1062,7 @@ bool PutSpaceDefHDF(Space_def_t *this, char *file_name, int nsds,
       "\t\t\t\tDataType=%s\n"
       "\t\t\t\tDimList=(\"%s\",\"%s\")\n"
       "\t\t\tEND_OBJECT=DataField_%d\n",
-      isds, sds_names[isds], ctype, dim_names[0], dim_names[1], isds);
+      isds+1, sds_names[isds], ctype, dim_names[0], dim_names[1], isds+1);
 
     if (!AppendMeta(struct_meta, &ic, cbuf))
       RETURN_ERROR("appending to metadata string (SDS group)", 

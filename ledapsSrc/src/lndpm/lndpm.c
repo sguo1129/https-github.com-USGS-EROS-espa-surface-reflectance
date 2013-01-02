@@ -14,6 +14,11 @@
  *
  * !Revision:
  *
+ *  revision 1.0.4  12/27/2012 Gail Schmidt, USGS EROS
+ *  - modified the application to write the name of the LPGS metadata
+ *    file to the lndsr parameter file so it can be written to the global
+ *    lndsr HDF metadata
+ *
  *  revision 1.0.3  11/9/2012 Gail Schmidt, USGS EROS
  *  - modified the application to DIE vs. WARN if the ancillary products
  *    (REANALYSIS, EP/TOMS, or DEM) do not exist
@@ -410,6 +415,7 @@ int main(int argc, char *argv[])
   fprintf(out, "REF_FILE = lndcal.%s.hdf\n", scene_name);
   fprintf(out, "TEMP_FILE = lndth.%s.hdf\n", scene_name);
   fprintf(out, "SR_FILE = lndsr.%s.hdf\n", scene_name);
+  fprintf(out, "META_FILE = %s\n", input);
   fprintf(out, "PGEVersion = %s\n", PGE201_VERSION);
   fprintf(out, "ProcessVersion = %s\n", MOD_SR_VERSION);
   fprintf(out, "END\n");

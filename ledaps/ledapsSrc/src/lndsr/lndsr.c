@@ -1,6 +1,10 @@
 /**************************************************************************
 ! Developers:
   Modified on 11/23/2012 by Gail Schmidt, USGS EROS
+  Modified the fill_QA band to mark a pixel as fill if the pixel is fill in
+  any reflective band and not just band 1.
+
+  Modified on 11/23/2012 by Gail Schmidt, USGS EROS
   Modified bug in cld_diags.std_b7_clear to be based on the sqrt of band 7
   and not temperature band 6
 
@@ -128,6 +132,7 @@ int main (int argc, const char **argv) {
   char **rot_cld[3],**ptr_rot_cld[3],**ptr_tmp_cld;
   char **rot_cld_block_buf = NULL;
   char *rot_cld_buf = NULL;
+  bool refl_is_fill;
 
   Sr_stats_t sr_stats;
   Ar_stats_t ar_stats;
@@ -751,7 +756,7 @@ int main (int argc, const char **argv) {
 		default:
 			ERROR("Unknown Instrument", "main");
 	}
-	create_6S_tables(&sixs_tables);
+	create_6S_tables(&sixs_tables, &input->meta);
 #ifdef SAVE_6S_RESULTS
 	write_6S_results_to_file(SIXS_RESULTS_FILENAME,&sixs_tables);
 	}
@@ -1184,7 +1189,17 @@ int main (int argc, const char **argv) {
         line_out[lut->nband+LAND_WATER][is] = QA_OFF;   /* land */
         line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
 
-		if (line_in[0][0][is] != lut->in_fill) {  /* check band 1 for fill */
+        /* Determine if this is a fill pixel -- mark as fill if any reflective
+           band for this pixel is fill */
+        refl_is_fill = false;
+        for (ib = 0; ib < input->nband; ib++) {
+		    if (line_in[0][ib][is] == lut->in_fill)
+                if (!refl_is_fill)
+                    refl_is_fill = true;
+        }
+
+        /* Process QA for each pixel */
+		if (!refl_is_fill) {
 			ArInterp(lut, &loc, line_ar, inter_aot); 
 			line_out[lut->nband][is] = inter_aot[0];
         /**
@@ -1741,7 +1756,7 @@ void sun_angles (short jday,float gmt,float flat,float flon,float *ts,float *fs)
  */
 #define MAX_SIXS_PATH_LEN 2048
 #define SIXS_APP   "sixsV1.0B"
-static char sixs_path[MAX_SIXS_PATH_LEN] = "";
+static char sixs_path[MAX_SIXS_PATH_LEN+1] = "";
 void set_sixs_path_from(const char *path)
 {
   struct stat stbuf;
@@ -1751,6 +1766,7 @@ void set_sixs_path_from(const char *path)
    * if passed in arg is path to a file, get the directory path
    */
   strncpy(sixs_path, path, MAX_SIXS_PATH_LEN);
+
   /*
    * if path ends in /, remove
    */

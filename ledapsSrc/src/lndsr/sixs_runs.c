@@ -12,12 +12,18 @@ struct etm_spectral_function_t {
 	float response[SIXS_NB_BANDS][155];
 } etm_spectral_function_t;
 
-int create_6S_tables(sixs_tables_t *sixs_tables) {
-	char cmd[128],sixs_cmd_filename[128],sixs_out_filename[128],line_in[256];
+int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
+	char cmd[128],sixs_cmd_filename[1024],sixs_out_filename[1024],line_in[256];
 	int i,j,k;
 	FILE *fd;
 	float tgoz,tgco2,tgo2,tgno2,tgch4,tgco;
 	int tm_band[SIXS_NB_BANDS]={25,26,27,28,29,30};
+    char short_name[1024];
+    char local_granule_id[1024];
+    char acq_date_string[MAX_DATE_LEN + 1];
+    const char *sat_names[SAT_MAX] = {"1", "2", "3", "4", "5", "7"};
+    const char *inst_names[INST_MAX] = {"M", "T", "E"};
+    const char *wrs_names[WRS_MAX] = {"1", "2"};
 	
 	struct etm_spectral_function_t etm_spectral_function = {
 		{54,61,65,81,131,155},
@@ -48,9 +54,26 @@ int create_6S_tables(sixs_tables_t *sixs_tables) {
 	sixs_tables->aot[13]=1.80;
 	sixs_tables->aot[14]=2.00;
 	
-	tmpnam(sixs_cmd_filename);
-	tmpnam(sixs_out_filename);
+    /* Determine the 6s command and output filenames */
+    if (sprintf(short_name, "L%s%s%s", sat_names[meta->sat], 
+        inst_names[meta->inst], "SR") < 0) {
+        fprintf(stderr, "ERROR:creating short name\n");
+        exit(-1);
+    }
+
+    if (!FormatDate(&meta->acq_date, DATE_FORMAT_DATEB, acq_date_string)) {
+        fprintf(stderr, "ERROR:formatting acquisition date\n");
+        exit(-1);
+    }
+    acq_date_string[4] = '\0';
+
+    sprintf(local_granule_id, "%s.a%4s%3s.w%1sp%03dr%03d",
+        short_name, acq_date_string, &acq_date_string[5],
+        wrs_names[meta->wrs_sys], meta->ipath, meta->irow);
+    sprintf (sixs_cmd_filename, "sixs_cmd_%s", local_granule_id);
+    sprintf (sixs_out_filename, "sixs_output_%s", local_granule_id);
 	
+	/* Run 6s */
 	for (i=0;i<SIXS_NB_BANDS;i++) {
 		for (j=0;j<SIXS_NB_AOT;j++) {
 			printf("Processing 6s for band %d  AOT %2d\r",i+1,j+1);
@@ -307,11 +330,12 @@ int create_6S_tables(sixs_tables_t *sixs_tables) {
 		}
 	}
 	printf ("\n");
-	unlink(sixs_cmd_filename);
-	unlink(sixs_out_filename);
+//	unlink(sixs_cmd_filename);
+//	unlink(sixs_out_filename);
 	return 0;
 }
 
+/* This function is not actually used in lndsr processing */
 int create_6S_tables_water(sixs_tables_t *sixs_tables) {
 	char cmd[128],sixs_cmd_filename[128],sixs_out_filename[128],line_in[256];
 	int i,j,k;
@@ -347,6 +371,7 @@ int create_6S_tables_water(sixs_tables_t *sixs_tables) {
 	sixs_tables->aot[12]=1.60;
 	sixs_tables->aot[13]=1.80;
 	sixs_tables->aot[14]=2.00;
+	printf ("DEBUG: GAIL in compute_6S_tables_water -- shouldn't be here!\n");
 	
 	tmpnam(sixs_cmd_filename);
 	tmpnam(sixs_out_filename);
@@ -616,17 +641,17 @@ int create_6S_tables_water(sixs_tables_t *sixs_tables) {
 	return 0;
 }
 
+/* This function is not actually used in lndsr processing */
 int compute_atmos_params_6S(sixs_atmos_params_t *sixs_atmos_params) {
 	char cmd[128],sixs_cmd_filename[128],sixs_out_filename[128],line_in[256];
 	int k;
 	float tgoz,tgco2,tgo2,tgno2,tgch4,tgco;
 	int tm_band[SIXS_NB_BANDS]={25,26,27,28,29,30};
 	FILE *fd;
-	
+	printf ("DEBUG: GAIL in compute_atmos_params_6S -- shouldn't be here!\n");
 	
 	tmpnam(sixs_cmd_filename);
 	tmpnam(sixs_out_filename);
-	
 
 	if ((fd=fopen(sixs_cmd_filename,"w"))==NULL) {
 		fprintf(stderr,"ERROR: creating temporary file %s\n",sixs_cmd_filename);

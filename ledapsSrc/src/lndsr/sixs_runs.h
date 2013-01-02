@@ -1,5 +1,7 @@
 #ifndef SIXS_H
 #define SIXS_H
+#include "input.h"
+#include "names.h"
 
 #define SIXS_NB_AOT 15
 #define SIXS_NB_BANDS 6
@@ -52,7 +54,7 @@ typedef struct {
 	float rho_a;  /* aerosol reflectance */
 } sixs_atmos_params_t;
 
-int create_6S_tables(sixs_tables_t *sixs_tables);
+int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta);
 int compute_atmos_params_6S(sixs_atmos_params_t *sixs_atmos_params);
 
 #endif
