@@ -65,6 +65,7 @@
 typedef struct {
   char *param_file_name;   /* Parameter file name             */
   char *input_file_name;   /* Input image file name           */
+  char *metadata_file_name;/* L1G/L1T metadata file name      */
   char *lut_file_name;     /* Lookup table file name          */
   char *temp_file_name;    /* Thermal Band 6 file name        */
   bool thermal_band;       /* True if thermal band file available */

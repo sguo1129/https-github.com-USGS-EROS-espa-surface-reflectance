@@ -9,9 +9,14 @@
  Revision 1.0 2001/05/08
  Robert Wolfe
  Original Version.
+
  Revision 1.1 2012/09/27
  Gail Schmidt - Updated metadata to output information for each of the
    individual QA bands vs. a single packed bit QA band.
+
+ Revision 1.2 2012/12/27
+ Gail Schmidt - Modified to write the original LPGS L1G/L1T metadata filename
+ for future reference by the user
 
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
@@ -76,6 +81,7 @@
 #define OUTPUT_PROD_DATE ("ProductionDate")
 #define OUTPUT_PGEVERSION ("PGEVersion")
 #define OUTPUT_PROCESSVERSION ("ProcessVersion")
+#define OUTPUT_META_NAME ("LPGSMetadataFile")
 
 #define OUTPUT_WEST_BOUND  ("WestBoundingCoordinate")
 #define OUTPUT_EAST_BOUND  ("EastBoundingCoordinate")
@@ -569,7 +575,7 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
 !C******************************************************************************
 
 !Description: 'PutMetadata' writes metadata to the output file.
- 
+
 !Input Parameters:
  this           'output' data structure; the following fields are input:
                    open
@@ -771,6 +777,12 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
   attr.name = OUTPUT_PROCESSVERSION;
   if (!PutAttrString(this->sds_file_id, &attr, process_ver))
     RETURN_ERROR("writing attribute (Process Version)", "PutMetadata", false);
+
+  attr.type = DFNT_CHAR8;
+  attr.nval = strlen(param->metadata_file_name);
+  attr.name = OUTPUT_META_NAME;
+  if (!PutAttrString(this->sds_file_id, &attr, param->metadata_file_name))
+    RETURN_ERROR("writing attribute (meta name)", "PutMetadata", false);
 
   attr.type = DFNT_FLOAT64;
   attr.nval = 1;
