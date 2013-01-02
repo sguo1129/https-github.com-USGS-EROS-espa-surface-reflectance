@@ -25,6 +25,12 @@ lndapp:
 - Added band6_fill_QA as an additional quality band to be output in the
   surface reflectance product.
 
+bin:
+- Modified do_ledaps.py to allow the user to call this script from any
+  directory vs. the directory where the MTL file resides.  The script will
+  parse the directory from the MTL file and then change to that directory to
+  process the data.
+
 ledapsAncSrc:
 - Modified the update scripts to limit the number of retries to 5 in the case
   the ftp site is not available or due to a connection problem.
