@@ -1,5 +1,10 @@
 #!/usr/bin/env python
 
+############################################################################
+# Updated on 12/27/2012 by Gail Schmidt, USGS EROS
+#   Modified the wget retrievals to limit the number of retries to 5 in the
+#   case of a download or connection problem.
+############################################################################
 import sys
 import os
 import fnmatch
@@ -371,11 +376,14 @@ def downloadToms (year, destination):
         print "WARNING: EP/TOMS URL could not be resolved for year %d.  processing will continue ..." % year
         return ERROR
 
-    # download the data for the current year from the list of URLs
+    # download the data for the current year from the list of URLs.
+    # if there is a problem with the connection, then retry up to 5 times.
+    # Note: if you don't like the wget output, --quiet can be used to minimize
+    # the output info.
     print "Downloading data for year %d to: %s" % (year, destination)
     for ds in dsList:
         print "Retrieving %s to %s" % (ds.url, destination)
-        cmd = 'wget %s' % ds.url
+        cmd = 'wget --tries=5 %s' % ds.url
         subprocess.call(cmd, shell=True, cwd=destination)
 
     return SUCCESS
