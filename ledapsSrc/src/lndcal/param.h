@@ -72,8 +72,7 @@ typedef struct {
   char *gnew_file_name;          /* G-new file name                    */
   char *output_file_name;        /* Output image HDF file name         */
   char *output_therm_file_name;  /* Output thermal image HDF file name */
-  char *PGEVersion;              /* PGE Version                        */
-  char *ProcessVersion;          /* Process Version                    */
+  char *LEDAPSVersion;           /* LEDAPS Version                     */
   float dn_map[4];               /* map from(0,1) -> (2,3)             */
   bool dnout;                    /* dn output flag                     */
   bool work_order_flag;          /* work order input flag              */

@@ -1,5 +1,6 @@
 #include "cal.h"
 #include "const.h"
+#include "error.h"
 #define nint(A)(A<0?(int)(A-0.5):(int)(A+0.5))
 /*
 #define PRINT_X (1543)
@@ -10,9 +11,11 @@
 /* Functions */
 /* !Revision:
  *
- * revision 1.0.0 9/13/2012  Gail Schmidt, USGS
+ * revision 1.1.0 9/13/2012  Gail Schmidt, USGS
  * - modified cal6 application to flag the saturated thermal pixels to be
  *   consistent with the processing of the reflective bands
+ * revision 1.1.2 2/20/2013  Gail Schmidt, USGS
+ * - added computeBounds routine for computing the bounding coordinates
  */
 
 bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in, 
@@ -268,3 +271,79 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int *line_out,
    out_value= (int)line_in[ ind ];
  return (int)out_value;
 }
+
+/*
+!C******************************************************************************
+
+!Description: 'computeBounds' computes the boundary corners of the output image
+
+!Prototype : 
+  bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
+ 
+!Input Parameters:
+ space            space (transformation) definition structure that defines
+                  the transformation between geo to map coordinates
+                  (Space_t*)
+ nps              image size number of samples (int)
+ nls              image size number of lines   (int)
+
+!Output Parameters:
+ bounds           output boundry structure (Geo_bounds_t)
+
+!Team Unique Header:
+ ! Design Notes:
+   1. An error status is returned when:
+       a. the transformaion can not proceed
+   2. Error messages are handled with the 'RETURN_ERROR' macro.
+
+!END****************************************************************************
+*/
+bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
+{
+  const float pixcorn_x[4]={-0.5,-0.5, 0.5, 0.5}; /* 4 corners of a pixel */
+  const float pixcorn_y[4]={-0.5, 0.5,-0.5, 0.5}; /* 4 corners of a pixel */
+  Img_coord_float_t img;
+  Geo_coord_t geo;
+  int i,ix,iy,ic;
+  bounds->min_lat=  99999.9999;
+  bounds->min_lon=  99999.9999;
+  bounds->max_lat= -99999.9999;
+  bounds->max_lon= -99999.9999;
+
+  for ( i=0; i<(nps*2+nls*2); i++ )
+    {
+    if ( i<nps ) /* top edge */
+      {
+      ix= i;
+      iy= 0;
+      }
+    else if ( i<(nps*2) )
+      {
+      ix= i-nps;
+      iy= (nls-1);
+      }
+    else if ( i <(nps*2+nls) )
+      {
+      ix= 0;
+      iy= i-2*nps;
+      }
+    else
+      {
+      ix= nps-1;
+      iy= i-(2*nps+nls);
+      }
+    for ( ic=0; ic<4; ic++ )
+      {
+      img.l = (double)iy + pixcorn_y[ic];
+      img.s = (double)ix + pixcorn_x[ic];
+      img.is_fill = false;
+      if (!FromSpace(space, &img, &geo))
+        RETURN_ERROR("mapping from sapce", "computeBounds", false);
+      bounds->max_lat= max(bounds->max_lat,geo.lat);
+      bounds->min_lat= min(bounds->min_lat,geo.lat);
+      bounds->max_lon= max(bounds->max_lon,geo.lon);
+      bounds->min_lon= min(bounds->min_lon,geo.lon);
+      }
+    }
+  return true;
+ }
