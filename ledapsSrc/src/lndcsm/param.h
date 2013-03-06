@@ -68,8 +68,7 @@ typedef struct {
   char *input_therm_file_name;   /* Input thermal image file name */
   char *lut_file_name;           /* Lookup table file name */
   char *output_file_name;        /* Output image HDF file name */
-  char *PGEVersion;              /* PGE Version                        */
-  char *ProcessVersion;          /* Process Version                    */
+  char *LEDAPSVersion;           /* LEDAPS Version                     */
   int apply_kernel;              /* apply kernel N times               */
   int ksize;                     /* kernel size                        */
   int sieve_thresh;              /* sieve threshold size               */

@@ -71,8 +71,7 @@
 #define OUTPUT_SHORT_NAME ("ShortName")
 #define OUTPUT_LOCAL_GRAN_ID ("LocalGranuleID")
 #define OUTPUT_PROD_DATE ("ProductionDate")
-#define OUTPUT_PGEVERSION ("PGEVersion")
-#define OUTPUT_PROCESSVERSION ("ProcessVersion")
+#define OUTPUT_LEDAPSVERSION ("LEDAPSVersion")
 #define DIM_CSM_LINE ("grid_line")
 #define DIM_CSM_SAMP ("grid_sample")
 
@@ -605,7 +604,7 @@ bool PutMetadata(Output_t *this, Input_meta_t *meta, Lut_t *lut,  Param_t *param
   char date[MAX_DATE_LEN + 1];
   double dval[2];
   char short_name[10], local_granule_id[100], production_date[MAX_DATE_LEN + 1];
-  char pge_ver[10], process_ver[10];
+  char process_ver[10];
   int ib;
   const int nband=1;
 
@@ -741,19 +740,12 @@ bool PutMetadata(Output_t *this, Input_meta_t *meta, Lut_t *lut,  Param_t *param
   if (!PutAttrString(this->sds_file_id, &attr, production_date))
     RETURN_ERROR("writing attribute (production date)", "PutMetadata", false);
 
-  if (sprintf(pge_ver, "%s", param->PGEVersion) < 0) RETURN_ERROR("creating PGEVersion","PutMetadata", false);
-  attr.type = DFNT_CHAR8;
-  attr.nval = strlen(pge_ver);
-  attr.name = OUTPUT_PGEVERSION;
-  if (!PutAttrString(this->sds_file_id, &attr, pge_ver))
-    RETURN_ERROR("writing attribute (PGE Version)", "PutMetadata", false);
-
-  if (sprintf(process_ver, "%s", param->ProcessVersion) < 0) RETURN_ERROR("creating ProcessVersion","PutMetadata", false);
+  if (sprintf(process_ver, "%s", param->LEDAPSVersion) < 0) RETURN_ERROR("creating LEDAPSVersion","PutMetadata", false);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(process_ver);
-  attr.name = OUTPUT_PROCESSVERSION;
+  attr.name = OUTPUT_LEDAPSVERSION;
   if (!PutAttrString(this->sds_file_id, &attr, process_ver))
-    RETURN_ERROR("writing attribute (Process Version)", "PutMetadata", false);
+    RETURN_ERROR("writing attribute (LEDAPS Version)", "PutMetadata", false);
 
   /* now write out the per sds attributes */
 
