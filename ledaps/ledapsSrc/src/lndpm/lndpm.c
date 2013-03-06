@@ -14,6 +14,10 @@
  *
  * !Revision:
  *
+ *  revision 1.0.5  01/22/2013 Gail Schmidt, USGS EROS
+ *  - modified applications to use only one version and that is the
+ *    LEDAPSVersion tag which will get updated with each release of LEDAPS
+ *
  *  revision 1.0.4  12/27/2012 Gail Schmidt, USGS EROS
  *  - modified the application to write the name of the LPGS metadata
  *    file to the lndsr parameter file so it can be written to the global
@@ -116,27 +120,10 @@
 #include "tiffio.h"
 
 /*
- * the following VERSION definitions are expected to be
- * defined at compile time with the -D option
+ * LEDAPS VERSION definitions
  */
-#ifndef PGE200_VERSION
-#define PGE200_VERSION "1.0.0"
-#endif
-
-#ifndef PGE201_VERSION
-#define PGE201_VERSION "1.0.0"
-#endif
-
-#ifndef MOD_CAL_VERSION
-#define MOD_CAL_VERSION "1.0.0"
-#endif
-
-#ifndef MOD_CSM_VERSION
-#define MOD_CSM_VERSION "1.0.0"
-#endif
-
-#ifndef MOD_SR_VERSION
-#define MOD_SR_VERSION "1.0.0"
+#ifndef LEDAPS_VERSION
+#define LEDAPS_VERSION "1.1.3"
 #endif
 
 /*
@@ -340,8 +327,7 @@ int main(int argc, char *argv[])
     }
     fprintf(out, "GOLD_2003 = %s\n", cal_file);
   }
-  fprintf(out, "PGEVersion = %s\n", PGE200_VERSION);
-  fprintf(out, "ProcessVersion = %s\n",MOD_CAL_VERSION);
+  fprintf(out, "LEDAPSVersion = %s\n", LEDAPS_VERSION);
   fprintf(out, "DNOUT = \"FALSE\"\n");
   fprintf(out, "RE_CAL = \"NO\"\n");
   fprintf(out, "END\n");
@@ -416,8 +402,7 @@ int main(int argc, char *argv[])
   fprintf(out, "TEMP_FILE = lndth.%s.hdf\n", scene_name);
   fprintf(out, "SR_FILE = lndsr.%s.hdf\n", scene_name);
   fprintf(out, "META_FILE = %s\n", input);
-  fprintf(out, "PGEVersion = %s\n", PGE201_VERSION);
-  fprintf(out, "ProcessVersion = %s\n", MOD_SR_VERSION);
+  fprintf(out, "LEDAPSVersion = %s\n", LEDAPS_VERSION);
   fprintf(out, "END\n");
   fclose(out);
   fclose(LOG_FP);
