@@ -73,7 +73,7 @@ Output_t *OpenOutput(char *file_name, int nband, int *iband,
 bool PutOutputLine(Output_t *this, int iband, int iline, int *line);
 bool CloseOutput(Output_t *this);
 bool FreeOutput(Output_t *this);
-bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,Param_t *param);
+bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,Param_t *param, Geo_bounds_t *bounds);
 bool PutMetadata6(Output_t *this, Input_meta_t *meta, Lut_t *lut, Param_t *param);
 
 #endif

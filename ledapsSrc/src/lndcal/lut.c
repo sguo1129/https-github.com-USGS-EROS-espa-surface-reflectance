@@ -95,7 +95,10 @@ const float mss_lmax_l5[4] = { 26.8, 17.9, 14.8, 12.3 };
 
 const float delta= 0.00001;
 
-/* Relative sun-earth distance variation (Ref. L7 handbook) */
+/* Relative sun-earth distance variation (Ref. L7 handbook)
+   New values from Chander, et. al. 2012
+http://landsathandbook.gsfc.nasa.gov/pdfs/Landsat_Calibration_Summary_RSE.pdf
+*/
 
 #define NDSUN (25)
 typedef struct {
@@ -103,6 +106,15 @@ typedef struct {
   float dsun;      /* Relative sun-earth distance */
 } Dsun_table_t;
 
+/* New -
+const Dsun_table_t dsun_table[NDSUN] = {
+ {  1, 0.98331}, { 15, 0.98365}, { 32, 0.98536}, { 46, 0.98774}, { 60, 0.99084},
+ { 74, 0.99446}, { 91, 0.99926}, {106, 1.00353}, {121, 1.00756}, {135, 1.01087},
+ {152, 1.01403}, {166, 1.01577}, {182, 1.01667}, {196, 1.01646}, {213, 1.01497},
+ {227, 1.01281}, {242, 1.00969}, {258, 1.00566}, {274, 1.00119}, {288, 0.99718},
+ {305, 0.99253}, {319, 0.98916}, {335, 0.98608}, {349, 0.98426}, {366, 0.98331}
+};
+*/
 const Dsun_table_t dsun_table[NDSUN] = {
   {  1, 0.9832}, { 15, 0.9836}, { 32, 0.9853}, { 46, 0.9878}, { 60, 0.9909},
   { 74, 0.9945}, { 91, 0.9993}, {106, 1.0033}, {121, 1.0076}, {135, 1.0109}, 
@@ -118,28 +130,38 @@ const Dsun_table_t dsun_table[NDSUN] = {
      ETM+ values are from the Landsat 7 User Handbook (see above) 
      TM and MSS values from EOSAT Landsat Technical Notes, August 1986 
      
-     New version of L4 and L5 given Solar Irradinaces in  (mW/m^2-nm) to Jeff Masek from Brian Markham on 11/3/06 : 
+     Updated version of L4 and L5 given Solar Irradinaces in  (mW/m^2-nm) to Jeff Masek from Brian Markham on 11/3/06 : 
 >L7: 1969      1840      1551      1044    225.7      82.07     1368
 >L5: 1957      1826      1554      1036    215.0      80.67  -
 >L4: 1957      1825      1557      1033    214.9      80.72  -
+*/
+
+/* New ESUN Values from Chander, 2012 --
+http://landsathandbook.gsfc.nasa.gov/pdfs/Landsat_Calibration_Summary_RSE.pdf
+*/
+/* New
+const float esun_etm[8] = {
+  1997.000, 1812.000, 1533.000, 1039.000, 230.800, -1.0, 84.90, 1362.000
+};
 */
 
 const float esun_etm[8] = {
   1969.000, 1840.000, 1551.000, 1044.000, 225.700, -1.0, 82.07, 1368.000
 };
 
-/*
+/* New
 const float esun_tm_4[7] = {
-  1958.0, 1828.0, 1559.0, 1045.0, 219.1, -1.0, 74.57
+  1983.0, 1795.0, 1539.0, 1028.0, 219.8, -1.0, 83.49
 };
 */
+
 const float esun_tm_4[7] = {
   1957.0, 1825.0, 1557.0, 1033.0, 214.9, -1.0, 80.72
 };
 
-/*
+/* New
 const float esun_tm_5[7] = {
-  1957.0, 1829.0, 1557.0, 1047.0, 219.3, -1.0, 74.57
+  1983.0, 1796.0, 1536.0, 1031.0, 220.0, -1.0, 83.44
 };
 */
 
@@ -147,21 +169,51 @@ const float esun_tm_5[7] = {
   1957.0, 1826.0, 1554.0, 1036.0, 215.0, -1.0, 80.67
 };
 
+/* New
+const float esun_mss_1[4] = {
+  1823.0, 1559.0, 1276.0, 880.1
+};
+*/
+
 const float esun_mss_1[4] = {
   1852.0, 1584.0, 1276.0, 904.0
 };
+
+/* New
+const float esun_mss_2[4] = {
+  1829.0, 1539.0, 1268.0, 886.6
+};
+*/
 
 const float esun_mss_2[4] = {
   1856.0, 1559.0, 1269.0, 906.0
 };
 
+/* New
+const float esun_mss_3[4] = {
+  1839.0, 1555.0, 1291.0, 887.9
+};
+*/
+
 const float esun_mss_3[4] = {
   1860.0, 1571.0, 1289.0, 910.0
 };
 
+/* New
+const float esun_mss_4[4] = {
+  1827.0, 1569.0, 1260.0, 866.4
+};
+*/
+
 const float esun_mss_4[4] = {
   1851.0, 1593.0, 1260.0, 878.0
 };
+
+/* New
+const float esun_mss_5[4] = {
+  1824.0, 1570.0, 1249.0, 853.4
+};
+*/
 
 const float esun_mss_5[4] = {
   1849.0, 1595.0, 1253.0, 870.0

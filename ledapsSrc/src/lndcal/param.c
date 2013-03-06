@@ -27,6 +27,11 @@
  Robert Wolfe
  Added separate output SDS name.
 
+ Revision 1.5 01/22/2013 Gail Schmidt, USGS EROS
+ Modified applications to use only one version and that is the
+ LEDAPSVersion tag which will get updated with each release of LEDAPS
+
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -90,8 +95,7 @@ typedef enum {
   PARAM_GNEW_FILE,
   PARAM_ETM_GB,
   PARAM_RE_CAL,
-  PARAM_PGEVERSION,
-  PARAM_PROCESSVERSION,
+  PARAM_LEDAPSVERSION,
   PARAM_DNOUT,
   PARAM_DN_MAP,
   PARAM_END,
@@ -110,8 +114,7 @@ Key_string_t Param_string[PARAM_MAX] = {
   {(int)PARAM_GNEW_FILE,   "GNEW_FILE"},
   {(int)PARAM_ETM_GB,      "ETM_GB"},
   {(int)PARAM_RE_CAL,      "RE_CAL"},
-  {(int)PARAM_PGEVERSION,  "PGEVersion"},
-  {(int)PARAM_PROCESSVERSION,  "ProcessVersion"},
+  {(int)PARAM_LEDAPSVERSION,  "LEDAPSVersion"},
   {(int)PARAM_DNOUT,       "DNOUT"},
   {(int)PARAM_DN_MAP,      "DN_MAP"},
   {(int)PARAM_END,         "END"}
@@ -209,8 +212,7 @@ Param_t *GetParam(int argc, const char **argv)
   this->output_file_name        = (char *)NULL;
   this->work_order_file_name    = (char *)NULL;
   this->output_therm_file_name  = (char *)NULL;
-  this->PGEVersion              = (char *)NULL;
-  this->ProcessVersion          = (char *)NULL;
+  this->LEDAPSVersion           = (char *)NULL;
   this->dnout                   = false;
   this->work_order_flag         = false;
   this->ETM_GB                  = false;
@@ -465,42 +467,22 @@ Param_t *GetParam(int argc, const char **argv)
         }
         break;
 
-      case PARAM_PGEVERSION:
+      case PARAM_LEDAPSVERSION:
         if (key.nval <= 0) {
-          error_string = "no PGEVersion number";
+          error_string = "no LEDAPSVersion number";
           break;
         } else if (key.nval > 1) {
-          error_string = "too many PGEVersion numbers";
+          error_string = "too many LEDAPSVersion numbers";
           break;
         }
         if (key.len_value[0] < 1) {
-          error_string = "no PGEVersion number";
+          error_string = "no LEDAPSVersion number";
           break;
         }
         key.value[0][key.len_value[0]] = '\0';
-        this->PGEVersion = DupString(key.value[0]);
-        if (this->PGEVersion == (char *)NULL) {
-          error_string = "duplicating PGEVersion number";
-          break;
-        }
-        break;
-
-      case PARAM_PROCESSVERSION:
-        if (key.nval <= 0) {
-          error_string = "no ProcessVersion number";
-          break;
-        } else if (key.nval > 1) {
-          error_string = "too many ProcessVersion numbers";
-          break;
-        }
-        if (key.len_value[0] < 1) {
-          error_string = "no ProcessVersion number";
-          break;
-        }
-        key.value[0][key.len_value[0]] = '\0';
-        this->ProcessVersion = DupString(key.value[0]);
-        if (this->ProcessVersion == (char *)NULL) {
-          error_string = "duplicating ProcessVersion number";
+        this->LEDAPSVersion = DupString(key.value[0]);
+        if (this->LEDAPSVersion == (char *)NULL) {
+          error_string = "duplicating LEDAPSVersion number";
           break;
         }
         break;
@@ -590,10 +572,8 @@ Param_t *GetParam(int argc, const char **argv)
       error_string = "no lookup table file name given";
     if (this->output_file_name == (char *)NULL) 
       error_string = "no output file name given";
-    if (this->PGEVersion == (char *)NULL)
-      error_string = "no PGE Version given";
-    if (this->ProcessVersion == (char *)NULL)
-      error_string = "no Process Version given";
+    if (this->LEDAPSVersion == (char *)NULL)
+      error_string = "no LEDAPS Version given";
   }
 
   /* Handle errors */
@@ -609,10 +589,8 @@ Param_t *GetParam(int argc, const char **argv)
       free(this->output_file_name);
     if (this->output_therm_file_name != (char *)NULL) 
       free(this->output_therm_file_name);
-    if (this->PGEVersion != (char *)NULL)
-      free(this->PGEVersion);
-    if (this->ProcessVersion != (char *)NULL)
-      free(this->ProcessVersion);
+    if (this->LEDAPSVersion != (char *)NULL)
+      free(this->LEDAPSVersion);
     if (this != (Param_t *)NULL) free(this);
     RETURN_ERROR(error_string, "GetParam", (Param_t *)NULL);
   }

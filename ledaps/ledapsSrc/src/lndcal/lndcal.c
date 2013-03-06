@@ -32,6 +32,9 @@ typedef enum {FAILURE = 0, SUCCESS = 1} Status_t;
  * revision 1.0.0 9/12/2012  Gail Schmidt, USGS
  * - modified the application to write the thermal band QA bits to the
  *   output thermal product
+ *
+ * revision 1.0.1 2/20/2013  Gail Schmidt, USGS
+ * - modified the application to calculate and write the bounding coords
  */
 
 int main (int argc, const char **argv) {
@@ -57,6 +60,7 @@ int main (int argc, const char **argv) {
   /*  Space_t *space; */
   Space_def_t space_def;
   Space_t *space;
+  Geo_bounds_t bounds;
   char *grid_name = "Grid";
   int isds;
   int nsds = NSDS;
@@ -162,6 +166,10 @@ else
   space = SetupSpace(&space_def);
   if (space == (Space_t *)NULL) ERROR("setting up space", "main");
     
+  /* compute bounds */
+  if (!computeBounds(&bounds, space, input->size.s, input->size.l))
+    ERROR("computing bounds", "main");
+
    nps6=  input->size_th.s;
    nls6=  input->size_th.l;
    nps =  input->size.s;
@@ -364,7 +372,7 @@ if ( odometer_flag )printf("\n");
 
   /* Write the output metadata */
 
-    if ( !PutMetadata(output, input->nband, &input->meta, lut,param) )
+    if ( !PutMetadata(output, input->nband, &input->meta, lut, param, &bounds))
     ERROR("writing the output metadata", "main");
   /* Close input files */
 

@@ -1,3 +1,11 @@
+3/6/2013    Gail Schmidt, USGS EROS
+1. Modified the version tag to utilize a single Version (LEDAPSVersion) versus
+   the previous two different version tags with the same value.
+2. Modified the application to calculate and write the bounding coordinates
+   as output to the metadata file, similar to lndsr.
+3. Modified the code to support the new ESUN and sun-earth distance constants
+   from Chander, et. al.  This is currently left commented-out.
+
 11/30/2012  Gail Schmidt, USGS EROS
 1. Corrected spelling of SATTELITE to SATELLITE.
 

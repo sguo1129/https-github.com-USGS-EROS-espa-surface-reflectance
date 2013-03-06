@@ -11,15 +11,24 @@
  Original Version.
 
  Revision 1.1 2012/10/18
- Gail Schmidt
+ Gail Schmidt, USGS EROS
  Modified PutMetadata* to mark the bits that are actually set and not set
    (i.e. for lndcal, bit 6 actually isn't set and for lndth, bit 6 and fill
     are the only pixels that are set).
 
  Revision 1.1 2012/08/01
- Gail Schmidt
+ Gail Schmidt, USGS EROS
  Modified OpenOutput to make sure the Output_t->buf array doesn't go past
    NBAND_REFL_MAX.  Also, initialized Output_t->qabuf at the same time.
+
+ Revision 1.2 01/22/2013
+ Gail Schmidt, USGS EROS
+ Modified applications to use only one version and that is the
+   LEDAPSVersion tag which will get updated with each release of LEDAPS
+
+ Revision 1.3 02/20/2013
+ Gail Schmidt, USGS EROS
+ Modified the put metadata routine to write out the bounding coordinates.
 
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
@@ -64,6 +73,7 @@
 #include "const.h"
 #include "names.h"
 #include "error.h"
+#include "cal.h"
 
 #define SDS_PREFIX ("band")
 #define SDS_LNDCAL_QA ("lndcal_QA") 
@@ -84,8 +94,13 @@
 #define OUTPUT_SHORT_NAME ("ShortName")
 #define OUTPUT_LOCAL_GRAN_ID ("LocalGranuleID")
 #define OUTPUT_PROD_DATE ("ProductionDate")
-#define OUTPUT_PGEVERSION ("PGEVersion")
-#define OUTPUT_PROCESSVERSION ("ProcessVersion")
+#define OUTPUT_LEDAPSVERSION ("LEDAPSVersion")
+
+#define OUTPUT_WEST_BOUND  ("WestBoundingCoordinate")
+#define OUTPUT_EAST_BOUND  ("EastBoundingCoordinate")
+#define OUTPUT_NORTH_BOUND ("NorthBoundingCoordinate")
+#define OUTPUT_SOUTH_BOUND ("SouthBoundingCoordinate")
+
 #define OUTPUT_EST_GAIN_BIAS  ("Estimated_Gain_Bias")
 #define OUTPUT_MSS_GAINS ("MSS_gains")
 #define OUTPUT_MSS_BIAS ("MSS_bias")
@@ -552,7 +567,7 @@ bool PutOutputLine(Output_t *this, int iband, int iline, int *line)
 }
 
 
-bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Param_t *param)
+bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Param_t *param, Geo_bounds_t *bounds)
 /* 
 !C******************************************************************************
 
@@ -592,7 +607,7 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
   int ib;
   char short_name[10], local_granule_id[100], production_date[MAX_DATE_LEN + 1];
   char long_name[60];
-  char pge_ver[10], process_ver[10];
+  char process_ver[10];
   int qa_band= QA_BAND_NUM;
   char*  message;
   char lndcal_QA[2000]=
@@ -746,19 +761,40 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
   if (!PutAttrString(this->sds_file_id, &attr, production_date))
     RETURN_ERROR("writing attribute (production date)", "PutMetadata", false);
 
-  if (sprintf(pge_ver, "%s", param->PGEVersion) < 0) RETURN_ERROR("creating PGEVersion","PutMetadata", false);
-  attr.type = DFNT_CHAR8;
-  attr.nval = strlen(pge_ver);
-  attr.name = OUTPUT_PGEVERSION;
-  if (!PutAttrString(this->sds_file_id, &attr, pge_ver))
-    RETURN_ERROR("writing attribute (PGE Version)", "PutMetadata", false);
-
-  if (sprintf(process_ver, "%s", param->ProcessVersion) < 0) RETURN_ERROR("creating ProcessVersion","PutMetadata", false);
+  if (sprintf(process_ver, "%s", param->LEDAPSVersion) < 0) RETURN_ERROR("creating LEDAPSVersion","PutMetadata", false);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(process_ver);
-  attr.name = OUTPUT_PROCESSVERSION;
+  attr.name = OUTPUT_LEDAPSVERSION;
   if (!PutAttrString(this->sds_file_id, &attr, process_ver))
-    RETURN_ERROR("writing attribute (Process Version)", "PutMetadata", false);
+    RETURN_ERROR("writing attribute (LEDAPS Version)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_WEST_BOUND;
+  dval[0] = bounds->min_lon * DEG;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (West Bounding Coords)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_EAST_BOUND;
+  dval[0] = bounds->max_lon * DEG;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (East Bounding Coords)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_NORTH_BOUND;
+  dval[0] = bounds->max_lat * DEG;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (North Bounding Coords)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_SOUTH_BOUND;
+  dval[0] = bounds->min_lat * DEG;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (South Bounding Coords)", "PutMetadata", false);
 
   if (meta->inst == INST_MSS) {
   
@@ -950,7 +986,7 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
   char date[MAX_DATE_LEN+1];
   double dval[NBAND_REFL_MAX];
   char short_name[10], local_granule_id[100], production_date[MAX_DATE_LEN+1];
-  char pge_ver[10], process_ver[10];
+  char process_ver[10];
   char long_name[60];
   char est_gainbias[20];
   int nband=1;
@@ -1111,19 +1147,12 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
   if (!PutAttrString(this->sds_file_id, &attr, production_date))
     RETURN_ERROR("writing attribute (production date)", "PutMetadata6", false);
 
-  if (sprintf(pge_ver, "%s", param->PGEVersion) < 0) RETURN_ERROR("creating PGE Version","PutMetadata6", false);
-  attr.type = DFNT_CHAR8;
-  attr.nval = strlen(pge_ver);
-  attr.name = OUTPUT_PGEVERSION;
-  if (!PutAttrString(this->sds_file_id, &attr, pge_ver))
-    RETURN_ERROR("writing attribute (PGE Version)", "PutMetadata6", false);
-
-  if (sprintf(process_ver, "%s", param->ProcessVersion) < 0) RETURN_ERROR("creating ProcessVersion","PutMetadata6", false);
+  if (sprintf(process_ver, "%s", param->LEDAPSVersion) < 0) RETURN_ERROR("creating LEDAPSVersion","PutMetadata6", false);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(process_ver);
-  attr.name = OUTPUT_PROCESSVERSION;
+  attr.name = OUTPUT_LEDAPSVERSION;
   if (!PutAttrString(this->sds_file_id, &attr, process_ver))
-    RETURN_ERROR("writing attribute (Process Version)", "PutMetadata6", false);
+    RETURN_ERROR("writing attribute (LEDAPS Version)", "PutMetadata6", false);
 
   sprintf(long_name, lut->long_name_prefix_th, meta->iband_th); 
   attr.type = DFNT_CHAR8;
