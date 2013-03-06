@@ -17,7 +17,9 @@
  *  revised on 7/2/2010 - update original lndsr file to prepare input 
  *          for stand-alone Ledaps package that include SR based mask 
  *  revised on 12/26/2012 - update to write a fill QA SDS for the thermal
- *          band, called band6_fill_QA
+ *          band, called band6_fill_QA  (Gail Schmidt, USGS EROS)
+ *  revised on 01/22/2013 - update to read the _SaturateValue for band6
+ *          and write as an attribute in lndsr  (Gail Schmidt, USGS EROS)
  */
 
 #include <stdio.h>
@@ -51,6 +53,7 @@ typedef struct {
   char    units[Max_StrLen];
   int16   range[2];
   int16   fillValue;
+  int16   satValue;
   float64 scale;
 
 } GRID_SR;    
@@ -264,13 +267,22 @@ int getMetaInfo(GRID_SR *sr) {
   }
   sr->band_id = SDselect(sr->SD_ID, index);
 
-  /* retrieve SR Fill Value */
+  /* retrieve SR Fill Value and other attributes */
   if ((att_id = SDfindattr(sr->band_id, "_FillValue")) == FAILURE) {
     printf ("Can't retrieve fill value from SR SDS attr.\n");
     return FAILURE;
   }
   if (SDreadattr(sr->band_id, att_id, &sr->fillValue) == FAILURE) {
     printf ("Can't retrieve fill value from SR SDS attr.\n");
+    return FAILURE;
+  }
+
+  if ((att_id = SDfindattr(sr->band_id, "_SaturateValue")) == FAILURE) {
+    printf ("Can't retrieve saturation value from SR SDS attr.\n");
+    return FAILURE;
+  }
+  if (SDreadattr(sr->band_id, att_id, &sr->satValue) == FAILURE) {
+    printf ("Can't retrieve saturation value from SR SDS attr.\n");
     return FAILURE;
   }
 
@@ -316,6 +328,7 @@ int getMetaInfo(GRID_SR *sr) {
   printf("nrows:%d, ncols:%d\t",sr->nrows, sr->ncols);
   printf("ulx:%8.1f, uly:%8.1f\t", sr->ulx, sr->uly);
   printf("fillV:%d\n", sr->fillValue); 
+  printf("satV:%d\n", sr->satValue); 
 #endif
 
   closeUp(sr, true);
@@ -430,6 +443,13 @@ int openForWrite(GRID_SR *sr, GRID_SR *sr_qa, GRID_SR *th)
   ret = SDsetattr(sr->band_id, "_FillValue", DFNT_INT16, 1, &(th->fillValue));
   if (ret == FAILURE) {
     printf ("Can't write SR _FillValue for SDS %s", th->sdsName);
+    return FAILURE;
+  } 
+  
+  ret = SDsetattr(sr->band_id, "_SaturateValue", DFNT_INT16, 1,
+        &(th->satValue));
+  if (ret == FAILURE) {
+    printf ("Can't write SR _SaturateValue for SDS %s", th->sdsName);
     return FAILURE;
   } 
   
