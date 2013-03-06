@@ -18,6 +18,9 @@
  Gail Schmidt - Modified to write the original LPGS L1G/L1T metadata filename
  for future reference by the user
 
+ Revision 1.3 2013/01/22
+ Gail Schmidt - Modified to utilize only one Version value - LEDAPSVersion
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -79,8 +82,7 @@
 #define OUTPUT_SHORT_NAME ("ShortName")
 #define OUTPUT_LOCAL_GRAN_ID ("LocalGranuleID")
 #define OUTPUT_PROD_DATE ("ProductionDate")
-#define OUTPUT_PGEVERSION ("PGEVersion")
-#define OUTPUT_PROCESSVERSION ("ProcessVersion")
+#define OUTPUT_LEDAPSVERSION ("LEDAPSVersion")
 #define OUTPUT_META_NAME ("LPGSMetadataFile")
 
 #define OUTPUT_WEST_BOUND  ("WestBoundingCoordinate")
@@ -611,7 +613,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
      , short_name[250]
      , local_granule_id[250]
      , production_date[MAX_DATE_LEN + 1]
-     , pge_ver[100]
      , process_ver[100]
      , long_name[250]
     ;
@@ -762,21 +763,13 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
   if (!PutAttrString(this->sds_file_id, &attr, production_date))
     RETURN_ERROR("writing attribute (production date)", "PutMetadata", false);
 
-  if (sprintf(pge_ver, "%s", param->PGEVersion) < 0)
-    RETURN_ERROR("creating PGEVersion","PutMetadata", false);
-  attr.type = DFNT_CHAR8;
-  attr.nval = strlen(pge_ver);
-  attr.name = OUTPUT_PGEVERSION;
-  if (!PutAttrString(this->sds_file_id, &attr, pge_ver))
-    RETURN_ERROR("writing attribute (PGE Version)", "PutMetadata", false);
-
-  if (sprintf(process_ver, "%s", param->ProcessVersion) < 0)
-    RETURN_ERROR("creating ProcessVersion","PutMetadata", false);
+  if (sprintf(process_ver, "%s", param->LEDAPSVersion) < 0)
+    RETURN_ERROR("creating LEDAPSVersion","PutMetadata", false);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(process_ver);
-  attr.name = OUTPUT_PROCESSVERSION;
+  attr.name = OUTPUT_LEDAPSVERSION;
   if (!PutAttrString(this->sds_file_id, &attr, process_ver))
-    RETURN_ERROR("writing attribute (Process Version)", "PutMetadata", false);
+    RETURN_ERROR("writing attribute (LEDAPS Version)", "PutMetadata", false);
 
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(param->metadata_file_name);

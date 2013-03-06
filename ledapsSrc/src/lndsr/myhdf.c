@@ -407,6 +407,12 @@ bool PutAttrDouble(int32 sds_id, Myhdf_attr_t *attr, double *val)
                   'true' = okay
 		      'false' = error writing the attribute information
 
+!History
+ Revision 1.1 2013/1/8
+ Gail Schmidt - Modified to not add 0.5 to the floating point attribute values
+ before writing to the HDF file.  That is only appropriate when converting
+ float to int and not float to float.
+
 !Team Unique Header:
 
  ! Design Notes:
@@ -509,8 +515,7 @@ bool PutAttrDouble(int32 sds_id, Myhdf_attr_t *attr, double *val)
       for (i = 0; i < attr->nval; i++) {
         if (     val[i] >= ((double)MYHDF_FLOAT32H)) val_float32[i] = MYHDF_FLOAT32H;
         else if (val[i] <= ((double)MYHDF_FLOAT32L)) val_float32[i] = MYHDF_FLOAT32L;
-        else if (val[i] >= 0.0) val_float32[i] =   (float32)( val[i] + 0.5);
-        else                    val_float32[i] = -((float32)(-val[i] + 0.5));
+        else val_float32[i] = (float32) val[i];
       }
       buf = (void *)val_float32;
       break;

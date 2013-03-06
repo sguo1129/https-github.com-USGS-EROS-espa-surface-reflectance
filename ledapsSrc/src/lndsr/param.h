@@ -72,9 +72,8 @@ typedef struct {
   char *output_file_name;  /* Output image HDF file name      */
   char *ncep_file_name[4]; /* Bracketing NCEP file names      */
   char *prwv_file_name;    /* Bracketing NCEP hdf file names  */
-  char *ozon_file_name;    /* Ozone hdf file names  */
-  char *PGEVersion;        /* PGE Version                     */
-  char *ProcessVersion;    /* Process Version                 */
+  char *ozon_file_name;    /* Ozone hdf file names            */
+  char *LEDAPSVersion;     /* LEDAPS Version                  */
   int  num_ncep_files;     /* number of NCEP files            */
   int  num_prwv_files;     /* number of PRWV hdf files        */
   int  num_ozon_files;     /* number of Ozone hdf files       */
