@@ -140,7 +140,7 @@ typedef struct {
   double min_lat;  /* Geodetic latitude coordinate (degrees) */ 
   double max_lon;  /* Geodetic longitude coordinate (degrees) */ 
   double max_lat;  /* Geodetic latitude coordinate (degrees) */ 
-  bool is_fill;    /* Flag to indicate whether the point is a fill value; */                            
+  bool is_fill;    /* Flag to indicate whether the point is a fill value; */
 } Geo_bounds_t;
 
 typedef struct {
