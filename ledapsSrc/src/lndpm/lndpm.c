@@ -17,10 +17,11 @@
  *  revision 1.0.8  03/14/2013 Gail Schmidt, USGS EROS
  *  - modified LPGS section to read the scene center time from the MTL file
  *    and pass that time along as the ACQUISITION_TIME in the .metadata.txt
- *    file.  This means that the lndsr and lndsrbm applications will have the
- *    actual scene time for processing versus approximating the scene time.
- *    The scene time is used to obtain the appropriate atmospheric correction
- *    information from the various auxiliary files.
+ *    file.  Also modified the NLAPS WO section to read the scene center time
+ *    from the WO file.  This means that the lndsr and lndsrbm applications
+ *    will have the actual scene time for processing versus approximating the
+ *    scene time.  The scene time is used to obtain the appropriate
+ *    atmospheric correction information from the various auxiliary files.
  *
  *  revision 1.0.7  03/14/2013 Gail Schmidt, USGS EROS
  *  - modified all read routines to use the #defines for the output header

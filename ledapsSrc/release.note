@@ -1,5 +1,60 @@
-Updates on December 30, 2012 - USGS EROS
+Updates on March 28, 2013 - USGS EROS
+Version 1.2.0
 ---------------------------------------
+lndpm:
+- Modified to utilize a single Version value version supporting two version
+  tags with the same value.  Migrating to LEDAPSVersion.
+- Modified LPGS and NLAPS WO sections to read the scene center time from the
+  MTL or WO file and pass that time along as the ACQUISITION_TIME in the
+  .metadata.txt file.  This means that the lndsr and lndsrbm applications will
+  have the actual scene time for processing versus approximating the scene
+  time.  The scene time is used to obtain the appropriate atmospheric
+  correction information from the various auxiliary files.
+- Modified to support the processing of polar stereographic products (polar
+  regions) for LPGS and NLAPS WO products.
+
+lndcal:
+- Modified to utilize a single Version tag versus the current practice of
+  having two tags with the same version number.  LEDAPSVersion will be used.
+- Modified to read the acquisition time from the input metadata file and pass
+  the acquisition time along for processing.  If the date string is too long,
+  then the last few digits from the seconds (acquisition time is in DMS) will
+  be removed.
+- Modified to support the processing of polar stereographic products, including
+  reading the projection parameters from the input metadata file and writing
+  those to the lndcal.hdf and lndth.hdf metadata.
+
+lndcsm:
+- Modified to support the processing of polar stereographic products.
+
+lndsr:
+- Fixed the issue with the sun angles having an additional 0.5 added to their
+  value incorrectly.
+- Modified to utilize a single Version tag versus the current practice of
+  having two tags with the same version number.  LEDAPSVersion will be used.
+- Modified to support the processing of polar stereographic products,
+  including reading the projection parameters from the lndcal.hdf metadata.
+- Removed NumberOfBands and BandNumbers from the lndsr output metadata.  These
+  fields only apply to the surface reflectance bands themselves and don't fully
+  represent the final output bands for the lndsr product, therefore potentially
+  leading to user confusion.
+- Acquisition time is read from the lndcal.hdf metadata and used if available
+  versus estimating the scene time.
+
+lndsrbm:
+- Modified to support the processing of polar stereographic products, including
+  reading the projection parameters from the lndsr.hdf metadata.
+- Acquisition time is read from the lndsr.hdf metadata and used if available
+  versus estimating the scene time.
+- Cleaned up some of the print statements to make it more clear as to the
+  information being printed.
+- Added an internal/temporary file called geo_xy.ERROR to flag and catch
+  errors in the geo2xy (lat/long to projection x/y) and xy2geo (projection x/y
+  to lat/long) processing.
+
+Updates on December 30, 2012 - USGS EROS
+Version 1.1.2
+----------------------------------------
 lndpm:
 - Added META_FILE field to the lndsr parameter file which provides the filename
   of the L1G/L1T metadata file, containing valuable information for some of
@@ -36,6 +91,7 @@ ledapsAncSrc:
   the ftp site is not available or due to a connection problem.
 
 Updates on November 30, 2012 - USGS EROS
+Version 1.1.1
 ---------------------------------------
 lndpm:
 - Corrected spelling of SATTELITE to SATELLITE in the output metadata.txt file
@@ -59,6 +115,7 @@ ledapsAncSrc:
   ozone ancillary products.
 
 Updates on November 16, 2012 - USGS EROS
+Version 1.1.0
 ---------------------------------------
 lndpm:
 - Modified to DIE vs. WARN if the ancillary products (REANALYSIS, EP/TOMS, or
@@ -70,7 +127,7 @@ lndsr:
   a fill pixel.
 
 lndsrbm:
-- Modified to use the fill_QA band to determin if the current pixel is fill.
+- Modified to use the fill_QA band to determine if the current pixel is fill.
 - Cloud-related QA pixels are not set to on if the current pixel is fill.
 - Added error checking to the file write/close tasks.
 - Use snfindex from the HDF libraries to find the index of the specified SDS
@@ -80,6 +137,7 @@ bin:
 - Added a do_ledaps.py script for better scripting control.
 
 Updates on October 17, 2012 - USGS EROS
+Version 1.0.0
 ---------------------------------------
 lndpm:
 - Modified to use the GCTP library which is part of the HDF-EOS build, since
