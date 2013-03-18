@@ -20,7 +20,7 @@ MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
 TARGET1 = lndcsm
-OBJ1    = lndcsm.o param.o input.o lut.o output.o csm.o space.o \
+OBJ1    = lndcsm.o degdms.o param.o input.o lut.o output.o csm.o space.o \
           names.o  myhdf.o mystring.o error.o tiff.o virbuf.o date.o util.o
 INC1    = lndcsm.h keyvalue.h param.h input.h lut.h output.h csm.h names.h \
           date.h myhdf.h mystring.h bool.h const.h error.h tiff.h virbuf.h \
