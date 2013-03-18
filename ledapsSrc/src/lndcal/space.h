@@ -152,5 +152,6 @@ bool GetSpaceDefFile(char *file_name, Space_def_t *this);
 bool PutSpaceDefHDF(Space_def_t *this, char *file_name, int nsds, 
                     char **sds_names, int *sds_types, char *grid_name);
 bool GetSpaceDefHDF(Space_def_t *this, char *file_name, char *grid_name);
+bool degdms(double *deg, double *dms, char *code, char *check);
  
 #endif
