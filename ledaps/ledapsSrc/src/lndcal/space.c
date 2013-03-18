@@ -24,6 +24,11 @@
  link with the HDF-EOS libraries.  The for_init and inv_init variables
  are ints instead of longs.  space.c and space.h were modified.
 
+ Gail Schmidt, USGS EROS, 2013/3/7
+ Modified to support polar stereographic projections and convert the input
+ projection parameters from the metadata file from angular degrees to packed
+ DMS.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Labatory for Terrestrial Physics (Code 922) at the 
@@ -128,6 +133,7 @@ Space_t *SetupSpace(Space_def_t *space_def)
 */
 {
   Space_t *this;
+  double temp1, temp2;
   char file27[28] = "FILE27";
   char file83[28] = "FILE83";
   int (*for_trans[MAX_PROJ + 1])();
@@ -177,6 +183,18 @@ Space_t *SetupSpace(Space_def_t *space_def)
   this->sin_orien = sin(space_def->orientation_angle);
   this->cos_orien = cos(space_def->orientation_angle);
 
+  /* Convert angular projection parameters for Polar Stereographic to DMS */
+  if (this->def.proj_num == PROJ_PS) {
+    if (!degdms (&this->def.proj_param[4], &temp1, "DEG", "LON" ) ||
+        !degdms (&this->def.proj_param[5], &temp2, "DEG", "LAT" )) {
+      free(this);
+      RETURN_ERROR("error converting PS angular parameters from degree to DMS",
+        "SetupSpace", (Space_t *)NULL);
+    }
+    this->def.proj_param[4] = temp1;
+    this->def.proj_param[5] = temp2;
+  }
+   
   /* Setup the forward transform */
 
   for_init(this->def.proj_num, this->def.zone, this->def.proj_param, 

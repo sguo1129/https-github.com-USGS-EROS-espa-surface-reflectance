@@ -20,7 +20,7 @@ MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
 TARGET1	= lndcal
-OBJ1    = lndcal.o param.o space.o lut.o output.o cal.o util.o\
+OBJ1    = lndcal.o param.o degdms.o space.o lut.o output.o cal.o util.o\
           names.o date.o myhdf.o mystring.o error.o input.o
 INC1    = lndcal.h keyvalue.h param.h input.h lut.h output.h cal.h \
           names.h date.h myhdf.h mystring.h bool.h const.h error.h \

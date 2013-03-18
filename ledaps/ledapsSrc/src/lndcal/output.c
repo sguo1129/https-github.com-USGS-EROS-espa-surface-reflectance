@@ -21,12 +21,12 @@
  Modified OpenOutput to make sure the Output_t->buf array doesn't go past
    NBAND_REFL_MAX.  Also, initialized Output_t->qabuf at the same time.
 
- Revision 1.2 01/22/2013
+ Revision 1.2 2013/01/22
  Gail Schmidt, USGS EROS
  Modified applications to use only one version and that is the
    LEDAPSVersion tag which will get updated with each release of LEDAPS
 
- Revision 1.3 02/20/2013
+ Revision 1.3 2013/02/20
  Gail Schmidt, USGS EROS
  Modified the put metadata routine to write out the bounding coordinates.
 
@@ -1102,14 +1102,14 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
   attr.name = OUTPUT_NBAND;
   dval[0] = (double)nband;
   if (!PutAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("writing attribute (number of bands)", "PutMetadata6", false);
+    RETURN_ERROR("writing attribute (number of bands)", "PutMetadata", false);
 
   attr.type = DFNT_INT8;
   attr.nval = nband;
   attr.name = OUTPUT_BANDS;
   dval[0] = (double)meta->iband_th;
   if (!PutAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("writing attribute (band numbers)", "PutMetadata6", false);
+    RETURN_ERROR("writing attribute (band numbers)", "PutMetadata", false);
 
   /* Added 9/15/05 when replace zero gain/bias with the estimated values for TM thermal band-6   */
   if (param->est_gainbias == 1){

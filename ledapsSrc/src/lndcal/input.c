@@ -14,6 +14,11 @@
  Robert Wolfe
  Added handling for SDS's with ranks greater than 2.
 
+ Revision 1.2 2013/03/12
+ Gail Schmidt, USGS EROS
+ Modified the read header to process the acquisition date, even if it's too
+ long by parsing it down to the appropriate number of allowed characters.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -865,13 +870,19 @@ bool GetHeaderInput(Input_t *this, char *file_header_name, Param_t *param) {
 	  error_string = "too many acquisition time values";
 	  break; 
 	}
-        if (key.len_value[0] < 8  ||
-	    key.len_value[0] > TIME_STRING_LEN) {
+        if (key.len_value[0] < 8) {
 	  error_string = "invalid time string";
 	  break;
 	}
+        if (key.len_value[0] > TIME_STRING_LEN) {
+	strncpy(acq_time, key.value[0], TIME_STRING_LEN-1);
+	acq_time[TIME_STRING_LEN-1] = 'Z';
+	acq_time[TIME_STRING_LEN] = '\0';
+    }
+        else {
 	strncpy(acq_time, key.value[0], key.len_value[0]);
 	acq_time[key.len_value[0]] = '\0';
+    }
         break;
 
       case HEADER_PROD_DATE:

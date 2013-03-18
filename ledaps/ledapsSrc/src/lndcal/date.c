@@ -27,25 +27,25 @@ bool DateInit(Date_t *this, char *s, Date_format_t iformat) {
 
   if (iformat == DATE_FORMAT_DATEA_TIME) {
     if (len < 20  ||  len > 27) 
-      RETURN_ERROR("invalid date/time string lenght", "DateInit", false);
+      RETURN_ERROR("invalid date/time string length", "DateInit", false);
     if (s[10] != 'T'  ||  s[len - 1] != 'Z')
       RETURN_ERROR("invalid date/time format", "DateInit", false);
     date = &s[0];
     time = &s[11];
   } else if (iformat == DATE_FORMAT_DATEB_TIME) {
     if (len < 18  ||  len > 25) 
-      RETURN_ERROR("invalid date/time string lenght", "DateInit", false);
+      RETURN_ERROR("invalid date/time string length", "DateInit", false);
     if (s[8] != 'T'  ||  s[len - 1] != 'Z')
       RETURN_ERROR("invalid date/time format", "DateInit", false);
     date = &s[0];
     time = &s[9];
   } else if (iformat == DATE_FORMAT_DATEA) {
     if (len != 10) 
-      RETURN_ERROR("invalid date string lenght", "DateInit", false);
+      RETURN_ERROR("invalid date string length", "DateInit", false);
     date = s;
   } else if (iformat == DATE_FORMAT_DATEB) {
     if (len != 8) 
-      RETURN_ERROR("invalid date string lenght", "DateInit", false);
+      RETURN_ERROR("invalid date string length", "DateInit", false);
     date = s;
   }
 
