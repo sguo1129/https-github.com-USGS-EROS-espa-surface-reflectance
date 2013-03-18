@@ -1,8 +1,8 @@
 3/18/2013   Gail Schmidt, USGS EROS
-1. Modified to read the acquisition time (from the acquisition date) and pass
-   the acquisition time for processing.  If the date string is too long, then
-   the last few digits from the seconds (acquisition time is in DMS) will be
-   removed.
+1. Modified to read the acquisition time from the input metadata and pass
+   the acquisition time along for processing.  If the date string is too long,
+   then the last few digits from the seconds (acquisition time is in DMS) will
+   be removed.
 2. Modified to support polar stereographic projections and convert the input
    projection parameters from the metadata file from angular degrees to packed
    DMS.

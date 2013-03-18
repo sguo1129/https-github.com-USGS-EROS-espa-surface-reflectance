@@ -3,12 +3,12 @@ Revision:
 revision 1.2.0  3/28/2013  Gail Schmidt, USGS EROS
 - modified to utilize a single Version value version supporting two version
   tags with the same value.  migrating to LEDAPSVersion.
-- modified LPGS section to read the scene center time from the MTL file and
-  pass that time along as the ACQUISITION_TIME in the .metadata.txt file.
-  This means that the lndsr and lndsrbm applications will have the actual
-  scene time for processing versus approximating the scene time.  The scene
-  time is used to obtain the appropriate atmospheric correction information
-  from the various auxiliary files.
+- modified LPGS and NLAPS WO sections to read the scene center time from the
+  MTL and WO files and pass that time along as the ACQUISITION_TIME in the
+  .metadata.txt file.  This means that the lndsr and lndsrbm applications will
+  have the actual scene time for processing versus approximating the scene
+  time.  The scene time is used to obtain the appropriate atmospheric
+  correction information from the various auxiliary files.
 - modified all read routines to use the #defines for the output header
   file fields to keep the header file fields consistent for each of the
   possible various input sources and to provide for easier maintenance.
