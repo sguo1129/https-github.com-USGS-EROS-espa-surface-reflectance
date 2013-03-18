@@ -19,10 +19,12 @@
 /*  *upperlefty = 4728748.500000;*/
 
 int parse_comma_sep(char *argument, float *left, float *right);
+int parse_comma_sep_array(char *argument, double *myarray, int *count);
 
 int main(int argc, char **argv)
 {
 
+char projection[256];
 float coordinates[8];
 double parm[13];
 double radius, lat, lon, dl, ds;
@@ -31,12 +33,17 @@ int i, ret;
 int zonecode, sphercode, rows, cols;
 float orientationangle, pixelsize, upperleftx, upperlefty;
 double arg2, arg3;
+char *error_file = "geo_xy.ERROR";
+FILE *error_ptr=NULL;
 
-int LSsphdz(float coordinates[8], double *parm, double *radius, double corner[2]);
+int LSsphdz(char *projection, float coordinates[8], double *parm, double *radius, double corner[2]);
 int LSutminv(double s, double l, double *lon, double *lat);
 int LSutmfor(double *s, double *l, double lon, double lat);
-int get_data(char *filename, int *zonecode, int *sphercode, float *orientationangle, float *pixelsize, 
-             float *upperleftx, float *upperlefty, int *rows, int *cols);
+int LSpsinv(double s, double l, double *lon, double *lat);
+int LSpsfor(double *s, double *l, double lon, double lat);
+int get_data(char *filename, char *projection, int *zonecode, int *sphercode,
+  float *orientationangle, float *pixelsize, float *upperleftx,
+  float *upperlefty, int *rows, int *cols, double *projparms);
 
 if (argc < 4) {
 #ifdef INV
@@ -46,13 +53,25 @@ if (argc < 4) {
 #endif
    printf("Jim Ray, SSAI, %s\n\n", __DATE__);
    exit(0);
-   }
+}
 
-if ( (ret = get_data(argv[1], &zonecode, &sphercode, &orientationangle, &pixelsize, 
-         &upperleftx, &upperlefty, &rows, &cols)) != 0) {
+for(i=0;i<13;i++) parm[i] = 0.0;
+if ( (ret = get_data(argv[1], projection, &zonecode, &sphercode,
+    &orientationangle, &pixelsize, &upperleftx, &upperlefty, &rows, &cols,
+    parm)) != 0) {
    printf("Error reading file %s, cannot continue\n", argv[1]);
+   error_ptr = fopen (error_file, "w");
+   fprintf(error_ptr, "Error reading file %s, cannot continue\n", argv[1]);
+   fclose (error_ptr);
    exit(1);
-      } 
+} 
+
+/* if processing PS projection, then convert the angular projection params
+   to radians */
+if (!strcmp (projection, "GCTP_PS")) {
+    parm[4] *= D2R;
+    parm[5] *= D2R;
+}
 
 arg2 = atof(argv[2]);
 arg3 = atof(argv[3]);
@@ -61,30 +80,31 @@ coordinates[4] = (double)zonecode;
 coordinates[5] = (double)sphercode;
 coordinates[6] = (double)orientationangle;
 coordinates[7] = (double)pixelsize;
-for(i=0;i<13;i++) parm[i] = 0.0;
 corner[0] = (double)upperleftx;
 corner[1] = (double)upperlefty;
 
-LSsphdz(coordinates, parm, &radius, corner);
-
+LSsphdz(projection, coordinates, parm, &radius, corner);
 
 #ifdef INV
 ds = arg2;
 dl = arg3;
 
 if (ds > (double)cols) {
-   printf("Sample argument (%s) exceeds number of columns in file (%d): will use %d\n", 
-               argv[2], cols, cols);
+   printf("Sample argument (%s) exceeds number of columns in file (%d): will "
+       "use %d\n", argv[2], cols, cols);
    ds = (double)cols;
-   }
+}
 
 if (dl > (double)rows) {
-   printf("Sample argument (%s) exceeds number of rows in file (%d): will use %d\n", 
-               argv[3], rows, rows);
+   printf("Sample argument (%s) exceeds number of rows in file (%d): will "
+       "use %d\n", argv[3], rows, rows);
    dl = (double)rows;   
-   }
+}
 
-ret = LSutminv(ds, dl, &lon, &lat);
+if (!strcmp (projection, "GCTP_UTM"))
+   ret = LSutminv(ds, dl, &lon, &lat);
+else if (!strcmp (projection, "GCTP_PS"))
+   ret = LSpsinv(ds, dl, &lon, &lat);
 printf("line   %5.1f  samp   %5.1f  => long %f lat %f\n", dl, ds, lon, lat);
 #else
 lon = arg2;
@@ -92,7 +112,10 @@ lat = arg3;
 
 /* We need sanity checks on these as well */
 
-ret = LSutmfor(&ds, &dl, lon, lat);
+if (!strcmp (projection, "GCTP_UTM"))
+    ret = LSutmfor(&ds, &dl, lon, lat);
+else if (!strcmp (projection, "GCTP_PS"))
+    ret = LSpsfor(&ds, &dl, lon, lat);
 printf("long %f lat %f => line   %f  samp   %f  \n",  lon, lat, dl, ds);
 #endif
 
@@ -103,12 +126,12 @@ exit (1);
 /**********************************************************************************
  **********************************************************************************/
 
-int get_data(char *filename, int *zonecode, int *sphercode, float *orientationangle, float *pixelsize, 
-             float *upperleftx, float *upperlefty, int *rows, int *cols)
+int get_data(char *filename, char *projection, int *zonecode, int *sphercode,
+  float *orientationangle, float *pixelsize, float *upperleftx,
+  float *upperlefty, int *rows, int *cols, double *projparms)
 {
 int32 i, j, n, sd, n_sets, n_gattr, count, structmetadata_exists, number_type;
 double doubleattr;
-char projection[256];
 char coordinate[256];
 char attrib[256];
 char attribu[256];
@@ -123,7 +146,7 @@ void metareader(int32 sd_id, char *type_of_meta, char *metastring, int32 *count,
  ***********************************/
 if ((sd = SDstart(filename, DFACC_RDONLY)) == -1) {
      printf("Error: file '%s' can't be opened with SDstart(): cannot continue...\n", filename);
-     exit(-2);
+     return(-2);
     }
        
 n_sets = 0;
@@ -131,12 +154,12 @@ SDfileinfo(sd, &n_sets, &n_gattr);
 if (n_sets == 0) {
     printf("Error: file %s doesn't seem to have any SDSs: cannot continue...\n", filename);
     SDend(sd);
-    exit(-4);
+    return(-4);
    } 
 if (n_gattr == 0) {
     printf("Error: file %s doesn't seem to have any global attributes: cannot continue...\n", filename);
     SDend(sd);
-    exit(-4);
+    return(-4);
    } 
    
 structmetadata_exists = 0;
@@ -160,17 +183,16 @@ for (j=0;j<n_gattr;j++) {
     }
 
 if (structmetadata_exists == 0) {
-    printf("Error: file %s doesn't seem to have any StructMetadata: cannot continue...\n", filename);
+    printf("ERROR: file %s doesn't seem to have any StructMetadata: cannot continue...\n", filename);
     SDend(sd);
-    exit(-4);
+    return(-4);
    } 
 
 metareader(sd, "STRUCTMETADATA\0", "Projection\0", &count, projection);
-
-if (  !strstr(projection, "GCTP_UTM\0") ) {
-    printf("Error: file %s has projection %s, not UTM: cannot continue...\n", filename, projection);
+if ( strcmp(projection, "GCTP_UTM\0") && strcmp(projection, "GCTP_PS\0") ) {
+    printf("ERROR: file %s has projection %s. Only GCTP_UTM and GCTP_PS are supported cannot continue...\n", filename, projection);
     SDend(sd);
-    exit(-4);
+    return(-4);
    } 
 
 metareader(sd, "STRUCTMETADATA", "UpperLeftPointMtrs\0", &count, coordinate);
@@ -185,38 +207,54 @@ metareader(sd, "STRUCTMETADATA", "YDim\0", &count, coordinate);
 *rows = atoi(coordinate);
 
 coordinate[0] = '\0';    
-metareader(sd, "STRUCTMETADATA", "ZoneCode\0", &count, coordinate);
-*zonecode = atoi(coordinate);
-
-coordinate[0] = '\0';    
 metareader(sd, "STRUCTMETADATA", "SphereCode\0", &count, coordinate);
 *sphercode = atoi(coordinate);
 
+/* If UTM also read the zone */
+if ( !strcmp (projection, "GCTP_UTM\0") ) {
+    coordinate[0] = '\0';    
+    metareader(sd, "STRUCTMETADATA", "ZoneCode\0", &count, coordinate);
+    *zonecode = atoi(coordinate);
+}
+
+/* If PS also read the projection params */
+if ( !strcmp (projection, "GCTP_PS\0") ) {
+    coordinate[0] = '\0';    
+    metareader(sd, "STRUCTMETADATA", "ProjParams\0", &count, coordinate);
+    parse_comma_sep_array(coordinate, projparms, &count);
+    if (count != 13) {
+        printf("ERROR: %d projection parameters were read, but 13 were "
+            "expected.  Cannot continue processing.\n", count);
+        SDend(sd);
+        return(-4);
+    }
+}
+
 SDend(sd);
 
-if ( *zonecode == -1) {
-    printf("Error reading zone code, cannot continue...\n");
-    exit(-5);
+if ( !strcmp (projection, "GCTP_UTM\0") && (*zonecode == -1)) {
+    printf("ERROR reading UTM zone code, cannot continue...\n");
+    return(-5);
   } 
 if ( *sphercode == -1) {
-    printf("Error reading sphere code, cannot continue...\n");
-    exit(-5);
+    printf("ERROR reading sphere code, cannot continue...\n");
+    return(-5);
   }
 if ( *rows == -1) {
-    printf("Error reading number of rows, cannot continue...\n");
-    exit(-5);
+    printf("ERROR reading number of rows, cannot continue...\n");
+    return(-5);
    }
 if ( *cols == -1) {
-    printf("Error reading number of columns, cannot continue...\n");
-    exit(-5);
+    printf("ERROR reading number of columns, cannot continue...\n");
+    return(-5);
   }
 if ( *orientationangle < -998.0 )  {
-    printf("Error reading orientation angle, cannot continue...\n");
-    exit(-5);
+    printf("ERROR reading orientation angle, cannot continue...\n");
+    return(-5);
   }
 if ( *pixelsize < 0.0 )  {
-    printf("Error reading pixel size, cannot continue...\n");
-    exit(-5);
+    printf("ERROR reading pixel size, cannot continue...\n");
+    return(-5);
   }
 
 /*printf("As read from file %s (%d rows  by %d columns)\n", filename, *rows, *cols);
@@ -291,6 +329,45 @@ return(0);
 }
 
 
+/**********************************************************************************
+ **********************************************************************************/
+
+int parse_comma_sep_array(char *argument, double *myarray, int *count)
+{  /* designed to parse StructMetadata's projection parameters in the PS projection */
+int i, n, start;
+int mycount;
+char *tmpptr = NULL;
+
+n = strlen(argument);
+if (n < 3) return(-1);
+
+/* first strip off the first and last parentheses by replacing them with blank
+   spaces */
+tmpptr = strchr (argument, '(');
+if (tmpptr != NULL)
+    *tmpptr = ' ';
+tmpptr = strrchr (argument, ')');
+if (tmpptr != NULL)
+    *tmpptr = ' ';
+
+/* Loop through the string and pull the floating point values at each comma */
+start = 0;
+mycount = 0;
+for(i=0;i<n;i++) {
+    if (argument[i] == ',') {
+        myarray[mycount] = atof (&argument[start]);
+        mycount++;
+        start = i+1;
+    }
+}
+
+/* Process the last number in the array */
+myarray[mycount] = atof (&argument[start]);
+*count = ++mycount;
+return(0);
+}
+
+
 
 /*****************************************************************************************************************
  **************  start of metareader() ***************************************************************************
@@ -309,6 +386,7 @@ char lhs[XMAXLENGTH], rhs[XMAXLENGTH];
 void get_a_line(char *text, int lengthoftext, int *start, char line[XMAXLENGTH]);
 
 SDfileinfo(sd_id, &n_sets1, &n_attr1);
+*count=0;
 for (j=0;j<n_attr1;j++) {
      SDattrinfo(sd_id, j, attrib1, &number_type1, &count1);
      attrib[0] = '\0';  
@@ -319,7 +397,7 @@ for (j=0;j<n_attr1;j++) {
          if ((charattr = (char *)malloc((count1+1)*sizeof(char))) == NULL) {
 	         printf("Out of memory, array 'charattr'\n");
 		 return;
-	                                                                   }
+         }
          SDreadattr(sd_id, j, charattr);
          count1 = strlen(charattr);
          if (!strcmp(type_of_meta, metastring)) {  /* signal for no need to parse metadata */
@@ -400,7 +478,9 @@ for (j=0;j<n_attr1;j++) {
 	            }
 		    
 	      /* special case for StructMetadata */
-	      if  ( (strstr(type_of_meta, "STRUCTMETADATA")) && ( strstr(lhs, metastring))  ) strcat(data, rhs);
+	      if  ( (strstr(type_of_meta, "STRUCTMETADATA")) && ( strstr(lhs, metastring))  ) {
+            strcpy(data, rhs);
+          }
 	      	    
 	    } while ( line[0] != '\0') ;
 	 
@@ -439,6 +519,4 @@ else {
     return;
      }
 }
-
-
 

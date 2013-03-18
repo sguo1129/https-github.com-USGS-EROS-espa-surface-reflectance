@@ -1,5 +1,5 @@
 cccccccccccccccccccc
-c Modified on 11/16/2012 by Gail Schmidt, USGS ERO
+c Modified on 11/16/2012 by Gail Schmidt, USGS EROS
 c - Use snfindex to find the index of the specified SDS rather than relying
 c   on hard-coded SDS index values
 c
@@ -65,7 +65,7 @@ cccccccccccccccccccc
          
          call getarg(1,filein)
          ii=index(filein," ")-1
-         write(6,*) "temp clear [k] , ts,tv,fs,truenorthadj,pixsize"
+         write(6,*) "temp clear [kelvin], ts,tv,fs,truenorthadj,pixsize"
          read(5,*)  tclear,ts,tv,fs,tna,pixsize
          write(6,*)  tclear,ts,tv,fs,tna,pixsize
          tclear=tclear-273.0
@@ -298,6 +298,10 @@ c reset cloud,cloud shadow,adjacent cloud bit
        enddo
        
 c update the cloud mask
+c   nbval is the count of non-fill pixels
+c   nbcloud is the count of cloud pixels
+c   nbclear is the count of non-cloud pixels
+c   mclear is the average clear pixel temperature (celcius)
        write(6,*) "updating cloud mask"
        nbclear=0
        mclear=0.
@@ -336,10 +340,14 @@ c
         mclear=mclear*10000./nbclear
         endif
         pclear=(nbclear*100./nbval)
-        write(6,*) nbclear-nbval,nbcloud
-        write(6,*) "average clear temperature  %clear", mclear,pclear
+        write(6,*) "number of non-fill pixels: ", nbval
+        write(6,*) "number of cloud pixels: ", nbcloud
+        write(6,*) "number of non-cloud pixels: ", nbclear
+        write(6,*) "nbclear-nbval: ", nbclear-nbval
+        write(6,*) "average clear temperature (celcius): ", mclear
+        write(6,*) "% clear pixels: ", pclear
         if (pclear.gt.5.) then
-        tclear=mclear       
+        tclear=real(mclear)
         endif
              
 c update the adjacent cloud bit. only set for non-fill values
@@ -377,13 +385,13 @@ c       endif
            tcloud=temp(j,i)/100.
            cldh=(tclear-tcloud)*1000./cfac
            if (cldh.lt.0.) cldh=0.
-           cldhmin=cldh-1000.
-           cldhmax=cldh+1000.
+           cldhmin=int(cldh-1000.)
+           cldhmax=int(cldh+1000.)
            mband5=9999
            do icldh=cldhmin/10,cldhmax/10
             cldh=icldh*10.
-            k=i+fack*cldh
-            l=j-facl*cldh
+            k=int(i+fack*cldh)
+            l=int(j-facl*cldh)
             if ((k.ge.1).and.(k.le.nr).and.(l.ge.1)
      &            .and.(l.le.nc)) then
             if ((band5(l,k).lt.800).and.
