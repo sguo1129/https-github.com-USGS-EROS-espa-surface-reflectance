@@ -509,6 +509,10 @@ int main (int argc, const char **argv) {
   else
   scene_gmt=10.5-center_lon/15.;
   if ( scene_gmt < 0.) scene_gmt=scene_gmt+24.;
+
+printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->meta.acq_date.minute, input->meta.acq_date.second);
+//printf ("DEBUG: scene_gmt: %f\n", scene_gmt);
+//printf ("DEBUG: approximated scene_gmt: %f\n", 10.5-center_lon/15.);
   
 /*  printf("Center: %d %f %f %f %f %f\n",input->meta.acq_date.doy,scene_gmt,center_lat,center_lon,input->meta.sun_zen*DEG,input->meta.sun_az*DEG);
   exit(1); */
@@ -662,21 +666,17 @@ int main (int argc, const char **argv) {
 	img.is_fill=false;
 	if (!FromSpace(space, &img, &geo))
     	ERROR("mapping from space (0)", "main");
-/*
-	printf ("(y1,x1)=(%d,%d)  (lat1,lon1)=(%f,%f)\n",
-		 (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG));
-*/
+//printf ("DEBUG: (y1,x1)=(%d,%d)  (lat1,lon1)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG));
 
 	geo.lon=center_lon*RAD;
 	geo.is_fill=false;
 	if (!ToSpace(space, &geo, &img))
     	ERROR("mapping to space (0)", "main");
-/*
-	printf ("(y2,x2)=(%d,%d)  (lat2,lon2)=(%f,%f)\n",
-		 (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG));
-*/
+//printf ("DEBUG: (y2,x2)=(%d,%d)  (lat2,lon2)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG));
+
 	delta_y = delta_y - img.l;
 	delta_x = img.s - delta_x;
+//printf ("DEBUG: delta_x, delta_y = %f, %f\n", delta_x, delta_y);
 	adjust_north=(float)(atan(delta_x/delta_y)*DEG);
 
 	printf("True North adjustment = %f\n",adjust_north);

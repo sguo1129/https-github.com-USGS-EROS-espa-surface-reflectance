@@ -99,3 +99,20 @@ V1.1.1  11/23/2012 - USGS EROS
 =============================================================================
 1. Fixed a bug in cld_diags.std_b7_clear to be based on the sqrt of band 7
    and not the band 6 temperature.
+
+V1.2.0  03/28/2013 - USGS EROS
+=============================================================================
+1. Fixed the issue with the sun angles having an additional 0.5 added to their
+   value incorrectly.
+2. Modified to utilize a single Version tag versus the current practice of
+   having two tags with the same version number.  LEDAPSVersion will be used.
+3. Modified to support polar stereographic projections and convert the input
+   projection parameters from the metadata file from angular degrees to packed
+   DMS.
+4. Removed NumberOfBands and BandNumbers from the lndsr output metadata.  Those
+   only applied to the surface reflectance bands themselves and don't fully
+   represent the final output bands for the lndsr product, therefore
+   potentially leading to user confusion.
+5. Acquisition time is read from the lndcal.hdf metadata and used if available
+   versus estimating the scene time.
+

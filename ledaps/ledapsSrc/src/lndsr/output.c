@@ -12,7 +12,7 @@
 
  Revision 1.1 2012/09/27
  Gail Schmidt - Updated metadata to output information for each of the
-   individual QA bands vs. a single packed bit QA band.
+ individual QA bands vs. a single packed bit QA band.
 
  Revision 1.2 2012/12/27
  Gail Schmidt - Modified to write the original LPGS L1G/L1T metadata filename
@@ -20,6 +20,12 @@
 
  Revision 1.3 2013/01/22
  Gail Schmidt - Modified to utilize only one Version value - LEDAPSVersion
+
+ Revision 1.4 2013/03/15
+ Gail Schmidt - Removed NumberOfBands and BandNumbers from the lndsr output
+ metadata.  Those only applied to the surface reflectance bands themselves
+ and don't fully represent the final output bands for the lndsr product,
+ therefore potentially leading to user confusion.
 
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
@@ -77,8 +83,6 @@
 #define OUTPUT_WRS_SYS ("WRS_System")
 #define OUTPUT_WRS_PATH ("WRS_Path")
 #define OUTPUT_WRS_ROW ("WRS_Row")
-#define OUTPUT_NBAND ("NumberOfBands")
-#define OUTPUT_BANDS ("BandNumbers")
 #define OUTPUT_SHORT_NAME ("ShortName")
 #define OUTPUT_LOCAL_GRAN_ID ("LocalGranuleID")
 #define OUTPUT_PROD_DATE ("ProductionDate")
@@ -721,21 +725,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
     if (!PutAttrDouble(this->sds_file_id, &attr, dval))
       RETURN_ERROR("writing attribute (WRS row)", "PutMetadata", false);
   }
-
-  attr.type = DFNT_INT8;
-  attr.nval = 1;
-  attr.name = OUTPUT_NBAND;
-  dval[0] = (double)nband;
-  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("writing attribute (number of bands)", "PutMetadata", false);
-
-  attr.type = DFNT_INT8;
-  attr.nval = nband;
-  attr.name = OUTPUT_BANDS;
-  for (ib = 0; ib < nband; ib++)
-    dval[ib] = (double)meta->iband[ib];
-  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("writing attribute (band numbers)", "PutMetadata", false);
 
   /* Get the short name, local granule id and production date/time */
   

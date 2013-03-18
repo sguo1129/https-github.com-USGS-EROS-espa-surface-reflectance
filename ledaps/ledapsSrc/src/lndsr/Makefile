@@ -19,7 +19,7 @@ LOADLIB = $(EXLIB) $(MATHLIB)
 TARGET1	= lndsr
 #EXTTARGET = sixsV1.0B
 
-OBJ1    = lndsr.o param.o input.o prwv_input.o lut.o output.o sr.o ar.o \
+OBJ1    = lndsr.o param.o input.o degdms.o prwv_input.o lut.o output.o sr.o ar.o \
           names.o date.o myhdf.o mystring.o error.o space.o grib.o read_grib_tools.o \
           CHAND.o CSALBR.o sixs_runs.o clouds.o
 
