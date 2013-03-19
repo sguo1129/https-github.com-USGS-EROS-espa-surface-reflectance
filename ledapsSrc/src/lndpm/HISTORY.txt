@@ -1,6 +1,6 @@
 Revision:
 
-revision 1.2.0  3/28/2013  Gail Schmidt, USGS EROS
+revision 1.2.0  3/20/2013  Gail Schmidt, USGS EROS
 - modified to utilize a single Version value version supporting two version
   tags with the same value.  migrating to LEDAPSVersion.
 - modified LPGS and NLAPS WO sections to read the scene center time from the
