@@ -1,9 +1,10 @@
-Updates on March 28, 2013 - USGS EROS
+Updates on March 20, 2013 - USGS EROS
 Version 1.2.0
 ---------------------------------------
 lndpm:
 - Modified to utilize a single Version value version supporting two version
-  tags with the same value.  Migrating to LEDAPSVersion.
+  tags with the same value.  Migrating to LEDAPSVersion.  PGEVersion and
+  ProcessVersion are no longer used.
 - Modified LPGS and NLAPS WO sections to read the scene center time from the
   MTL or WO file and pass that time along as the ACQUISITION_TIME in the
   .metadata.txt file.  This means that the lndsr and lndsrbm applications will
@@ -16,6 +17,8 @@ lndpm:
 lndcal:
 - Modified to utilize a single Version tag versus the current practice of
   having two tags with the same version number.  LEDAPSVersion will be used.
+- Modified the application to calculate and write the bounding coordinates
+  as output metadata to the lndcal.hdf file, similar to lndsr.
 - Modified to read the acquisition time from the input metadata file and pass
   the acquisition time along for processing.  If the date string is too long,
   then the last few digits from the seconds (acquisition time is in DMS) will
