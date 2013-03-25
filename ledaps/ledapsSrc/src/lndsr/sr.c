@@ -3,6 +3,13 @@
 #include "const.h"
 #include "sixs_runs.h"
 
+/* !Revision:
+ *
+ * revision 1.2.1 3/22/2013  Gail Schmidt, USGS
+ * - writing UL and LR corners to the output metadata to be able to detect
+ *   ascending scenes or scenes where the image is flipped North to South
+ */
+
 extern atmos_t atmos_coef;
 int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,atmos_t *interpol_atmos_coef); 
 
@@ -212,24 +219,30 @@ int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,
 /* 
 !C******************************************************************************
 
-
-!Description: 'computeBounds' computes the boundry corners of the output iamge
+!Description: 'computeBounds' computes the boundary corners of the output image
+and also outputs the UL and LR corners.  For ascending scenes and scenes in
+the polar regions, the scenes are flipped upside down.  The bounding coords
+will be correct in North represents the northernmost latitude and South
+represents the southernmost latitude.  However, the UL corner in this case
+would be more south than the LR corner.  Comparing the UL and LR corners will
+allow the user to determine if the scene is flipped.
 
 !Prototype : 
-
-  bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
+  bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
+    Geo_coord_t lr_corner, Space_t *space, int nps, int nls)
  
 !Input Parameters:
  space            space (transformation) definition structure that defines
                   the transformation between geo to map coordinates
                   (Space_t*)
-
  nps              image size number of samples (int)
  nls              image size number of lines   (int)
 
 
 !Output Parameters:
- bounds           output boundry structure (Geo_bounds_t)
+ bounds           output boundary structure (Geo_bounds_t)
+ ul_corner        output UL corner (Geo_coord_t)
+ lr_corner        output LR corner (Geo_coord_t)
 
 !Team Unique Header:
 
@@ -241,7 +254,8 @@ int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,
 
 !END****************************************************************************
 */
-bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
+bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
+    Geo_coord_t *lr_corner, Space_t *space, int nps, int nls)
 {
   const float pixcorn_x[4]={-0.5,-0.5, 0.5, 0.5}; /* 4 corners of a pixel */
   const float pixcorn_y[4]={-0.5, 0.5,-0.5, 0.5}; /* 4 corners of a pixel */
@@ -281,12 +295,26 @@ bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
       img.s = (double)ix + pixcorn_x[ic];
       img.is_fill = false;
       if (!FromSpace(space, &img, &geo))
-        RETURN_ERROR("mapping from sapce", "computeBounds", false);
+        RETURN_ERROR("mapping from space", "computeBounds", false);
       bounds->max_lat= max(bounds->max_lat,geo.lat);
       bounds->min_lat= min(bounds->min_lat,geo.lat);
       bounds->max_lon= max(bounds->max_lon,geo.lon);
       bounds->min_lon= min(bounds->min_lon,geo.lon);
       }
     }
+
+  /* Determine the exact UL and LR corners */
+  img.l = 0;
+  img.s = 0;
+  img.is_fill = false;
+  if (!FromSpace(space, &img, ul_corner))
+    RETURN_ERROR("mapping from space for UL corner", "computeBounds", false);
+
+  img.l = nls-1;
+  img.s = nps-1;
+  img.is_fill = false;
+  if (!FromSpace(space, &img, lr_corner))
+    RETURN_ERROR("mapping from space for LR corner", "computeBounds", false);
+
   return true;
  }
