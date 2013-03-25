@@ -843,7 +843,8 @@ int getMetaFromLPGS(char input[], char scene_name[], char acquisition_date[])
       band_fname[3],band_fname[4],band_fname[5],band_fname[7]); 
 
   /* write coordinates of upleft corner */ 
-  /* always convert to the UL coordinate system - 4/7/09 */
+  /* always convert to the UL coordinate system since the corner points listed
+     in the MTL file represent the center of the pixel - 4/7/09 */
   sprintf(meta_list[UPPER_LEFT_CORNER],"%s = %f, %f\n", 
       meta_lut[UPPER_LEFT_CORNER][0], atof(ul_xy[0])-0.5*res,
       atof(ul_xy[1])+0.5*res); 
@@ -1148,7 +1149,8 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
   sprintf(meta_list[BIAS_TH], "%s = %f\n", meta_lut[BIAS_TH][0], bias[6]);
 
   /* write coordinates of upleft corner */
-  /* always convert to the UL coordinate system - 4/7/09 */
+  /* always convert to the UL coordinate system since the pixel coordinates in
+     the NLAPS metadata file represent the center of the pixel - 4/7/09 */
   sprintf(meta_list[UPPER_LEFT_CORNER],"%s = %f, %f\n", 
       meta_lut[UPPER_LEFT_CORNER][0], atof(ul_xy[0])-0.5*res,
       atof(ul_xy[1])+0.5*res); 
