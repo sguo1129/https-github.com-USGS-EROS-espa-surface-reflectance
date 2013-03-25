@@ -35,6 +35,9 @@ typedef enum {FAILURE = 0, SUCCESS = 1} Status_t;
  *
  * revision 1.0.1 2/20/2013  Gail Schmidt, USGS
  * - modified the application to calculate and write the bounding coords
+ *
+ * revision 1.1.2 3/22/2013  Gail Schmidt, USGS
+ * - modified the application to write the UL and LR lat/long to the metadata
  */
 
 int main (int argc, const char **argv) {
@@ -61,6 +64,8 @@ int main (int argc, const char **argv) {
   Space_def_t space_def;
   Space_t *space;
   Geo_bounds_t bounds;
+  Geo_coord_t ul_corner;
+  Geo_coord_t lr_corner;
   char *grid_name = "Grid";
   int isds;
   int nsds = NSDS;
@@ -166,8 +171,15 @@ else
   space = SetupSpace(&space_def);
   if (space == (Space_t *)NULL) ERROR("setting up space", "main");
     
-  /* compute bounds */
-  if (!computeBounds(&bounds, space, input->size.s, input->size.l))
+  /* compute bounds and UL/LR corners.  For ascending scenes and scenes in
+     the polar regions, the scenes are flipped upside down.  The bounding coords
+     will be correct in North represents the northernmost latitude and South
+     represents the southernmost latitude.  However, the UL corner in this case
+     would be more south than the LR corner.  Comparing the UL and LR corners
+     will allow the user to determine if the scene is flipped. */
+
+  if (!computeBounds(&bounds, &ul_corner, &lr_corner, space, input->size.s,
+    input->size.l))
     ERROR("computing bounds", "main");
 
    nps6=  input->size_th.s;
@@ -196,7 +208,8 @@ else
                  input->file_type == INPUT_TYPE_BINARY_2BYTE_LITTLE    ) ? 
                  sizeof(unsigned short int) :  sizeof(unsigned char);
 		 
-  line_in = (unsigned char *)calloc((size_t)input->size.s*nband_refl, input_psize);
+  line_in = (unsigned char *)calloc((size_t)input->size.s*nband_refl,
+    input_psize);
    if (line_in == (unsigned char *)NULL) 
      ERROR("allocating input line buffer", "main");
 
@@ -372,8 +385,10 @@ if ( odometer_flag )printf("\n");
 
   /* Write the output metadata */
 
-    if ( !PutMetadata(output, input->nband, &input->meta, lut, param, &bounds))
+    if ( !PutMetadata(output, input->nband, &input->meta, lut, param, &bounds,
+      &ul_corner, &lr_corner))
     ERROR("writing the output metadata", "main");
+
   /* Close input files */
 
   if (!CloseInput(input)) ERROR("closing input file", "main");
@@ -404,6 +419,7 @@ if ( odometer_flag )printf("\n");
                         sds_names, sds_types, grid_name))
      ERROR("putting space metadata in thermal HDF file", "main");
   }
+
   /* Free memory */
 
   if (!FreeParam(param)) 

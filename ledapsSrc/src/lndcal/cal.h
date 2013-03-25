@@ -45,5 +45,8 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in,
          int *line_out, int *line_out_qa, Cal_stats6_t *cal_stats, int iy);
 
 int getValue(unsigned char* line_in, int ind, int short_flag, int swap_flag);
-bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls);
+
+bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
+    Geo_coord_t *lr_corner, Space_t *space, int nps, int nls);
+
 #endif
