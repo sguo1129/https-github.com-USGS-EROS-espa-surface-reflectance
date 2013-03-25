@@ -15,6 +15,11 @@
   Modified the packed QA band to be individual QA bands with pixels set to
   on or off.  NOTE - this requires mods to downstream processing (lndsrbm)
   as well, which uses and modifies the QA band.
+
+  Modified on 3/25/2013 by Gail Schmidt, USGS EROS
+  Adjusted the sun azimuth for polar scenes which are ascending/flipped.  The
+  sun azimuth is north up, but these scenes are south up.  So the azimuth
+  needs to be adjusted by 180 degrees when applied to the scene.
 **************************************************************************/
 
 #include <stdio.h>
@@ -140,6 +145,8 @@ int main (int argc, const char **argv) {
   int *prwv_in[NBAND_PRWV_MAX];
   int *prwv_in_buf = NULL;
   int *ozon_in = NULL;
+  float corrected_sun_az;   /* (degrees) sun azimuth angle has been corrected
+                               for polar scenes that are ascending or flipped */
   
   int nbpts;
   int inter_aot[3];
@@ -153,6 +160,8 @@ int main (int argc, const char **argv) {
   Img_coord_int_t loc;
   Geo_coord_t geo;
   Geo_bounds_t bounds;
+  Geo_coord_t ul_corner;
+  Geo_coord_t lr_corner;
   int nsds,isds;
   char *sds_names[NBAND_SR_MAX];
   int sds_types[NBAND_SR_MAX];
@@ -277,13 +286,35 @@ int main (int argc, const char **argv) {
   if (space == (Space_t *)NULL) 
     ERROR("setting up space", "main");
 
-  /* compute bounds */
-  if (!computeBounds( &bounds, space, input->size.s, input->size.l))
+  /* compute bounds and UL/LR corners.  For ascending scenes and scenes in
+     the polar regions, the scenes are flipped upside down.  The bounding coords
+     will be correct in North represents the northernmost latitude and South
+     represents the southernmost latitude.  However, the UL corner in this case
+     would be more south than the LR corner.  Comparing the UL and LR corners
+     will allow the user to determine if the scene is flipped. */
+  if (!computeBounds( &bounds, &ul_corner, &lr_corner, space, input->size.s,
+    input->size.l))
     ERROR("computing bounds", "main");
 
   printf ("Number of input bands: %d\n", input->nband);
   printf ("Number of input lines: %d\n", input->size.l);
   printf ("Number of input samples: %d\n", input->size.s);
+
+  /* If the scene is an ascending polar scene (flipped upside down), then
+     the solar azimuth needs to be adjusted by 180 degrees.  The scene in
+     this case would be north down and the solar azimuth is based on north
+     being up. */
+  corrected_sun_az = input->meta.sun_az * DEG;
+  if (!ul_corner.is_fill && !lr_corner.is_fill &&
+      ul_corner.lat < lr_corner.lat)
+  {
+    corrected_sun_az += 180.0;
+    if (corrected_sun_az > 360.0)
+      corrected_sun_az -= 360.0;
+    printf ("Polar or ascending scene.  Readjusting solar azimuth by "
+      "180 degrees.\n  New value: %f radians (%f degrees)\n",
+      corrected_sun_az*RAD, corrected_sun_az);
+  }
 
   /* Create and open output file */
   if (!CreateOutput(param->output_file_name))
@@ -514,8 +545,6 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 //printf ("DEBUG: scene_gmt: %f\n", scene_gmt);
 //printf ("DEBUG: approximated scene_gmt: %f\n", 10.5-center_lon/15.);
   
-/*  printf("Center: %d %f %f %f %f %f\n",input->meta.acq_date.doy,scene_gmt,center_lat,center_lon,input->meta.sun_zen*DEG,input->meta.sun_az*DEG);
-  exit(1); */
    /* Read PRWV Data */
    if ( param->num_prwv_files > 0  ) {
 
@@ -682,18 +711,6 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	printf("True North adjustment = %f\n",adjust_north);
 
 
-/****
-	Recompute solar geometry
-****/
-/*
-   	jday=(short)input->meta.acq_date.doy;    	  
-	sun_angles (jday,scene_gmt,center_lat,center_lon,&fts,&ffs);
-	input->meta.sun_zen=fts*RAD;
-	input->meta.sun_az=ffs*RAD;
-
-	printf("Center: %d %f %f %f %f %f\n",input->meta.acq_date.doy,scene_gmt,center_lat,center_lon,input->meta.sun_zen*DEG,input->meta.sun_az*DEG);
-*/	
-
 #ifdef SAVE_6S_RESULTS
 	if (read_6S_results_from_file(SIXS_RESULTS_FILENAME,&sixs_tables)) {
 #endif
@@ -733,7 +750,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 
 	sixs_tables.target_alt=0.; /* target altitude in km (sea level) */
 	sixs_tables.sza=input->meta.sun_zen*DEG;
-	sixs_tables.phi=input->meta.sun_az*DEG;
+	sixs_tables.phi=corrected_sun_az;
 	sixs_tables.vza=0.;
 	sixs_tables.month=9;
 	sixs_tables.day=15;
@@ -780,7 +797,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
         ar_gridcell.lon[il_ar*lut->ar_size.s+is_ar]=geo.lon * DEG;
         ar_gridcell.sun_zen[il_ar*lut->ar_size.s+is_ar]=input->meta.sun_zen*DEG;
         ar_gridcell.view_zen[il_ar*lut->ar_size.s+is_ar]=3.5;
-        ar_gridcell.rel_az[il_ar*lut->ar_size.s+is_ar]=input->meta.sun_az*DEG;
+        ar_gridcell.rel_az[il_ar*lut->ar_size.s+is_ar]=corrected_sun_az;
 
     	interpol_spatial_anc(&anc_WV,ar_gridcell.lat[il_ar*lut->ar_size.s+is_ar],ar_gridcell.lon[il_ar*lut->ar_size.s+is_ar],tmpflt_arr);
     	tmpint=(int)(scene_gmt/anc_WV.timeres);
@@ -1294,7 +1311,8 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   
   /* Write the output metadata */
   
-  if (!PutMetadata(output, input->nband, &input->meta, param, lut, &bounds))
+  if (!PutMetadata(output, input->nband, &input->meta, param, lut, &bounds,
+    &ul_corner, &lr_corner))
     ERROR("writing the metadata", "main");
 
   /* Close input files */
