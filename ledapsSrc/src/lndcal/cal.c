@@ -14,8 +14,11 @@
  * revision 1.1.0 9/13/2012  Gail Schmidt, USGS
  * - modified cal6 application to flag the saturated thermal pixels to be
  *   consistent with the processing of the reflective bands
- * revision 1.1.2 2/20/2013  Gail Schmidt, USGS
+ * revision 1.2.0 2/20/2013  Gail Schmidt, USGS
  * - added computeBounds routine for computing the bounding coordinates
+ * revision 1.2.1 3/22/2013  Gail Schmidt, USGS
+ * - writing UL and LR corners to the output metadata to be able to detect
+ *   ascending scenes or scenes where the image is flipped North to South
  */
 
 bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in, 
@@ -276,9 +279,16 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int *line_out,
 !C******************************************************************************
 
 !Description: 'computeBounds' computes the boundary corners of the output image
+and also outputs the UL and LR corners.  For ascending scenes and scenes in
+the polar regions, the scenes are flipped upside down.  The bounding coords
+will be correct in North represents the northernmost latitude and South
+represents the southernmost latitude.  However, the UL corner in this case
+would be more south than the LR corner.  Comparing the UL and LR corners will
+allow the user to determine if the scene is flipped.
 
 !Prototype : 
-  bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
+  bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
+    Geo_coord_t lr_corner, Space_t *space, int nps, int nls)
  
 !Input Parameters:
  space            space (transformation) definition structure that defines
@@ -288,7 +298,9 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int *line_out,
  nls              image size number of lines   (int)
 
 !Output Parameters:
- bounds           output boundry structure (Geo_bounds_t)
+ bounds           output boundary structure (Geo_bounds_t)
+ ul_corner        output UL corner (Geo_coord_t)
+ lr_corner        output LR corner (Geo_coord_t)
 
 !Team Unique Header:
  ! Design Notes:
@@ -298,7 +310,8 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int *line_out,
 
 !END****************************************************************************
 */
-bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
+bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
+    Geo_coord_t *lr_corner, Space_t *space, int nps, int nls)
 {
   const float pixcorn_x[4]={-0.5,-0.5, 0.5, 0.5}; /* 4 corners of a pixel */
   const float pixcorn_y[4]={-0.5, 0.5,-0.5, 0.5}; /* 4 corners of a pixel */
@@ -310,6 +323,7 @@ bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
   bounds->max_lat= -99999.9999;
   bounds->max_lon= -99999.9999;
 
+  /* Determine the bounding coords */
   for ( i=0; i<(nps*2+nls*2); i++ )
     {
     if ( i<nps ) /* top edge */
@@ -338,12 +352,26 @@ bool computeBounds(Geo_bounds_t *bounds, Space_t *space, int nps, int nls)
       img.s = (double)ix + pixcorn_x[ic];
       img.is_fill = false;
       if (!FromSpace(space, &img, &geo))
-        RETURN_ERROR("mapping from sapce", "computeBounds", false);
+        RETURN_ERROR("mapping from space", "computeBounds", false);
       bounds->max_lat= max(bounds->max_lat,geo.lat);
       bounds->min_lat= min(bounds->min_lat,geo.lat);
       bounds->max_lon= max(bounds->max_lon,geo.lon);
       bounds->min_lon= min(bounds->min_lon,geo.lon);
       }
     }
+
+  /* Determine the exact UL and LR corners */
+  img.l = 0;
+  img.s = 0;
+  img.is_fill = false;
+  if (!FromSpace(space, &img, ul_corner))
+    RETURN_ERROR("mapping from space for UL corner", "computeBounds", false);
+
+  img.l = nls-1;
+  img.s = nps-1;
+  img.is_fill = false;
+  if (!FromSpace(space, &img, lr_corner))
+    RETURN_ERROR("mapping from space for LR corner", "computeBounds", false);
+
   return true;
  }

@@ -30,6 +30,16 @@
  Gail Schmidt, USGS EROS
  Modified the put metadata routine to write out the bounding coordinates.
 
+ Revision 1.4 2013/03/22
+ Gail Schmidt, USGS EROS
+ Modified to output the UL and LR corner lat/longs.  We are already writing
+   the bounding coords, however for ascending scenes and scenes in the polar
+   regions, the scenes are flipped upside down.  The bounding coords will be
+   correct in North represents the northernmost latitude and South represents
+   the southernmost latitude.  However, the UL corner in this case would be
+   more south than the LR corner.  Comparing the UL and LR corners will allow
+   the user to determine if the scene is flipped.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -100,6 +110,8 @@
 #define OUTPUT_EAST_BOUND  ("EastBoundingCoordinate")
 #define OUTPUT_NORTH_BOUND ("NorthBoundingCoordinate")
 #define OUTPUT_SOUTH_BOUND ("SouthBoundingCoordinate")
+#define UL_LAT_LONG ("UpperLeftCornerLatLong")
+#define LR_LAT_LONG ("LowerRightCornerLatLong")
 
 #define OUTPUT_EST_GAIN_BIAS  ("Estimated_Gain_Bias")
 #define OUTPUT_MSS_GAINS ("MSS_gains")
@@ -567,7 +579,9 @@ bool PutOutputLine(Output_t *this, int iband, int iline, int *line)
 }
 
 
-bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Param_t *param, Geo_bounds_t *bounds)
+bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
+  Param_t *param, Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
+  Geo_coord_t *lr_corner)
 /* 
 !C******************************************************************************
 
@@ -767,6 +781,22 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut, Para
   attr.name = OUTPUT_LEDAPSVERSION;
   if (!PutAttrString(this->sds_file_id, &attr, process_ver))
     RETURN_ERROR("writing attribute (LEDAPS Version)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 2;
+  attr.name = UL_LAT_LONG;
+  dval[0] = ul_corner->lat * DEG;
+  dval[1] = ul_corner->lon * DEG;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (UL lat/long)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 2;
+  attr.name = LR_LAT_LONG;
+  dval[0] = lr_corner->lat * DEG;
+  dval[1] = lr_corner->lon * DEG;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (LR lat/long)", "PutMetadata", false);
 
   attr.type = DFNT_FLOAT64;
   attr.nval = 1;

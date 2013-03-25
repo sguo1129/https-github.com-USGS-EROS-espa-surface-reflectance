@@ -607,7 +607,7 @@ bool PutAttrString(int32 sds_id, Myhdf_attr_t *attr, char *string)
 !C******************************************************************************
 
 !Description: 'PutAttrString' writes an attribute from a parameter of type
- 'double' to a HDF file.
+ 'string' to a HDF file.
  
 !Input Parameters:
  sds_id         SDS id
