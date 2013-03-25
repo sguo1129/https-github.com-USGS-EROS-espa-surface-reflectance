@@ -142,7 +142,7 @@
  * LEDAPS VERSION definitions
  */
 #ifndef LEDAPS_VERSION
-#define LEDAPS_VERSION "1.2.0"
+#define LEDAPS_VERSION "1.2.1"
 #endif
 
 /*

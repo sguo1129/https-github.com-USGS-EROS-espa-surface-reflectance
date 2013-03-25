@@ -116,7 +116,7 @@ V1.2.0  03/20/2013 - USGS EROS
 5. Acquisition time is read from the lndcal.hdf metadata and used if available
    versus estimating the scene time.
 
-V1.2.1  04/25/2013 - USGS EROS
+V1.2.1  04/17/2013 - USGS EROS
 =============================================================================
 1. Modified to output the UL and LR corner lat/longs.  We are already writing
    the bounding coords, however for ascending scenes and scenes in the polar

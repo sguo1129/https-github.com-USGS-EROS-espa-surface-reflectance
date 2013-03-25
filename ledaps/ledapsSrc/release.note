@@ -1,3 +1,27 @@
+Updates on April 17, 2013 - USGS EROS
+Version 1.2.1
+---------------------------------------
+lndcal:
+- Modified to output the UL and LR corner lat/longs.  The bounding coords are
+  already being written, however for ascending scenes and scenes in the polar
+  regions, the scenes are flipped upside down.  The bounding coords will be
+  correct in North represents the northernmost latitude and South represents
+  the southernmost latitude.  However, the UL corner in this case would be
+  more south than the LR corner.  Comparing the UL and LR corners will allow
+  the user to determine if the scene is flipped.
+
+lndsr:
+- Modified to output the UL and LR corner lat/longs.  The bounding coords are
+  already being written, however for ascending scenes and scenes in the polar
+  regions, the scenes are flipped upside down.  The bounding coords will be
+  correct in North represents the northernmost latitude and South represents
+  the southernmost latitude.  However, the UL corner in this case would be
+  more south than the LR corner.  Comparing the UL and LR corners will allow
+  the user to determine if the scene is flipped.
+- Adjusted the sun azimuth for polar scenes which are ascending/flipped.  The
+  sun azimuth is north up, but these scenes are south up.  So the azimuth
+  needs to be adjusted by 180 degrees when applied to the scene.
+
 Updates on March 20, 2013 - USGS EROS
 Version 1.2.0
 ---------------------------------------
