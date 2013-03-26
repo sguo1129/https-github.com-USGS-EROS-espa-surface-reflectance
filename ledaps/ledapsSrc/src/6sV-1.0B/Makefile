@@ -1,8 +1,5 @@
 SHELL = /bin/sh
-#SYSTEM  = HP-UX
-#EXTRA   = +FPVZOUD +O3 -D$(SYSTEM)
-#EXTRA   = -g
-EXTRA   = -O
+EXTRA   = -Wall -O2
 FFLAGS=  $(EXTRA)
 CFLAGS = -Ae $(EXTRA)
 FC      = gfortran $(FFLAGS)

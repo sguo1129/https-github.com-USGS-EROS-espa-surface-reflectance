@@ -5,13 +5,13 @@
 #
 ##!END
 #############################################################################
-EXTRA  = -D_BSD_SOURCE -Wall
+EXTRA  = -D_BSD_SOURCE -Wall -O2
 
 TARGET = lndpm
 
-INC = -I. -I$(TIFFINC) -I$(GEOTIFF_INC)
+INC = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC)
 
-LIB = -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff -lm
+LIB = -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff -L$(JPEGLIB) -ljpeg -lz -lm
 
 OBJ =  lndpm.c
 

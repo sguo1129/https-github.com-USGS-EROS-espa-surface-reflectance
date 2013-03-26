@@ -5,7 +5,7 @@
 #
 ##!END
 #############################################################################
-EXTRA  = -D_BSD_SOURCE -Wall -O2
+EXTRA  = -D_BSD_SOURCE -Wall -static -O2
 
 TARGET = lndpm
 

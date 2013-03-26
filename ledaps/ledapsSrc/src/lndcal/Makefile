@@ -1,21 +1,11 @@
-#SYSTEM  = IRIS4
-#EXTRA	= -D$(SYSTEM) -lfastm
-EXTRA   = -D_BSD_SOURCE -Wall
+EXTRA   = -D_BSD_SOURCE -Wall -O2
 
-INCDIR  = -I. -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
-###INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(TIFFINC) -I$(GEOTIFF_INC)
-#NCFLAGS  = -mips3 -xansi -fullwarn -r10000 -g $(EXTRA) $(INCDIR)
-#NCFLAGS  = $(CFLAGS) -r10000 -g $(EXTRA) $(INCDIR)
-#NCFLAGS  = $(CFLAGS) -r10000 -O3 $(EXTRA) $(INCDIR)
-#NCFLAGS  = $(CFLAGS) -g $(EXTRA) $(INCDIR)
-#NCFLAGS  = $(CFLAGS) -O3 $(EXTRA) $(INCDIR)
-#NCFLAGS  = $(CFLAGS) -O3  -DIRIS4 $(INCDIR)
+INCDIR  = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
-#EXLIB   = -lmalloc_ss
 EXLIB	= -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff \
           -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
-          -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
+          -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
@@ -34,7 +24,6 @@ $(OBJ1): $(INC1)
 
 $(TARGET1): $(OBJ1)
 	$(CC) $(EXTRA) -o $(TARGET1) $(OBJ1) $(LOADLIB)
-#	/usr/pure/purify -m71-engine $(CC) -o $(TARGET1) $(OBJ1) $(LOADLIB) 
 
 clean:
 	rm -f *.o $(TARGET1)

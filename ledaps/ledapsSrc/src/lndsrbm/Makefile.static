@@ -1,6 +1,6 @@
 FC      = gfortran
-FC_EXTRA   = -Wall -O2 -fno-range-check
-EXTRA   = -Wall -O2
+FC_EXTRA   = -Wall -static -O2 -fno-range-check
+EXTRA   = -Wall -static -O2
 INCDIR  = -I. -I$(HDFINC) -I$(JPEGINC)
 EXLIB   = -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm
 EXE     = cmrbv1.0 compadjn comptemp xy2geo geo2xy SDSreader3.0

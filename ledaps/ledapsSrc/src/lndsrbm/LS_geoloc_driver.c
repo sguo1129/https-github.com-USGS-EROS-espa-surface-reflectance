@@ -271,7 +271,7 @@ int parse_comma_sep(char *argument, float *left, float *right)
 {  /* designed to parse StructMetadata's UpperLeft/LowerRight metadata in the GCTP_UTM projection */
 int i, j, n, n_non, where;
 double tmpdb;
-char c, x, tmpstr[256];
+char c=' ', x, tmpstr[256];
 char tmparg[256];
 int in_paren;
 

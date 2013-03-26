@@ -27,7 +27,7 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
   float gain, bias, rad, ref_conv, ref, fval;
   int nsamp= input->size.s;
   int ifill= input->short_flag ? FILL_VAL[iband]: (int)lut->in_fill;
-  float scale;
+  float scale=1.0;
   float Gold, Gnew, Alpha, Grescale;
   jband= iband==5 ? 6 : iband;
 
@@ -164,7 +164,7 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int *line_out,
   float gain, bias, rad, temp;
   int nsamp= input->size_th.s;
   int ifill= input->short_flag ? FILL_VAL6 : (int)lut->in_fill;
-  float scale;
+  float scale=1.0;
   
 
   if ( input->dnout )

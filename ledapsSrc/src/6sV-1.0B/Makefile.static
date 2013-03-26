@@ -1,5 +1,5 @@
 SHELL = /bin/sh
-EXTRA   = -Wall -O2
+EXTRA   = -Wall -static -O2
 FFLAGS=  $(EXTRA)
 CFLAGS = -Ae $(EXTRA)
 FC      = gfortran $(FFLAGS)

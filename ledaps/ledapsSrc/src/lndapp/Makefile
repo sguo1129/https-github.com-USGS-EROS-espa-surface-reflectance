@@ -6,14 +6,14 @@
 ##!END
 #############################################################################
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -O2
 
 TARGET = lndapp
 
-INC = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
+INC = -I. -I$(HDFINC) -I$(JPEGINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
 
 LIB = -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
-      -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz -lm
+      -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm
 
 OBJ = lndapp.o
 
