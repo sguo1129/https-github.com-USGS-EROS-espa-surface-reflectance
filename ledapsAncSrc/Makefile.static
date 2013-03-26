@@ -1,5 +1,5 @@
 CC = gcc
-EXTRA   = -ansi -Wall
+EXTRA   = -ansi -Wall -static -O2
 
 INCDIR  = -I. -I$(HDFINC) -I$(JPEGINC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)

@@ -1,11 +1,10 @@
 CC = gcc
-EXTRA   = -ansi
+EXTRA   = -ansi -Wall
 
-INCDIR  = -I. -I$(HDFINC)
+INCDIR  = -I. -I$(HDFINC) -I$(JPEGINC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
-#EXLIB  = -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz
-LIB = -L$(HDFLIB) -lmfhdf -ldf -ljpeg -lz -lm
+LIB = -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm
 
 TARGET1 = convert_ozone
 OBJ1    = convert_ozone.o

@@ -213,7 +213,7 @@ int read_ozone(char* fname, short int** out_data, int* doy, int* year, int* nlat
  char dtype[10],month[4],valbuf[4];
  char c_day_of_month[3];
  int day_of_month;
- int irow,icol,i,ival;
+ int irow,icol,i=0,ival;
  int ilat;
  int number;
  short int* data;
