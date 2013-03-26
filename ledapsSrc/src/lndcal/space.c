@@ -1069,13 +1069,14 @@ bool PutSpaceDefHDF(Space_def_t *this, char *file_name, int nsds,
     if (ctype == (char *)NULL)
       RETURN_ERROR("getting hdf type name string", "PutSpaceDefHDF", false);
 
+    /* write the DataField_# as one-based and not zero-based */
     sprintf(cbuf, 
       "\t\t\tOBJECT=DataField_%d\n"
       "\t\t\t\tDataFieldName=\"%s\"\n"
       "\t\t\t\tDataType=%s\n"
       "\t\t\t\tDimList=(\"%s\",\"%s\")\n"
       "\t\t\tEND_OBJECT=DataField_%d\n",
-      isds, sds_names[isds], ctype, dim_names[0], dim_names[1], isds);
+      isds+1, sds_names[isds], ctype, dim_names[0], dim_names[1], isds+1);
 
     if (!AppendMeta(struct_meta, &ic, cbuf))
       RETURN_ERROR("appending to metadata string (SDS group)", 
