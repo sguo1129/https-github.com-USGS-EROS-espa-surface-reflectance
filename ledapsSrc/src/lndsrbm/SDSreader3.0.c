@@ -64,18 +64,18 @@ float NR[MAXSITES], NC[MAXSITES];
 
 int main(int argc, char **argv)
 {
-FILE *fd, *fdout;
+FILE *fd=NULL, *fdout=NULL;
 FILE *fdExtsrc[MAXCRITERIA];
-FILE *fddebug;
+FILE *fddebug=NULL;
 short ret, i;
 int32 which_SDS[MAXBANDS];
 short which_filter[MAXCRITERIA];
-int32 j, ii, jj, file_id, out_id, sds_outid, cr_sds_id, sds_id, n_gattr, n_sets, nn_sets, rank;
+int32 j, ii, jj, file_id=-1, out_id=-1, sds_outid=-1, cr_sds_id=-1, sds_id=-1, n_gattr, n_sets, nn_sets, rank;
 int32 dims[10], outdims[2], outstart[2], xdims[MAXDIMS], SDS_dims[MAXDIMS], nt, nattr, xsds;
-int32 filter_type;
+int32 filter_type=-1;
 int32 SDS_type[MAXBANDS];
 int32 SDS_filtertype[MAXCRITERIA];
-long n_rows, n_cols, save_bin, save_out, save_HDFout;
+long n_rows=0, n_cols=0, save_bin, save_out, save_HDFout;
 char name[MAXLENGTH];
 char SDSinfile[MAXBANDS][MAXLENGTH];
 char sds_table[MAXLENGTH*MAXBANDS];
@@ -133,20 +133,20 @@ char JDAY[10];
 char GMT[10];
 int get_angles;
 
-int16 *i16_data;
-int8 *i8_data;
-uint16 *ui16_data;
-uint8 *ui8_data;
-uint32 *ui32_data;
-int32 *i32_data;
-double *dbl_data;
-int n_lines, paramfileline, *newfileindex;
+int16 *i16_data=NULL;
+int8 *i8_data=NULL;
+uint16 *ui16_data=NULL;
+uint8 *ui8_data=NULL;
+uint32 *ui32_data=NULL;
+int32 *i32_data=NULL;
+double *dbl_data=NULL;
+int n_lines, paramfileline, *newfileindex=NULL;
 int get_n_lines(char *possibleparamfile, int **newfileindex);
 int32 lin, col;
 HDF_CHUNK_DEF cdef;
 long hcrit_value, lcrit_value;
-int truly_boolean, forget_it;
-short overall_rows, overall_cols, overall_row0, overall_col0;
+int truly_boolean, forget_it=0;
+short overall_rows=0, overall_cols=0, overall_row0=0, overall_col0=0;
 
 /* for now... */
 dheight=(705.)*1000.;
@@ -594,6 +594,10 @@ for (j=1;j<n_SDSs;j++)
  * in the HDF file or are external flat binary files 
  * or are in another HDF file...
  *****************************************************/
+SDS_dims[0] = 0;
+SDS_dims[1] = 0;
+xdims[0] = 0;
+xdims[1] = 0;
 for (j=0;j<n_criteria;j++) {
     missing = -1;
     for (ii=0;ii<MAXLENGTH;ii++) otherHDFfile[ii] = '\0';
@@ -1124,7 +1128,7 @@ for (ii=0;ii<n_sites;ii++) {
 	  }
 	  
         if (save_HDFout)  {
-           sprintf(debugfile, "%s\0", SDSnames[j]);
+           sprintf(debugfile, "%s", SDSnames[j]);
            outdims[0] = nr;
 	   outdims[1] = nc;
 	   outstart[0] = 0;
@@ -1132,8 +1136,8 @@ for (ii=0;ii<n_sites;ii++) {
            /*printf("%d %s %d %d %d\n", j, SDSnames[j], SDS_type[j], outdims[0], outdims[1]);*/
            sds_outid = SDcreate(out_id, debugfile, SDS_type[j], 2, outdims);
 	   
-           SDsetdimname( SDgetdimid(sds_outid, 0), "rows\0");	   
-           SDsetdimname( SDgetdimid(sds_outid, 1), "columns\0");	   
+           SDsetdimname( SDgetdimid(sds_outid, 0), "rows");
+           SDsetdimname( SDgetdimid(sds_outid, 1), "columns");
 	   
            cdef.chunk_lengths[0] = 50;
            cdef.chunk_lengths[1] = (int32)outdims[1];
@@ -1330,8 +1334,8 @@ for (ii=0;ii<n_sites;ii++) {
            sprintf(resultstring+strlen(resultstring),"SDS_%02d_mn SDS_%02d_sd ",j,j); 
         sprintf(resultstring+strlen(resultstring),"\n"); 
                   }
-     else 
-       sprintf(resultstring,"\0");
+/*     else 
+       sprintf(resultstring,"\0");*/
      
      sprintf(resultstring+strlen(resultstring),"%02d %05ld %05d ", ii, n_kept, nr*nc);
      for (j=0;j<n_SDSs;j++) 
@@ -1610,7 +1614,7 @@ int n_lines = 0;
 
 char argv[100][150];
 char lastfilename[150];
-int i, j, argc;
+int i=0, j, argc;
 int in_arg, en_lines, n_quotes, in_quotes;
 void get_site_overall_dims(char *string);
 
@@ -1722,7 +1726,7 @@ char *arg_clean(char *);
 /*int initializepar(char *file,t_project *project);*/
 int in_arg, n_lines, n_quotes, in_quotes;
 int parse_agg_arg(char *arg);
-int aggret;
+int aggret=-1;
 
 list_idx = crit_idx = 0;
 in_list = in_crit = 0;
@@ -3423,16 +3427,16 @@ void process_global_attributes(int32 sd_id1, int32 id_out)
 int32 i, j;
 int32 id1;
 int start;
-int32 n_attr1, n_sets1, count, count1, number_type1;
+int32 n_attr1, n_sets1, count=0, count1=0, number_type1;
 char attrib[MAXLENGTH], attrib1[MAXLENGTH];
-char *charattr;
-uchar8 *ucharattr;
-int16 *shortattr;
-uint16 *ushortattr;
-int32 *intattr;
-uint32 *uintattr;
-float32 *floatattr;
-float64 *doubleattr;
+char *charattr=NULL;
+uchar8 *ucharattr=NULL;
+int16 *shortattr=NULL;
+uint16 *ushortattr=NULL;
+int32 *intattr=NULL;
+uint32 *uintattr=NULL;
+float32 *floatattr=NULL;
+float64 *doubleattr=NULL;
 char charatt;
 uchar8 ucharatt;
 int16 shortatt;
@@ -3441,10 +3445,10 @@ int32 intatt;
 uint32 uintatt;
 float32 floatatt;
 float64 doubleatt;
-char *newstructmetadata;
-char *oldstructmetadata;
+char *newstructmetadata=NULL;
+char *oldstructmetadata=NULL;
 int NEWShave[4], newshave, structhave, switch_metadata, n_cols_original, n_lines_original;
-float NEWSvals[4], rez;
+float NEWSvals[4]={0,0,0,0}, rez;
 enum{N,E,W,S};
 char line[MAXLENGTH];
 void get_a_line(char *text, int *start, char *line);
@@ -3765,7 +3769,7 @@ n = strlen(line);
 for(j=0;j<n;j++) {
    if (line[j] == '=') break;
   }
-sprintf(rhs, "%d\n\0", x);
+sprintf(rhs, "%d\n", x);
 i = 0;
 j++;
 for(   ;j<n;j++) {

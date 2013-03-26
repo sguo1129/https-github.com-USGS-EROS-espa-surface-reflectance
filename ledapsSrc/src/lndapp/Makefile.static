@@ -6,7 +6,7 @@
 ##!END
 #############################################################################
 CC = gcc
-CFLAGS = -Wall -O2
+CFLAGS = -Wall -static -O2
 
 TARGET = lndapp
 

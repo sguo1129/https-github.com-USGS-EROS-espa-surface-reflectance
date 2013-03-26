@@ -253,7 +253,7 @@ double dms2deg(double dms_angle);
 
 int main(int argc, char *argv[])
 {
-  int  year, month, day, ret;
+  int  year, month, day, ret=-1;
   bool anc_missing = false;
 
   /* file names */
@@ -466,7 +466,7 @@ int main(int argc, char *argv[])
  */
 int getMetaFromLPGS(char input[], char scene_name[], char acquisition_date[])
 {
-  int    i, year, pyear, zone, geotiff, instrument;
+  int    i, year, pyear, zone, geotiff=0, instrument=-1;
   int    nrows, ncols, bno;
   float  lmax[8], lmin[8], qmin[8], qmax[8];
   double ulxy[2], res;
@@ -2572,12 +2572,12 @@ double dms2deg
   double dms_ang   /* I: angle which is in DMS */
 )
 {
-  double fac;		/* sign flag			*/
-  double deg;		/* degree variable		*/
-  double min;		/* minute variable		*/
-  double sec;		/* seconds variable		*/
-  double tmp;		/* temporary variable	*/
-  int i;			/* temporary variable	*/
+  double fac;       /* sign flag			*/
+  double deg=0.0;   /* degree variable		*/
+  double min=0.0;   /* minute variable		*/
+  double sec=0.0;   /* seconds variable		*/
+  double tmp;       /* temporary variable	*/
+  int i;            /* temporary variable	*/
   
   if (dms_ang < 0.0)
      fac = -1;

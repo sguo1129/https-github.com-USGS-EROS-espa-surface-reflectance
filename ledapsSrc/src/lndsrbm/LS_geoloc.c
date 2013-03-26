@@ -97,7 +97,7 @@ int LSsphdz(char *projection, float coordinates[8], double *parm,
 {
 double r_major;
 double r_minor;
-int ret;
+int ret=0;
 long isph;		/* spheroid code number also known as datum	*/
 long zone;		/* zone code                            	*/
 

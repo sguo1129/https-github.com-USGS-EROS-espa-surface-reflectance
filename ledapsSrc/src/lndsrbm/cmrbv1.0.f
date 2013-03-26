@@ -373,6 +373,7 @@ c       write(6,*) "i found a cloud at ",i,j,"with t=",temp(j,i)/100.
        enddo
        
 C compute cloud shadow  
+       mband5=9999
        write(6,*) "looking for cloud shadow"
        fack=cos(fs*dtr)*tan(ts*dtr)/pixsize
        facl=sin(fs*dtr)*tan(ts*dtr)/pixsize
@@ -388,6 +389,8 @@ c       endif
            cldhmin=int(cldh-1000.)
            cldhmax=int(cldh+1000.)
            mband5=9999
+           mband5k=9999
+           mband5l=9999
            do icldh=cldhmin/10,cldhmax/10
             cldh=icldh*10.
             k=int(i+fack*cldh)
