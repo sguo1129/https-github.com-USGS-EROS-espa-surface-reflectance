@@ -5,6 +5,10 @@ Installation Guide
 
 2. Set up environment.  Can look at and modify ledapsSrc/src/env.sh or add
 the following to your bash shell.  For C shell, use 'setenv VAR "directory"'.
+Note that if the HDF library was configured and built with szip support, then
+the user will also need to add an environment variable for SZIP include
+(SZIPINC) and library (SZIPLIB) files. 
+
 export HDFEOS_GCTPINC="path_to_HDFEOS_GCTP_include_files"
 export HDFEOS_GCTPLIB="path_to_HDFEOS_GCTP_libraries"
 export TIFFINC="path_to_TIFF_include_files"
@@ -30,6 +34,11 @@ This will create a list of executable files under $BIN:
 lndapp lndcal  lndpm  lndsr  lndsrbm.ksh sixsV1.0B
 cmrbv1.0  compadjn  comptemp  geo2xy SDSreader3.0 xy2geo
 (tested in gcc and gfortran compiler)
+
+* Note that if the HDF library was configured and built with szip support,
+then the user will also need to add "-L$(SZIPLIB) -lsz" at the end of the
+library defines in the Makefiles.  The user should also add "-I$(SZIPINC)"
+to the include directory defines in the Makefile.
 
 * Note that new cloud mask program (lndsrbm) calls command 
 "ncdump" which is a standard HDF command. This release includes 
