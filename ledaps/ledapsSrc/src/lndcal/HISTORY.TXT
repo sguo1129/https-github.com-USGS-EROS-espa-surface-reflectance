@@ -1,4 +1,8 @@
-3/22/2013   Gail Schmidt, USGS ERO
+3/29/2013   Gail Schmidt, USGS EROS
+1. Modified the code to support the new ESUN and sun-earth distance constants
+   from Chander, et. al.
+
+3/22/2013   Gail Schmidt, USGS EROS
 1. Modified to write the UL and LR lat/long corners to the output metadata
    to allow detection of ascending scenes or scenes where the image is flipped
    north to south.  We are already writing the bounding coords, however for
@@ -23,8 +27,6 @@
    the previous two different version tags with the same value.
 2. Modified the application to calculate and write the bounding coordinates
    as output metadata to the HDF file, similar to lndsr.
-3. Modified the code to support the new ESUN and sun-earth distance constants
-   from Chander, et. al.  This is currently left commented-out.
 
 11/30/2012  Gail Schmidt, USGS EROS
 1. Corrected spelling of SATTELITE to SATELLITE.

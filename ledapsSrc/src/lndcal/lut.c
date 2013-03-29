@@ -34,6 +34,13 @@
 #define NORECAL_YEAR  (2007)
 #define NORECAL_DOY   (92)
 
+/*
+ * revision 3/29/2013  Gail Schmidt, USGS
+ * - to use the new ESUN and sun-earth constant published by Chander, et. al.
+ *   in December of 2012 this change involves the Dsun_table_t dsun_table and
+ *   the esun_[etm|tm|mss]_X arrays.
+ */
+
 /* Landsat 7 ETM+ Minimum and Maximum Spectral Radiance (LMIN and LMAX)
    Units = watts / (meter squared * steradian * micrometer)
    Table A is for data produced before July 1, 2000 and 
@@ -106,7 +113,6 @@ typedef struct {
   float dsun;      /* Relative sun-earth distance */
 } Dsun_table_t;
 
-/* New -
 const Dsun_table_t dsun_table[NDSUN] = {
  {  1, 0.98331}, { 15, 0.98365}, { 32, 0.98536}, { 46, 0.98774}, { 60, 0.99084},
  { 74, 0.99446}, { 91, 0.99926}, {106, 1.00353}, {121, 1.00756}, {135, 1.01087},
@@ -114,15 +120,6 @@ const Dsun_table_t dsun_table[NDSUN] = {
  {227, 1.01281}, {242, 1.00969}, {258, 1.00566}, {274, 1.00119}, {288, 0.99718},
  {305, 0.99253}, {319, 0.98916}, {335, 0.98608}, {349, 0.98426}, {366, 0.98331}
 };
-*/
-const Dsun_table_t dsun_table[NDSUN] = {
-  {  1, 0.9832}, { 15, 0.9836}, { 32, 0.9853}, { 46, 0.9878}, { 60, 0.9909},
-  { 74, 0.9945}, { 91, 0.9993}, {106, 1.0033}, {121, 1.0076}, {135, 1.0109}, 
-  {152, 1.0140}, {166, 1.0158}, {182, 1.0167}, {196, 1.0165}, {213, 1.0149},
-  {227, 1.0128}, {242, 1.0092}, {258, 1.0057}, {274, 1.0011}, {288, 0.9972},
-  {305, 0.9925}, {319, 0.9892}, {335, 0.9860}, {349, 0.9843}, {366, 0.9833}
-};
-
 
 /* Solar Spectral Irradiances 
    Units = watts / (meter squared * micrometers)
@@ -136,87 +133,39 @@ const Dsun_table_t dsun_table[NDSUN] = {
 >L4: 1957      1825      1557      1033    214.9      80.72  -
 */
 
-/* New ESUN Values from Chander, 2012 --
+/* New ESUN Values from Chander et. al., 2012 --
 http://landsathandbook.gsfc.nasa.gov/pdfs/Landsat_Calibration_Summary_RSE.pdf
 */
-/* New
 const float esun_etm[8] = {
   1997.000, 1812.000, 1533.000, 1039.000, 230.800, -1.0, 84.90, 1362.000
 };
-*/
 
-const float esun_etm[8] = {
-  1969.000, 1840.000, 1551.000, 1044.000, 225.700, -1.0, 82.07, 1368.000
-};
-
-/* New
 const float esun_tm_4[7] = {
   1983.0, 1795.0, 1539.0, 1028.0, 219.8, -1.0, 83.49
 };
-*/
 
-const float esun_tm_4[7] = {
-  1957.0, 1825.0, 1557.0, 1033.0, 214.9, -1.0, 80.72
-};
-
-/* New
 const float esun_tm_5[7] = {
   1983.0, 1796.0, 1536.0, 1031.0, 220.0, -1.0, 83.44
 };
-*/
 
-const float esun_tm_5[7] = {
-  1957.0, 1826.0, 1554.0, 1036.0, 215.0, -1.0, 80.67
-};
-
-/* New
 const float esun_mss_1[4] = {
   1823.0, 1559.0, 1276.0, 880.1
 };
-*/
 
-const float esun_mss_1[4] = {
-  1852.0, 1584.0, 1276.0, 904.0
-};
-
-/* New
 const float esun_mss_2[4] = {
   1829.0, 1539.0, 1268.0, 886.6
 };
-*/
 
-const float esun_mss_2[4] = {
-  1856.0, 1559.0, 1269.0, 906.0
-};
-
-/* New
 const float esun_mss_3[4] = {
   1839.0, 1555.0, 1291.0, 887.9
 };
-*/
 
-const float esun_mss_3[4] = {
-  1860.0, 1571.0, 1289.0, 910.0
-};
-
-/* New
 const float esun_mss_4[4] = {
   1827.0, 1569.0, 1260.0, 866.4
 };
-*/
 
-const float esun_mss_4[4] = {
-  1851.0, 1593.0, 1260.0, 878.0
-};
-
-/* New
 const float esun_mss_5[4] = {
   1824.0, 1570.0, 1249.0, 853.4
-};
-*/
-
-const float esun_mss_5[4] = {
-  1849.0, 1595.0, 1253.0, 870.0
 };
 
 /* Landsat 4/5 TM Bandwidths
