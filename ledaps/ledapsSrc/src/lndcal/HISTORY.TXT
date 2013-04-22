@@ -1,7 +1,3 @@
-3/29/2013   Gail Schmidt, USGS EROS
-1. Modified the code to support the new ESUN and sun-earth distance constants
-   from Chander, et. al.
-
 3/22/2013   Gail Schmidt, USGS EROS
 1. Modified to write the UL and LR lat/long corners to the output metadata
    to allow detection of ascending scenes or scenes where the image is flipped
