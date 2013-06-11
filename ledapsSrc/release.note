@@ -1,3 +1,13 @@
+Updates on June 19, 2013 - USGS EROS
+Version 1.2.2
+---------------------------------------
+overall:
+- Added a license file for this software.
+
+lndpm:
+- Modified to allow processing of TM 4 products through LPGS, but LPGS only.
+
+lndcal:
 Updates on April 22, 2013 - USGS EROS
 Version 1.2.1
 ---------------------------------------
