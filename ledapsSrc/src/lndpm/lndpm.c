@@ -14,6 +14,9 @@
  *
  * !Revision:
  *
+ *  revision 1.0.9  06/11/2013 Gail Schmidt, USGS EROS
+ *  - modified to only allow processing of TM4 products from LPGS
+ *
  *  revision 1.0.8  03/14/2013 Gail Schmidt, USGS EROS
  *  - modified LPGS section to read the scene center time from the MTL file
  *    and pass that time along as the ACQUISITION_TIME in the .metadata.txt
@@ -295,7 +298,8 @@ int main(int argc, char *argv[])
   sprintf(lndcal_name, "lndcal.%s.txt", scene_name);
   sprintf(lndsr_name, "lndsr.%s.txt", scene_name);
 
-  /* generate parameters for LEDAPS module from LPGS metadata file (ETM+) */
+  /* generate parameters for LEDAPS module from LPGS metadata file (ETM+).
+     allow processing of ETM+, TM4, and TM5 */
   if(strstr(input, "_MTL.") || strstr(input, ".met")) {
     if((ret=getMetaFromLPGS(input, scene_name, acquisition_date))==FAILURE) {
       DIE("reading metadata from LPGS input");
@@ -303,16 +307,24 @@ int main(int argc, char *argv[])
   }
 
   /* generate parameters for LEDAPS modules from NLAPS metadata file
-     (TM, MSS) */
+     (TM, MSS).  only allow processing of TM4 from LPGS at this time for
+     EROS ESPA. */
   else if(strstr(input, ".H1")||strstr(input, ".hdr")) {
+    if(strncmp(scene_name, "LT4", 3) == 0)
+      DIE("USGS ESPA does not support processing of TM4 products other than "
+        "those from LPGS");
     if((ret=getMetaFromNLAPS(input, scene_name, acquisition_date))==FAILURE) {
       DIE("reading metadata from NLAPS input");
     }
   }
 
   /* generate parameters for LEDAPS modules from NLAPS W0 metadata file
-     (TM, MSS) */
+     (TM, MSS).  only allow processing of TM4 from LPGS at this time for
+     EROS ESPA. */
   else if(strstr(input, "_WO") || strstr(input, ".prodReport")) {
+    if(strncmp(scene_name, "LT4", 3) == 0)
+      DIE("USGS ESPA does not support processing of TM4 products other than "
+        "those from LPGS");
     if((ret=getMetaFromNLAPS_WO(input, scene_name, acquisition_date))
         ==FAILURE) {
       DIE("reading metadata from NLAPS WO input");

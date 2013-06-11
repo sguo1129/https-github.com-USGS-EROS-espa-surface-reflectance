@@ -1,5 +1,9 @@
 Revision:
 
+revision 1.2.1  6/19/2013  Gail Schmidt, USGS EROS
+- modified to not allow processing of TM4 products unless they were processed
+  through LPGS.  TM4 processing will be allowed for LPGS products only.
+
 revision 1.2.0  3/20/2013  Gail Schmidt, USGS EROS
 - modified to utilize a single Version value version supporting two version
   tags with the same value.  migrating to LEDAPSVersion.
