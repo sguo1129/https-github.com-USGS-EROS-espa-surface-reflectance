@@ -145,7 +145,7 @@
  * LEDAPS VERSION definitions
  */
 #ifndef LEDAPS_VERSION
-#define LEDAPS_VERSION "1.2.1"
+#define LEDAPS_VERSION "1.2.3"
 #endif
 
 /*
@@ -451,7 +451,7 @@ int main(int argc, char *argv[])
   }    
   fprintf(out, "PARAMETER_FILE\n");
   fprintf(out, "DEM_FILE = %s\n", dem);
-  if(fopen(ozone,"r")!=NULL)  // if not exist then use climatology estimation
+  if(fopen(ozone,"r")!=NULL)  /* if not exist then use climatology estimation */
     fprintf(out, "OZON_FIL = %s\n", ozone);
   fprintf(out, "PRWV_FIL = %s\n", reanalysis);
   fprintf(out, "REF_FILE = lndcal.%s.hdf\n", scene_name);
@@ -613,7 +613,7 @@ int getMetaFromLPGS(char input[], char scene_name[], char acquisition_date[])
           chkFlg[i] = 0;
         break;
       case PRODUCTION_DATE:
-        // some input give wrong production date and need extra processing   
+        /* some input give wrong production date and need extra processing */
         sscanf(tokenptr, "%10s", production_date);
         break;
       case SOLAR_ZENITH:
@@ -666,12 +666,12 @@ int getMetaFromLPGS(char input[], char scene_name[], char acquisition_date[])
         sscanf(tokenptr, "%f", &false_northing);
         sprintf(meta_list[i],"%s = %f\n", meta_lut[i][0], false_northing);
         break;
-      default:  // other parameters can be used directly
+      default:  /* other parameters can be used directly */
         sscanf(tokenptr, "%s", tmpstr);
         sprintf(meta_list[i],"%s = %s\n", meta_lut[i][0], tmpstr);
       }  /* end switch */
 
-      // save acquisition date for later use    
+      /* save acquisition date for later use */
       if (i==ACQUISITION_DATE)
           strcpy(acquisition_date, tmpstr);
     }  /* end if strcmp */
@@ -817,7 +817,7 @@ int getMetaFromLPGS(char input[], char scene_name[], char acquisition_date[])
   sprintf(meta_list[NBAND_TH], "%s = 1\n", meta_lut[NBAND_TH][0]);
   sprintf(meta_list[BANDS_TH], "%s = 6\n", meta_lut[BANDS_TH][0]);
   sprintf(meta_list[PROJECTION_SPHERE], "%s = 12\n",
-    meta_lut[PROJECTION_SPHERE][0]);  // WGS84=12 in GCTPC
+    meta_lut[PROJECTION_SPHERE][0]);  /* WGS84=12 in GCTPC */
   chkFlg[DATA_PROVIDER] = 1;  chkFlg[WRS_SYSTEM] = 1;
   chkFlg[NBAND] = 1;  chkFlg[BANDS] = 1;
   chkFlg[NBAND_TH] = 1;  chkFlg[BANDS_TH] = 1;
@@ -1006,8 +1006,8 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
 
   for(i=0; i<NMETA; i++) chkFlg[i] = 0;
 
-  sprintf(meta_list[GAIN], "%s = ", meta_lut[GAIN][0]);  // GAIN
-  sprintf(meta_list[BIAS], "%s = ", meta_lut[BIAS][0]);  // BIAS
+  sprintf(meta_list[GAIN], "%s = ", meta_lut[GAIN][0]);
+  sprintf(meta_list[BIAS], "%s = ", meta_lut[BIAS][0]);
 
   /* process line by line */
   while(fgets(buffer, MAX_STRING_LENGTH, in) != NULL) {
@@ -1041,7 +1041,7 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
         sprintf(meta_list[i], "%s = %s\n", meta_lut[i][0], acquisition_date);
         break;
       case PRODUCTION_DATE:
-        // some input give wrong production date and need extra processing   
+        /* some input give wrong production date and need extra processing */
         sscanf(tokenptr, "%10s", production_date);
         sprintf(meta_list[i], "%s = %s\n", meta_lut[i][0], production_date);
         break;
@@ -1060,7 +1060,7 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
         sscanf(tokenptr, "%d", &zone);
         sprintf(meta_list[i], "%s = %d\n", meta_lut[i][0], zone);
         break;        
-      default:  // other parameters can be used directly
+      default:  /* other parameters can be used directly */
         sscanf(tokenptr, "%s", tmpstr);
         sprintf(meta_list[i],"%s = %s\n", meta_lut[i][0], tmpstr);
       }
@@ -1079,7 +1079,7 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
  
       /* extract gain and file names for band 1-7 */
       for(i=1; i<=7; i++) {
-    // extract band filename
+    /* extract band filename */
     sprintf(tmpstr,"BAND%d_FILENAME",i);
     if(strcmp(label, tmpstr) == 0) {
       chkFlg[FILE_NAMES] = 1;        
@@ -1089,11 +1089,11 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
     sprintf(tmpstr,"BAND%d_RADIOMETRIC_GAINS/BIAS",i);
     if(strcmp(label, tmpstr) == 0) {
       chkFlg[GAIN] = 1;        
-      // extract GAIN
+      /* extract GAIN */
       sscanf(tokenptr, "%f", &(gain[i]));
       tokenptr = strtok(NULL, seperator);
       chkFlg[BIAS] = 1;
-      // extract BIAS
+      /* extract BIAS */
       sscanf(tokenptr, "%f", &(bias[i]));
       if (i==6) {chkFlg[GAIN_TH] = 1; chkFlg[BIAS_TH] = 1;}
     }
@@ -1113,18 +1113,18 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
      Landsat 7 only */
   /* check file name and see if it is a TIFF file */
   if(strstr(fileName, ".tif") || strstr(fileName, ".TIF")) {
-    sprintf(meta_list[FILE_TYPE], "%s = GEOTIFF\n", meta_lut[FILE_TYPE][0]);  // DATA_FORMAT
+    sprintf(meta_list[FILE_TYPE], "%s = GEOTIFF\n", meta_lut[FILE_TYPE][0]);  /* DATA_FORMAT */
     geotiff = 1;
   }
   else {
-    sprintf(meta_list[FILE_TYPE], "%s = BINARY\n", meta_lut[FILE_TYPE][0]);   // DATA_FORMAT
+    sprintf(meta_list[FILE_TYPE], "%s = BINARY\n", meta_lut[FILE_TYPE][0]);   /* DATA_FORMAT */
     geotiff = 0;
   }
   sprintf(meta_list[DATA_PROVIDER], "%s = USGS/EROS\n",
     meta_lut[DATA_PROVIDER][0]);
   sprintf(meta_list[NBAND_TH], "%s = 1\n", meta_lut[NBAND_TH][0]);
   sprintf(meta_list[BANDS_TH], "%s = 6\n", meta_lut[BANDS_TH][0]);
-  sprintf(meta_list[PROJECTION_SPHERE], "%s = 12\n", meta_lut[PROJECTION_SPHERE][0]);  // WGS84=12 in GCTPC
+  sprintf(meta_list[PROJECTION_SPHERE], "%s = 12\n", meta_lut[PROJECTION_SPHERE][0]);  /* WGS84=12 in GCTPC */
 
   /* write band specific parameters */
   if(strcmp(sensor, "MSS") == 0) {
@@ -1203,9 +1203,9 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
   /* write all paramters to input file */
   if(strcmp(sensor, "MSS") == 0) {
     for(i=0; i<NMETA-1; i++) {
-      // skip the thermal band info as it was hard-coded
+      /* skip the thermal band info as it was hard-coded */
       if(i>=FILE_NAMES && i<=FILE_NAMES_TH) continue;
-      // skip the polar stereographic fields as it's not supported yet
+      /* skip the polar stereographic fields as it's not supported yet */
       if(i>=VERT_LON_FROM_POLE && i<=PROJECTION_PARAMS) continue;
       if(chkFlg[i]) {
         fprintf(out, "%s", meta_list[i]);
@@ -1219,7 +1219,7 @@ int getMetaFromNLAPS(char input[], char scene_name[], char acquisition_date[])
   }
   else {
     for(i=0; i<NMETA-1; i++) {
-      // skip the polar stereographic fields as it's not supported yet
+      /* skip the polar stereographic fields as it's not supported yet */
       if(i>=VERT_LON_FROM_POLE && i<=PROJECTION_PARAMS) continue;
       if(chkFlg[i]) {
         fprintf(out, "%s", meta_list[i]);
@@ -1526,7 +1526,7 @@ int getMetaFromNLAPS_WO(char input[], char scene_name[], char acquisition_date[]
   state = NVP_STATE;
   while(getline(&line, &line_len, in) != -1)
   {
-//printf ("DEBUG: line -- %s\n", line);
+/*printf ("DEBUG: line -- %s\n", line);*/
        switch (state)
        {
        case NVP_STATE:
@@ -1540,19 +1540,19 @@ int getMetaFromNLAPS_WO(char input[], char scene_name[], char acquisition_date[]
              break;
            while (*token == ' ') ++token;        /* remove leading whitespace */
            str1 = (char *)NULL;
-//printf ("DEBUG: token = %s\n", token);
+/*printf ("DEBUG: token = %s\n", token);*/
 
            /* handle projection params a bit differently, but only read them
               if we are processing Polar Stereographic */
            if (!strcmp(proj_str, "PS") && !strcmp(token, "Projection Params"))
            {
-//printf ("DEBUG: Polar Stereographic and found projection parameters token!\n");
+/*printf ("DEBUG: Polar Stereographic and found projection parameters token!\n");*/
              /* projection params are spread out 3 floats per line for the
                 next 5 lines */
              for (i = 0; i < 5; i++)
              {
                getline(&line, &line_len, in);
-//printf ("DEBUG: line %d -- %s\n", i, line);
+/*printf ("DEBUG: line %d -- %s\n", i, line);*/
                n_read = sscanf(line, "%lf %lf %lf", &proj_parms[i*3],
                  &proj_parms[i*3+1], &proj_parms[i*3+2]);
                if (n_read != 3)
@@ -1588,11 +1588,11 @@ int getMetaFromNLAPS_WO(char input[], char scene_name[], char acquisition_date[]
              sprintf (true_scale_lat, "%f", proj_parms[5]);
              sprintf (false_easting, "%f", proj_parms[6]);
              sprintf (false_northing, "%f", proj_parms[7]);
-//printf ("DEBUG: projection_parms: %s\n", projection_parameter);
-//printf ("DEBUG: vert_lon_from_pole: %s\n", vert_lon_from_pole);
-//printf ("DEBUG: true_scale_lat: %s\n", true_scale_lat);
-//printf ("DEBUG: false_easting: %s\n", false_easting);
-//printf ("DEBUG: false_northing: %s\n", false_northing);
+/*printf ("DEBUG: projection_parms: %s\n", projection_parameter);*/
+/*printf ("DEBUG: vert_lon_from_pole: %s\n", vert_lon_from_pole);*/
+/*printf ("DEBUG: true_scale_lat: %s\n", true_scale_lat);*/
+/*printf ("DEBUG: false_easting: %s\n", false_easting);*/
+/*printf ("DEBUG: false_northing: %s\n", false_northing);*/
              nvp_to_meta("Vert Long From Pole", vert_lon_from_pole, lut,
                 met_list);
              nvp_to_meta("True Scale Lat",  true_scale_lat, lut, met_list);
@@ -1607,7 +1607,7 @@ int getMetaFromNLAPS_WO(char input[], char scene_name[], char acquisition_date[]
               * value(s)...
               */
              n_read = read_n_fields((char *)NULL, token, lut, buffer);
-//printf ("DEBUG: buffer = %s\n", buffer);
+/*printf ("DEBUG: buffer = %s\n", buffer);*/
              if (n_read > 0)
              {
                nvp_to_meta(token, buffer, lut, met_list);
@@ -2079,31 +2079,32 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
       chkFlg[i] = 1;
       switch(i) {      
         /* some metadata need special attentions */
-      case 3:     // satellite, attr name different 
+      case 3:  /* satellite, attr name different */
           sscanf(tokenptr, "%s", str);
         sprintf(meta_list[i], "%s = %s\n", meta_lut[i][0], str);
         break;
-      case 4:     // handle sensor, used to determine BIAS/GAIN or GAIN_SETTINGS
+      case 4:  /* handle sensor, used to determine BIAS/GAIN or GAIN_SETTINGS */
         sscanf(tokenptr, "%s", sensor);
         if(strstr(tokenptr,"ETM") != NULL)
           sprintf(meta_list[i],"%s = ETM\n", meta_lut[i][0]);
         else
           sprintf(meta_list[i],"%s = TM\n", meta_lut[i][0]);
         break;
-      case 5:    // ACQUISITION DATE, need to compare with PRODUCTION_DATE
+      case 5:  /* ACQUISITION DATE, need to compare with PRODUCTION_DATE */
         sscanf(tokenptr, "%10s", acquisition_date);
         sprintf(meta_list[i], "%s = %s\n", meta_lut[i][0], acquisition_date);
         break;
-      case 6:    // PRODUCTION_DATE
-        // some input give wrong production date and need extra processing   
+      case 6:  /* PRODUCTION_DATE */
+        /* some input give wrong production date and need extra processing */
         sscanf(tokenptr, "%10s", production_date);
         sprintf(meta_list[i], "%s = %s\n", meta_lut[i][0], production_date);
         break;        
-      case 7:    // SOLAR_ZENITH, need to check if it is solar elevation or zenith 
+      case 7:  /* SOLAR_ZENITH, need to check if it is solar elevation or
+                  zenith */
         sscanf(tokenptr, "%f", &fnum);
         sprintf(meta_list[i], "%s = %5.2f\n", meta_lut[i][0], fnum);
         break;
-      case 14:   // GAIN for TM
+      case 14:   /* GAIN for TM */
         if(strcmp(sensor, "TM")==0) {
           for(j=1; j<=6; j++) {
         sscanf(tokenptr, "%f", &gain[j]);
@@ -2112,7 +2113,7 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
           gain[7] = gain[6];
          }
         break;
-      case 15:   // BIAS for TM
+      case 15:   /* BIAS for TM */
         if(strcmp(sensor, "TM")==0) {
           for(j=1; j<=6; j++) {
         sscanf(tokenptr, "%f", &bias[j]);
@@ -2121,7 +2122,7 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
           bias[7] = bias[6];
         }
         break;
-      case 18:  // FILE_NAMES 
+      case 18:  /* FILE_NAMES */
         for(j=1; j<=6; j++) {
           sscanf(tokenptr, "%s", str);
           /* remove .gz extension from filename if there is */
@@ -2135,15 +2136,15 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
         sprintf(meta_list[i],"%s = %s, %s, %s, %s, %s, %s\n", meta_lut[i][0],band_fname[1],
             band_fname[2],band_fname[3],band_fname[4],band_fname[5],band_fname[7]); 
         break;
-      case 21:  // GAIN_TH for TM
+      case 21:  /* GAIN_TH for TM */
         if(strcmp(sensor, "TM")==0) 
           sscanf(tokenptr, "%f", &gain[6]);
         break;
-      case 22:  // BIAS_TH for TM
+      case 22:  /* BIAS_TH for TM */
         if(strcmp(sensor, "TM")==0) 
           sscanf(tokenptr, "%f", &bias[6]);
         break;
-      case 25:  // FILE_NAMES_TH
+      case 25:  /* FILE_NAMES_TH */
         sscanf(tokenptr, "%s", str);
         /* remove .gz extension from filename if there is */
         if(strstr(str, ".gz"))
@@ -2152,14 +2153,14 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
           strcpy(band_fname[6], str);    
         sprintf(meta_list[i], "%s = %s\n", meta_lut[i][0], band_fname[6]);    
         break;
-      case 29:  // ZONE number, different for south and north
+      case 29:  /* ZONE number, different for south and north */
         sscanf(tokenptr, "%d%s", &zone, hemi);
-        // use negative zone number for south and positive for north
+        /* use negative zone number for south and positive for north */
         if(strcmp(hemi, "S")==0 || strcmp(hemi, "s")==0)
           zone = -zone;
         sprintf(meta_list[i], "%s = %d\n", meta_lut[i][0], zone);
         break;        
-      case 31:  // GAIN_SETTINGS for ETM+
+      case 31:  /* GAIN_SETTINGS for ETM+ */
         if(strcmp(sensor, "TM") != 0) {
           for(j=1; j<=6; j++) {
         sscanf(tokenptr, "%s", band_gain[j]);
@@ -2168,11 +2169,11 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
           strcpy(band_gain[7], band_gain[6]);
         }
         break;
-      case 32:  // GAIN_SETTINGS for ETM+
+      case 32:  /* GAIN_SETTINGS for ETM+ */
         if(strcmp(sensor, "TM") != 0)
           sscanf(tokenptr, "%s", band_gain[6]);
         break;        
-      default:  // other parameters can be used directly
+      default:  /* other parameters can be used directly */
         strcpy(meta_list[i], tmpstr);
       }
     }
@@ -2204,11 +2205,11 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
 
   /* check file name and see if it is a TIFF file */
   if(strstr(band_fname[1], ".tif") || strstr(band_fname[1], ".TIF")) {
-    sprintf(meta_list[1], "%s = GEOTIFF\n", meta_lut[1][0]);   // DATA_FORMAT
+    sprintf(meta_list[1], "%s = GEOTIFF\n", meta_lut[1][0]);  /* DATA_FORMAT */
     geotiff = 1;
   }
   else {
-    sprintf(meta_list[1], "%s = BINARY\n", meta_lut[1][0]);   // DATA_FORMAT
+    sprintf(meta_list[1], "%s = BINARY\n", meta_lut[1][0]);   /* DATA_FORMAT */
     geotiff = 0;
   }
 
@@ -2246,7 +2247,7 @@ int getMetaFromLCT(char input[], char scene_name[], char acquisition_date[])
     if(strcmp(sensor, "TM")==0) {
       if(i==31 || i==32) continue;
     }
-    else  // for ETM+
+    else  /* for ETM+ */
       if(i==14 || i==15 || i==21 || i==22) continue;
 
     if(chkFlg[i]==1) {

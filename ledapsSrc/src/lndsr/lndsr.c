@@ -324,9 +324,9 @@ int main (int argc, const char **argv) {
                       &input->size);
   if (output == (Output_t *)NULL) ERROR("opening output file", "main");
 
-//  printf ("DEBUG input->nband: %d\n", input->nband);
-//  printf ("DEBUG output->nband_tot: %d\n", output->nband_tot);
-//  printf ("DEBUG lut->nband: %d\n", lut->nband);
+/*  printf ("DEBUG input->nband: %d\n", input->nband); */
+/*  printf ("DEBUG output->nband_tot: %d\n", output->nband_tot); */
+/*  printf ("DEBUG lut->nband: %d\n", lut->nband); */
 
   /* Open diagnostics files if needed */
 #ifdef DEBUG_AR
@@ -542,8 +542,8 @@ int main (int argc, const char **argv) {
   if ( scene_gmt < 0.) scene_gmt=scene_gmt+24.;
 
 printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->meta.acq_date.minute, input->meta.acq_date.second);
-//printf ("DEBUG: scene_gmt: %f\n", scene_gmt);
-//printf ("DEBUG: approximated scene_gmt: %f\n", 10.5-center_lon/15.);
+/*printf ("DEBUG: scene_gmt: %f\n", scene_gmt); */
+/*printf ("DEBUG: approximated scene_gmt: %f\n", 10.5-center_lon/15.); */
   
    /* Read PRWV Data */
    if ( param->num_prwv_files > 0  ) {
@@ -646,9 +646,9 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   sds_index=0;		   
   sds_id= SDselect(sds_file_id,sds_index);
   status=  SDgetinfo(sds_id, sds_name, &rank, dim_sizes, &data_type,&n_attrs);
-//  printf("DEBUG the name of the sds is %s\n",sds_name);
-//  printf("DEBUG the rank of the sds is %d\n",rank);
-//  printf("DEBUG the dimension of the sds is %d %d\n",dim_sizes[0],dim_sizes[1]);
+/*  printf("DEBUG the name of the sds is %s\n",sds_name); */
+/*  printf("DEBUG the rank of the sds is %d\n",rank); */
+/*  printf("DEBUG the dimension of the sds is %d %d\n",dim_sizes[0],dim_sizes[1]); */
   start[0]=0;
   start[1]=0;
   edges[0]=3600;
@@ -695,17 +695,17 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	img.is_fill=false;
 	if (!FromSpace(space, &img, &geo))
     	ERROR("mapping from space (0)", "main");
-//printf ("DEBUG: (y1,x1)=(%d,%d)  (lat1,lon1)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG));
+/*printf ("DEBUG: (y1,x1)=(%d,%d)  (lat1,lon1)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG)); */
 
 	geo.lon=center_lon*RAD;
 	geo.is_fill=false;
 	if (!ToSpace(space, &geo, &img))
     	ERROR("mapping to space (0)", "main");
-//printf ("DEBUG: (y2,x2)=(%d,%d)  (lat2,lon2)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG));
+/*printf ("DEBUG: (y2,x2)=(%d,%d)  (lat2,lon2)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG)); */
 
 	delta_y = delta_y - img.l;
 	delta_x = img.s - delta_x;
-//printf ("DEBUG: delta_x, delta_y = %f, %f\n", delta_x, delta_y);
+/*printf ("DEBUG: delta_x, delta_y = %f, %f\n", delta_x, delta_y); */
 	adjust_north=(float)(atan(delta_x/delta_y)*DEG);
 
 	printf("True North adjustment = %f\n",adjust_north);
@@ -917,7 +917,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 		if (!cloud_detection_pass1(lut, input->size.s, il, line_in[0], qa_line[0], b6_line[0], atemp_line,&cld_diags))
       		ERROR("running cloud detection pass 1", "main");
 
-  } // end for
+  } /* end for */
   if (param->thermal_band) {
 	for (il=0;il<cld_diags.nbrows;il++) {
     	tmpint=(int)(scene_gmt/anc_ATEMP.timeres);
@@ -1111,7 +1111,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 
     /* Compute the aerosol for the regions */
 
-//    printf("%d\n",il_ar); fflush(stdout);
+/*    printf("%d\n",il_ar); fflush(stdout); */
 /*  printf("%d\r",il_ar); fflush(stdout);    */
 #ifdef DEBUG_AR
 	diags_il_ar=il_ar;
@@ -1139,10 +1139,10 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	/***
 	Fill Gaps in the coarse resolution aerosol product for bands 1(0), 2(1) and 3(2)
 	**/
-//    printf("write Fill Gaps ..."); fflush(stdout);
+/*    printf("write Fill Gaps ..."); fflush(stdout); */
    Fill_Ar_Gaps(lut, line_ar, 0);
 /*    printf("WARNING NOT FILLING GAPS IN THE AEROSOL");*/
-//    printf("Done\n"); fflush(stdout);
+/*    printf("Done\n"); fflush(stdout); */
 /*
   Fill_Ar_Gaps(lut, line_ar, 1);
   Fill_Ar_Gaps(lut, line_ar, 2);
@@ -1238,10 +1238,10 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
         if (ddv_line[0][is]&0x20)
             line_out[lut->nband+CLOUD][is] = QA_ON;  /* set internal cloud mask bit */
 #ifdef NOT_RESET_CLOUD_SHADOW_AND_ADJ_BITS
-//NOTE: The cloud shadow and adjacent cloud bits are reset to off after this
-//code snippet.  So, there is no need to implement this section of code unless
-//the reset code is removed at a later date.  Ultimately the cloud, cloud
-//shadow, and adjacent cloud bits are overwritten in lndsrbm as well.
+/* NOTE: The cloud shadow and adjacent cloud bits are reset to off after this
+   code snippet.  So, there is no need to implement this section of code unless
+   the reset code is removed at a later date.  Ultimately the cloud, cloud
+   shadow, and adjacent cloud bits are overwritten in lndsrbm as well. */
         if (ddv_line[0][is]&0x04)
             line_out[lut->nband+ADJ_CLOUD][is] = QA_ON;  /* set internal adjacent cloud mask bit */
         if (ddv_line[0][is]&0x40)
@@ -1300,7 +1300,6 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   printf(" aerosol coarse  nfill %ld  min  %d  max  %d\n", 
          ar_stats.nfill, ar_stats.ar_min, ar_stats.ar_max);
 
-//  for (ib = 0; ib < output->nband_tot; ib++) {
   for (ib = 0; ib < lut->nband; ib++) {
     if (output->sds_sr[ib].name != NULL)
     printf(" sr %s  nfill %ld  nout_range %ld  min  %d  max  %d\n", 

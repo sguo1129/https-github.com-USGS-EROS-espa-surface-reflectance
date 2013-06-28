@@ -1,5 +1,8 @@
 Revision:
 
+revision 1.2.3  6/28/2013  Gail Schmidt, USGS EROS
+- replaced the C++ style comments with C style comments
+
 revision 1.2.1  6/19/2013  Gail Schmidt, USGS EROS
 - modified to not allow processing of TM4 products unless they were processed
   through LPGS.  TM4 processing will be allowed for LPGS products only.

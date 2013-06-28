@@ -356,7 +356,6 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 ***/
 		if (update_gridcell_atmos_coefs(il_ar,is_ar,&atmos_coef_ar,ar_gridcell,sixs_tables,line_ar,lut,6, 0))
 			return false;
-//		printf("is this going here ? \n");	
 		ib=2; /*  test with red band */
 		nb_red_obs=0;
 		nb_negative_red=0;
@@ -394,12 +393,10 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 			}
 			}
 		}
-//		printf(" percent negative %f \n",(float)nb_negative_red/(float)nb_red_obs);
 /*		if (((float)nb_negative_red/(float)nb_red_obs) > 0.3) { Eric Change for test*/
 		if (((float)nb_negative_red/(float)nb_red_obs) > 0.01) {
 			line_ar[0][is_ar]=lut->aerosol_fill;
 			line_ar_stats[0][is_ar]=-100;
-//			printf("I FOUND A BAD ONE\n");
 #ifdef DEBUG_AR
 	  		if (fd_ar_diags!=NULL)
       			fprintf(fd_ar_diags," -1. %f\n",((float)nb_negative_red/(float)nb_red_obs));
@@ -568,7 +565,7 @@ int compute_aot(int band,float toarhoblue,float toarhored,float ts,float tv, flo
 		*aot=sixs_tables->aot_wavelength[1][iaot-1]-temp1/slope;
 		
 	    }
-//        printf(" variables in compaot toarhored %f toarhoblue %f aot %f\n",toarhored,toarhoblue,*aot);
+/*        printf(" variables in compaot toarhored %f toarhoblue %f aot %f\n",toarhored,toarhoblue,*aot); */
         if (*aot < 0.01)
                 *aot=0.01;
 

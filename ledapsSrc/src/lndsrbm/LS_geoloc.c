@@ -285,14 +285,14 @@ return(0);
 
 /* Initialize the Polar Stereographic projection for forward transformations
   --------------------------------------------------------------------------*/
-int psforint (double r_maj, double r_min, double c_lon, double c_lat,
-    double false_east, double false_north)
-//    double r_maj,				/* major axis			*/
-//    double r_min,				/* minor axis			*/
-//    double c_lon,				/* center longitude		*/
-//    double c_lat,				/* center latitude		*/
-//    double false_east,			/* x offset in meters		*/
-//    double false_north			/* y offset in meters		*/
+int psforint (
+    double r_maj,				/* major axis			*/
+    double r_min,				/* minor axis			*/
+    double c_lon,				/* center longitude		*/
+    double c_lat,				/* center latitude		*/
+    double false_east,			/* x offset in meters	*/
+    double false_north			/* y offset in meters	*/
+)
 
 /* this is meant to be private to this file */
 
@@ -332,14 +332,14 @@ return(0);
 
 /* Initialize the Polar Stereographic projection for inverse transformations
   --------------------------------------------------------------------------*/
-int psinvint (double r_maj, double r_min, double c_lon, double c_lat,
-    double false_east, double false_north)
-//    double r_maj,				/* major axis			*/
-//    double r_min,				/* minor axis			*/
-//    double c_lon,				/* center longitude		*/
-//    double c_lat,				/* center latitude		*/
-//    double false_east,			/* x offset in meters		*/
-//    double false_north			/* y offset in meters		*/
+int psinvint (
+    double r_maj,				/* major axis			*/
+    double r_min,				/* minor axis			*/
+    double c_lon,				/* center longitude		*/
+    double c_lat,				/* center latitude		*/
+    double false_east,			/* x offset in meters	*/
+    double false_north			/* y offset in meters	*/
+)
 
 /* this is meant to be private to this file */
 
@@ -497,11 +497,12 @@ double adjust_lon (double x)
 /* Universal Transverse Mercator inverse equations--mapping line,sample to
    x,y to lat,long 
   -----------------------------------------------------------------------*/
-int LSutminv(double s, double l, double *lon, double *lat)
-//double x;		/* (I) X projection coordinate 		*/
-//double y;		/* (I) Y projection coordinate 		*/
-//double *lon;		/* (O) Longitude 				*/
-//double *lat;		/* (O) Latitude 				*/
+int LSutminv (
+  double s,		/* (I) sample 		*/
+  double l,		/* (I) line 		*/
+  double *lon,	/* (O) Longitude 	*/
+  double *lat	/* (O) Latitude 	*/
+)
 
 /* this is meant to be visible from other routines */
 
@@ -606,11 +607,12 @@ return(0);
 /* Universal Transverse Mercator inverse equations--mapping lat,long to x,y
    to line,sample
   -------------------------------------------------------------------------*/
-int LSutmfor(double *s, double *l, double lon, double lat)
-//double *x;		/* (O) X projection coordinate 		*/
-//double *y;		/* (O) Y projection coordinate 		*/
-//double lon;		/* (I) Longitude 				*/
-//double lat;		/* (I) Latitude 				*/
+int LSutmfor(
+  double *s,		/* (O) sample 		*/
+  double *l,		/* (O) line 		*/
+  double lon,		/* (I) Longitude 				*/
+  double lat		/* (I) Latitude 				*/
+)
 
 /* this is meant to be visible from other routines */
 {
@@ -688,11 +690,12 @@ return(0);
 /* Polar Stereographic inverse equations--mapping line,sample to x,y to
    lat/long
   ---------------------------------------------------------------------*/
-int LSpsinv(double s, double l, double *lon, double *lat)
-//    double x,			/* (O) X projection coordinate 	*/
-//    double y,			/* (O) Y projection coordinate 	*/
-//    double *lon,			/* (I) Longitude 		*/
-//    double *lat			/* (I) Latitude 		*/
+int LSpsinv(
+  double s,		/* (I) sample 		*/
+  double l,		/* (I) line 		*/
+  double *lon,	/* (O) Longitude 	*/
+  double *lat	/* (O) Latitude 	*/
+)
 
 /* this is meant to be visible from other routines */
 
@@ -743,10 +746,11 @@ return(0);
    line,sample
   ------------------------------------------------------------------*/
 int LSpsfor(double *s, double *l, double lon, double lat)
-//double *x;		/* (O) X projection coordinate 		*/
-//double *y;		/* (O) Y projection coordinate 		*/
-//double lon;		/* (I) Longitude 				*/
-//double lat;		/* (I) Latitude 				*/
+  double *s,		/* (O) sample 		*/
+  double *l,		/* (O) line 		*/
+  double lon,		/* (I) Longitude 	*/
+  double lat		/* (I) Latitude 	*/
+)
 
 /* this is meant to be visible from other routines */
 

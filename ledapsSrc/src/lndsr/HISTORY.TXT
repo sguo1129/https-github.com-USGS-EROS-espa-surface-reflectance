@@ -129,3 +129,7 @@ V1.2.1  04/17/2013 - USGS EROS
    sun azimuth is north up, but these scenes are south up.  So the azimuth
    needs to be adjusted by 180 degrees when applied to the scene.
 
+V1.2.3  06/28/2013 - USGS EROS
+=============================================================================
+1. Replaced the C++ style comments with C style comments.
+2. Cleaned up a few debug print statements.

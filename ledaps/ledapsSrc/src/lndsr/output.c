@@ -825,14 +825,10 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
 
   /* now write out the per sds attributes */
 
-/*for (ib = 0; ib < NBAND_REFL_MAX; ib++) {     */
-/*  for (ib = 0; ib < NBAND_SR_MAX; ib++) { EV 9/7/2009 */
   for (ib = 0; ib < NBAND_SR_MAX-3; ib++) {
-//printf ("DEBUG: SDS metadata for band %d\n", ib);
 
   sprintf(long_name, lut->long_name_prefix, meta->iband[ib]); 
   if (ib >= NBAND_REFL_MAX){sprintf(long_name,"%s", DupString(sds_name_extra[ib - NBAND_REFL_MAX])); }
-//printf ("DEBUG: long name: %s\n", long_name);
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(long_name);
   attr.name = OUTPUT_LONG_NAME;
@@ -921,7 +917,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
   } /* end if no QA bands */
 
   if (ib >= nband+FILL && ib <= nband+ADJ_CLOUD) {
-//printf ("DEBUG: Writing lndsr_QAMAP for band %d\n", ib);
     attr.type = DFNT_CHAR8;
     sprintf (lndsr_QAMAP,
       "\n\tQA pixel values are either off or on:\n"
@@ -929,7 +924,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
       "\t0\t%s\n"
       "\t255\t%s", QA_off[ib-nband], QA_on[ib-nband]);
     message=DupString(lndsr_QAMAP);
-//printf ("DEBUG: %s\n", lndsr_QAMAP);
     attr.nval = strlen(message);
     attr.name = "QA index";
     if (!PutAttrString(this->sds_sr[ib].id, &attr, message))
