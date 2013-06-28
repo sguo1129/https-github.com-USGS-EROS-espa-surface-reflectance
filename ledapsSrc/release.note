@@ -1,3 +1,15 @@
+Updates on July 24, 2013 - USGS EROS
+Version 1.2.3
+---------------------------------------
+lndpm:
+- Modified to replace C++ style comments with C style comments.
+
+lndsr:
+- Modified to replace C++ style comments with C style comments.
+
+lndsrbm:
+- Modified to replace C++ style comments with C style comments.
+
 Updates on June 19, 2013 - USGS EROS
 Version 1.2.2
 ---------------------------------------

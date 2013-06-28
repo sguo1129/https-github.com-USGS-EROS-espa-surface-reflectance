@@ -330,8 +330,8 @@ int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
 		}
 	}
 	printf ("\n");
-//	unlink(sixs_cmd_filename);
-//	unlink(sixs_out_filename);
+/*	unlink(sixs_cmd_filename); */
+/*	unlink(sixs_out_filename); */
 	return 0;
 }
 
