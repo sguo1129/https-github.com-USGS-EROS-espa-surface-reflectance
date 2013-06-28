@@ -745,7 +745,7 @@ return(0);
 /* Polar Stereographic forward equations--mapping lat,long to x,y to
    line,sample
   ------------------------------------------------------------------*/
-int LSpsfor(double *s, double *l, double lon, double lat)
+int LSpsfor(
   double *s,		/* (O) sample 		*/
   double *l,		/* (O) line 		*/
   double lon,		/* (I) Longitude 	*/
