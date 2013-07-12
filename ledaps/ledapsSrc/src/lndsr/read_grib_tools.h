@@ -27,7 +27,7 @@
 #define MAX_NB_LAYERS 10
 
 typedef struct {
-	int source;
+	char source[256];
 	short nblayers;
 	short year,doy;
 	float timeres,time[MAX_NB_LAYERS];

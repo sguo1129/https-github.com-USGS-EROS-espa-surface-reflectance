@@ -123,7 +123,7 @@ int interpol_spatial_anc(t_ncep_ancillary *anc,float lat, float lon,float *value
   float sum[10], sum_w;
 
 
-	p[0].l = (int)((anc->latmax - lat + anc->deltalat/2.)/anc->deltalat);
+/*	p[0].l = (int)((anc->latmax - lat + anc->deltalat/2.)/anc->deltalat); */
 	p[0].l = (int)((anc->latmax - lat)/anc->deltalat);
 	p[2].l = p[0].l + 1;
 	if (p[2].l >= anc->nbrows) {
@@ -133,7 +133,7 @@ int interpol_spatial_anc(t_ncep_ancillary *anc,float lat, float lon,float *value
 	p[1].l = p[0].l;
 	p[3].l = p[2].l;
 
-	p[0].s = (int)((lon - anc->lonmin - anc->deltalon/2.)/anc->deltalon);
+/*	p[0].s = (int)((lon - anc->lonmin - anc->deltalon/2.)/anc->deltalon); */
 	p[0].s = (int)((lon - anc->lonmin )/anc->deltalon);
 	p[1].s = p[0].s + 1;
 
@@ -144,7 +144,12 @@ int interpol_spatial_anc(t_ncep_ancillary *anc,float lat, float lon,float *value
 
 	p[2].s = p[0].s;
 	p[3].s = p[1].s;
-	    
+/*printf ("    DEBUG: lat/long: %f %f\n", lat, lon);
+printf ("    DEBUG: UL line/samp: %d %d\n", p[0].l, p[0].s);
+printf ("    DEBUG: UR line/samp: %d %d\n", p[1].l, p[1].s);
+printf ("    DEBUG: LL line/samp: %d %d\n", p[2].l, p[2].s);
+printf ("    DEBUG: LR line/samp: %d %d\n", p[3].l, p[3].s);
+*/
 
 	n = 0;
 	for (j=0;j<anc->nblayers;j++) 
@@ -271,7 +276,7 @@ void print_anc_data(t_ncep_ancillary *anc, char* ancftype) {
   int i;
   printf("\n*********************************************\n");
   printf("**** anc file %s ***\n",ancftype);
-  printf("**** source  = %d ***\n",anc->source);
+  printf("**** source  = %s ***\n",anc->source);
   printf("**** nblayers= %d ***\n",anc->nblayers);
   printf("**** year,doy=(%d,%d) ***\n",anc->year,anc->doy);
   printf("**** timeres = %f ***\n",anc->timeres);

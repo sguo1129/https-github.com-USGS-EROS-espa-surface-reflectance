@@ -77,6 +77,7 @@
 #include "hdf.h"
 #include "mfhdf.h"
 #include "HdfEosDef.h"
+#include "HE2_config.h"
 #include "proj.h"
 #include "mystring.h"
 #include "myproj.h"
@@ -869,6 +870,7 @@ struct {
     {DFNT_FLOAT64, "DFNT_FLOAT64"}
 };
 
+#define SPACE_HDF_VERSION ("HDFVersion");
 #define SPACE_HDFEOS_VERSION ("HDFEOSVersion");
 #define SPACE_STRUCT_METADATA ("StructMetadata.0");
 #define SPACE_ORIENTATION_ANGLE_HDF ("OrientationAngle")
@@ -899,7 +901,8 @@ bool PutSpaceDefHDF(Space_def_t *this, char *file_name, int nsds,
   int32 sds_file_id;
   char struct_meta[MYHDF_MAX_NATTR_VAL];
   char cbuf[MYHDF_MAX_NATTR_VAL];
-  char *hdfeos_version = "HDFEOS_V2.4";
+  char hdf_version[] = H4_VERSION;
+  char hdfeos_version[] = VERSION;
   char *dim_names[2] = {"YDim", "XDim"};
   int ic;
   Map_coord_t lr_corner;
@@ -1127,6 +1130,12 @@ bool PutSpaceDefHDF(Space_def_t *this, char *file_name, int nsds,
   if (!PutAttrDouble(sds_file_id, &attr, dval))
     RETURN_ERROR("writing attribute (pixel_size)", 
                  "PutMetadata", false);
+
+  attr.type = DFNT_CHAR8;
+  attr.nval = strlen(hdf_version);
+  attr.name = SPACE_HDF_VERSION;
+  if (!PutAttrString(sds_file_id, &attr, hdf_version))
+    RETURN_ERROR("writing attribute (hdf_version)", "PutSpaceDefHDF", false);
 
   attr.type = DFNT_CHAR8;
   attr.nval = strlen(hdfeos_version);

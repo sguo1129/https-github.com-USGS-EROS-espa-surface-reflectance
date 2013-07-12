@@ -173,7 +173,7 @@ int main (int argc, const char **argv) {
   float tmpflt_arr[4] /*,tmpflt */;
   double coef;
   int tmpint;
-  int nvalues,osize;
+  int osize;
   int debug_flag;
 
   sixs_tables_t sixs_tables;
@@ -244,9 +244,6 @@ int main (int argc, const char **argv) {
 
     for (ib = 0; ib < prwv_input->nband; ib++)
       {
-      nvalues= 
-       (prwv_input->size.ntime*prwv_input->size.nlat*prwv_input->size.nlon);
-
       if (!GetInputPrwv(prwv_input, ib, prwv_in[ib]))
         ERROR("reading input prwv data", "main");
       }
@@ -263,9 +260,6 @@ int main (int argc, const char **argv) {
     ozon_in = (int *)calloc((size_t)(osize),sizeof(int));
     if (ozon_in == (int *)NULL) 
       ERROR("allocating input ozone buffer", "main");
-
-      nvalues= 
-       (ozon_input->size.ntime*ozon_input->size.nlat*ozon_input->size.nlon);
 
       if (!GetInputOzon(ozon_input, 0, ozon_in))
         ERROR("reading input ozone data", "main");
@@ -323,10 +317,6 @@ int main (int argc, const char **argv) {
   output = OpenOutput(param->output_file_name, input->nband, input->meta.iband, 
                       &input->size);
   if (output == (Output_t *)NULL) ERROR("opening output file", "main");
-
-/*  printf ("DEBUG input->nband: %d\n", input->nband); */
-/*  printf ("DEBUG output->nband_tot: %d\n", output->nband_tot); */
-/*  printf ("DEBUG lut->nband: %d\n", lut->nband); */
 
   /* Open diagnostics files if needed */
 #ifdef DEBUG_AR
@@ -566,7 +556,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      anc_O3.data[3]=NULL; 
      anc_O3.nblayers=4;
      anc_O3.timeres=6; 
-     anc_O3.source=-1;
+     strcpy (anc_O3.source, "N/A");
      strcpy(anc_O3.filename[0],param->ncep_file_name[0]);
      strcpy(anc_O3.filename[1],param->ncep_file_name[1]);
      strcpy(anc_O3.filename[2],param->ncep_file_name[2]);
@@ -581,7 +571,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      anc_WV.data[3]=NULL;
      anc_WV.nblayers=4;
      anc_WV.timeres=6; 
-     anc_WV.source=-1;
+     strcpy (anc_WV.source, "N/A");
      strcpy(anc_WV.filename[0],param->ncep_file_name[0]);
      strcpy(anc_WV.filename[1],param->ncep_file_name[1]);
      strcpy(anc_WV.filename[2],param->ncep_file_name[2]);
@@ -595,7 +585,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      anc_SP.data[3]=NULL;
      anc_SP.nblayers=4;
      anc_SP.timeres=6; 
-     anc_SP.source=-1;
+     strcpy (anc_SP.source, "N/A");
      strcpy(anc_SP.filename[0],param->ncep_file_name[0]);
      strcpy(anc_SP.filename[1],param->ncep_file_name[1]);
      strcpy(anc_SP.filename[2],param->ncep_file_name[2]);
@@ -609,7 +599,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      anc_ATEMP.data[3]=NULL;
      anc_ATEMP.nblayers=4;
      anc_ATEMP.timeres=6; 
-     anc_ATEMP.source=-1;
+     strcpy (anc_ATEMP.source, "N/A");
      strcpy(anc_ATEMP.filename[0],param->ncep_file_name[0]);
      strcpy(anc_ATEMP.filename[1],param->ncep_file_name[1]);
      strcpy(anc_ATEMP.filename[2],param->ncep_file_name[2]);
@@ -664,15 +654,15 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   dem_available=1;
 
 
+   /* Print the ancillary metadata info */
    if ( debug_flag ) {
      print_anc_data(&anc_SP,"SP_DATA");
      print_anc_data(&anc_WV,"WV_DATA");
      print_anc_data(&anc_ATEMP,"ATEMP_DATA");
      if (!no_ozone_file) 
-      print_anc_data(&anc_O3,"OZONE_DATA");
+       print_anc_data(&anc_O3,"OZONE_DATA");
    }
-
-      print_anc_data(&anc_O3,"OZONE_DATA");
+   print_anc_data(&anc_O3,"OZONE_DATA");
 
 /****
 	Get center lat lon and deviation from true north
@@ -717,6 +707,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 /****
 	Run 6S and compute atmcor params
 ****/
+/*    printf ("DEBUG: Interpolating WV at scene center ...\n");*/
    	interpol_spatial_anc(&anc_WV,center_lat,center_lon,tmpflt_arr);
    	tmpint=(int)(scene_gmt/anc_WV.timeres);
    	if (tmpint>=(anc_WV.nblayers-1))
@@ -725,6 +716,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
    	sixs_tables.uwv=(1.-coef)*tmpflt_arr[tmpint]+coef*tmpflt_arr[tmpint+1];
 
    	if (!no_ozone_file) {
+/*        printf ("DEBUG: Interpolating ozone at scene center ...\n");*/
    		interpol_spatial_anc(&anc_O3,center_lat,center_lon,tmpflt_arr);
    		tmpint=(int)(scene_gmt/anc_O3.timeres);
    		if ( anc_O3.nblayers> 1 ){

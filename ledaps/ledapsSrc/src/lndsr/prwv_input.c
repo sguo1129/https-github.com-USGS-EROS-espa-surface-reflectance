@@ -75,6 +75,7 @@
 #define INPUT_BANDS ("BandNumbers")
 #define INPUT_DOY ("Day Of Year")
 #define INPUT_DATE ("base_date")
+#define INPUT_PLATFORM ("Platform")
 #define INPUT_SCALEF ("scale_factor")
 #define INPUT_ADDOFF ("add_offset")
 #define INPUT_NAME1 ("slp")
@@ -512,10 +513,20 @@ bool GetInputPrwvMeta(InputPrwv_t *this)
   return true;
 }
 
+/***************************************************************************
+ * History:
+ *   Updated on 7/11/2013 by Gail Schmidt, USGS EROS LSRD Project
+ *   Modified the longitude min/max and delta values to be read from the
+ *     lat/long dimension arrays in the HDF files.
+ *
+ ***************************************************************************/
 int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, int* data, int index)
 {
   int i,j,jin,osize;
-  float* buffer;
+  float *buffer=NULL;
+  int32 sds_idx, sds_id;
+  float *dim_buf=NULL;
+  int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
 
   anc->nblayers = this->size.ntime;
   anc->nbrows   = this->size.nlat;
@@ -523,14 +534,82 @@ int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, int* data, int index)
   anc->doy      = this->meta.doy;
   anc->year     = this->meta.year;
   anc->timeres  =    6.0; 
-  anc->source   =   -1  ;
+  strcpy (anc->source, "NASA GSFC");
+
+/***
   anc->latmin   =  -90.0;
   anc->latmax   =   90.0;
   anc->lonmin   = -180.0;
   anc->lonmax   =  180.0;
   anc->deltalat =    2.5;
   anc->deltalon =    2.5;
+***/
 	
+  /* read the min/max values from the latitude dimension, then calculate the
+     delta */
+  sds_idx = SDnametoindex (this->sds_file_id, "lat");
+  if (sds_idx == FAIL)
+    RETURN_ERROR("unable to find lat dimension in prwv file", "get_prwv_anc",
+      false);
+    
+  sds_id = SDselect(this->sds_file_id, sds_idx);
+  if (sds_id == FAIL)
+    RETURN_ERROR("SDselect failed for lat dimension in prwv file",
+      "get_prwv_anc", false);
+
+  dim_buf = (float *) calloc (this->size.nlat, sizeof (float));
+  if (dim_buf == NULL) 
+    RETURN_ERROR ("allocating prwv latitude buffer", "get_prwv_anc", false);
+
+  start[0] = 0;
+  nval[0] = this->size.nlat;
+  if (SDreaddata(sds_id, start, NULL, nval, dim_buf) == HDF_ERROR)
+    RETURN_ERROR("reading lat data from prwv file", "get_prwv_anc", false);
+
+  anc->latmax = dim_buf[0];
+  anc->latmin = dim_buf[this->size.nlat-1];
+  anc->deltalat = dim_buf[0] - dim_buf[1];
+
+  if (dim_buf)
+    free (dim_buf);
+
+  /* read the min/max values from the longitude dimension, then calculate the
+     delta */
+  sds_idx = SDnametoindex (this->sds_file_id, "lon");
+  if (sds_idx == FAIL)
+    RETURN_ERROR("unable to find long dimension in prwv file", "get_prwv_anc",
+      false);
+    
+  sds_id = SDselect(this->sds_file_id, sds_idx);
+  if (sds_id == FAIL)
+    RETURN_ERROR("SDselect failed for long dimension in prwv file",
+      "get_prwv_anc", false);
+
+  dim_buf = (float *) calloc (this->size.nlon, sizeof (float));
+  if (dim_buf == NULL) 
+    RETURN_ERROR ("allocating prwv longitude buffer", "get_prwv_anc", false);
+
+  start[0] = 0;
+  nval[0] = this->size.nlon;
+  if (SDreaddata(sds_id, start, NULL, nval, dim_buf) == HDF_ERROR)
+    RETURN_ERROR("reading lon data from prwv file", "get_prwv_anc", false);
+
+  anc->lonmin = dim_buf[0];
+  anc->lonmax = dim_buf[this->size.nlon-1];
+  anc->deltalon = dim_buf[1] - dim_buf[0];
+
+  if (dim_buf)
+    free (dim_buf);
+
+  /* If longitude values in the prwv file are from 0 to 360, then make them
+     from -180 to 180 */
+  if (anc->lonmax > 180)
+  {
+    anc->lonmin -= 180.0;
+    anc->lonmax -= 180.0;
+  }
+
+  /* Set up the data buffer */
   osize= anc->nblayers * anc->nbrows * anc->nbcols;
 
   buffer = (float *)calloc((size_t)(osize),sizeof(float));
@@ -893,6 +972,11 @@ bool GetInputOzon(InputOzon_t *this, int iband, int *read_buffer)
                   'true' = okay
 		  'false' = error return
 
+!History:
+   Updated on 7/11/2013 by Gail Schmidt, USGS EROS LSRD Project
+   Modified to specify the ozone band should be read vs. just saying the
+     first SDS should be read.
+
 !Team Unique Header:
 
  ! Design Notes:
@@ -909,9 +993,9 @@ bool GetInputOzon(InputOzon_t *this, int iband, int *read_buffer)
   int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
   void *buf;
   int is,read_size;
+  int32 sds_idx, sds_id;
 
   /* Check the parameters */
-
   if (this == (InputOzon_t *)NULL) 
     RETURN_ERROR("invalid input structure", "GetIntputLine", false);
   if (!this->open)
@@ -924,23 +1008,31 @@ bool GetInputOzon(InputOzon_t *this, int iband, int *read_buffer)
   else
     buf = (void *)this->buf[iband];
 
-  /* Read the data */
+  /* Verify the time layer is only one in size, otherwise this code is
+     set up incorrectly */
+  if (this->size.ntime != 1)
+    RETURN_ERROR("invalid number of time layers (expecting only 1)",
+      "GetInputOzonLine", false);
 
-  /*
-  start[0] = 0;
-  start[1] = 0;
-  start[2] = 0;
-  nval[0] = this->size.ntime;
-  nval[1] = this->size.nlat;
-  nval[2] = this->size.nlon;
-  */
+  /* Find the ozone band */
+  sds_idx = SDnametoindex (this->sds_file_id, "ozone");
+  if (sds_idx == FAIL)
+    RETURN_ERROR("unable to find ozone band in ozone file", "GetInputOzonLine",
+      false);
+    
+  sds_id = SDselect(this->sds_file_id, sds_idx);
+  if (sds_id == FAIL)
+    RETURN_ERROR("SDselect failed for ozone band in ozone file",
+      "GetInputOzonLine", false);
+
+  /* Read the ozone data */
   start[0] = 0;
   start[1] = 0;
   nval[0] = this->size.nlat;
   nval[1] = this->size.nlon;
-  read_size= this->size.ntime * this->size.nlat * this->size.nlon;
+  read_size= this->size.nlat * this->size.nlon;
 
-  if (SDreaddata(this->sds[iband].id, start, NULL, nval, buf) == HDF_ERROR)
+  if (SDreaddata(sds_id, start, NULL, nval, buf) == HDF_ERROR)
     RETURN_ERROR("reading input", "GetInputOzonLine", false);
 
   if (sizeof(int16) != sizeof(int)) {
@@ -952,7 +1044,7 @@ bool GetInputOzon(InputOzon_t *this, int iband, int *read_buffer)
 }
 
 
-bool GetInputOzonMeta(InputOzon_t *this) 
+bool GetInputOzonMeta(InputOzon_t *this)
 {
   Myhdf_attr_t attr;
   double dval[NBAND_REFL_MAX];
@@ -978,14 +1070,29 @@ bool GetInputOzonMeta(InputOzon_t *this)
     RETURN_ERROR("reading input year", "GetInputOzonMeta", false);
   meta->year = (int)floor(dval[0] + 0.5);
 
+  attr.name = INPUT_PLATFORM;
+  if (!GetAttrString(this->sds_file_id, &attr, meta->platform))
+    RETURN_ERROR("reading input platform", "GetInputOzonMeta", false);
+
   this->nband = INPUT_NBANDS_OZONE;
   return true;
 }
 
+/***************************************************************************
+ * History:
+ *   Updated on 7/10/2013 by Gail Schmidt, USGS EROS LSRD Project
+ *   Modified the longitude min/max and delta values to be read from the
+ *     lat/long dimension arrays in the HDF files.  These values do change
+ *     for OMI vs. pre-OMI platforms.
+ *
+ ***************************************************************************/
 int get_ozon_anc(t_ncep_ancillary *anc,InputOzon_t *this, int* data, int index)
 {
   int i,j,jin,osize;
-  float* buffer;
+  float *buffer=NULL;
+  int32 sds_idx, sds_id;
+  float *dim_buf=NULL;
+  int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
 
   anc->nblayers = this->size.ntime;
   anc->nbrows   = this->size.nlat;
@@ -993,19 +1100,100 @@ int get_ozon_anc(t_ncep_ancillary *anc,InputOzon_t *this, int* data, int index)
   anc->doy      = this->meta.doy;
   anc->year     = this->meta.year;
   anc->timeres  =   24.0; 
-  anc->source   =   -1  ;
+  strcpy (anc->source, this->meta.platform);
+
+  /* read the min/max values from the latitude dimension, then calculate the
+     delta */
+  sds_idx = SDnametoindex (this->sds_file_id, "lat");
+  if (sds_idx == FAIL)
+    RETURN_ERROR("unable to find lat dimension in ozone file", "get_ozon_anc",
+      false);
+    
+  sds_id = SDselect(this->sds_file_id, sds_idx);
+  if (sds_id == FAIL)
+    RETURN_ERROR("SDselect failed for lat dimension in ozone file",
+      "get_ozon_anc", false);
+
+  dim_buf = (float *) calloc (this->size.nlat, sizeof (float));
+  if (dim_buf == NULL) 
+    RETURN_ERROR ("allocating ozon latitude buffer", "get_ozon_anc", false);
+
+  start[0] = 0;
+  nval[0] = this->size.nlat;
+  if (SDreaddata(sds_id, start, NULL, nval, dim_buf) == HDF_ERROR)
+    RETURN_ERROR("reading lat data from ozone file", "get_ozon_anc", false);
+
+  /* There are some ozone HDF files that were interpolated and not reprocessed,
+     thus they will have the latitude values incorrectly represented (upside
+     down).  Those latitude values will need to be flipped, as the ozone data
+     really goes from north to south. */
+  if (dim_buf[0] > 0)
+  {
+    anc->latmax = dim_buf[0];
+    anc->latmin = dim_buf[this->size.nlat-1];
+    anc->deltalat = dim_buf[0] - dim_buf[1];
+  }
+  else
+  {
+    anc->latmin = dim_buf[0];
+    anc->latmax = dim_buf[this->size.nlat-1];
+    anc->deltalat = dim_buf[1] - dim_buf[0];
+  }
+
+  if (dim_buf)
+    free (dim_buf);
+
+  /* read the min/max values from the longitude dimension, then calculate the
+     delta */
+  sds_idx = SDnametoindex (this->sds_file_id, "lon");
+  if (sds_idx == FAIL)
+    RETURN_ERROR("unable to find long dimension in ozone file", "get_ozon_anc",
+      false);
+    
+  sds_id = SDselect(this->sds_file_id, sds_idx);
+  if (sds_id == FAIL)
+    RETURN_ERROR("SDselect failed for long dimension in ozone file",
+      "get_ozon_anc", false);
+
+  dim_buf = (float *) calloc (this->size.nlon, sizeof (float));
+  if (dim_buf == NULL) 
+    RETURN_ERROR ("allocating ozon longitude buffer", "get_ozon_anc", false);
+
+  start[0] = 0;
+  nval[0] = this->size.nlon;
+  if (SDreaddata(sds_id, start, NULL, nval, dim_buf) == HDF_ERROR)
+    RETURN_ERROR("reading lon data from ozone file", "get_ozon_anc", false);
+
+  anc->lonmin = dim_buf[0];
+  anc->lonmax = dim_buf[this->size.nlon-1];
+  anc->deltalon = dim_buf[1] - dim_buf[0];
+
+  if (dim_buf)
+    free (dim_buf);
+
+  /* handle the ozone data differently for the pre-OMI and OMI platforms */
+/***
   anc->latmin   =  -89.5;
   anc->latmax   =   89.5;
-  anc->lonmin   = -179.375;
-  anc->lonmax   =  179.375;
   anc->deltalat =    1.0;
-  anc->deltalon =    1.25;
+  if (!strcmp (this->meta.platform, "OMI"))
+  { // OMI
+    anc->lonmin   = -179.5;
+    anc->lonmax   =  179.5;
+    anc->deltalon =    1.0;
+  }
+  else
+  { // pre-OMI
+    anc->lonmin   = -179.375;
+    anc->lonmax   =  179.375;
+    anc->deltalon =    1.25;
+  }
+***/
 	
   osize= anc->nblayers * anc->nbrows * anc->nbcols;
-
   buffer = (float *)calloc((size_t)(osize),sizeof(float));
   if (buffer == (float *)NULL) 
-      RETURN_ERROR("allocating ozon buffer", "get_ozon_anc", false);
+    RETURN_ERROR("allocating ozon buffer", "get_ozon_anc", false);
 
   anc->data[0]= buffer;
   for ( i=1; i<anc->nblayers; i++)
