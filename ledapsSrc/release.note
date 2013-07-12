@@ -1,14 +1,42 @@
-Updates on July 24, 2013 - USGS EROS
-Version 1.2.3
+Updates on July 12, 2013 - USGS EROS
+Version 1.3.0
 ---------------------------------------
 lndpm:
 - Modified to replace C++ style comments with C style comments.
 
+lndcal:
+- Modifed the HDFEOSVersion to be pulled from the HDF-EOS include files versus
+  being hard-coded.  Also added an HDFVersion.
+
+lndcsm:
+- Modifed the HDFEOSVersion to be pulled from the HDF-EOS include files versus
+  being hard-coded.  Also added an HDFVersion.
+
 lndsr:
 - Modified to replace C++ style comments with C style comments.
+- Fixed a bug for reading the ozone data for OMI.  Previously the min/max and
+  delta latitude and longitude values were hard-coded, which created an issue
+  as the resolution of the OMI platform was different from the pre-OMI
+  platforms.  The application has been updated to read the min/max latitude
+  and longitude values from the HDF file dimensions, and to calculate the
+  deltas from these dimensional arrays instead of hard-coding the values.
+  The modification will support the upside down latitude values (see updates
+  for ledapsAncSrc below) as well as the corrected latitude values.
+- Modifed the HDFEOSVersion to be pulled from the HDF-EOS include files versus
+  being hard-coded.  Also added an HDFVersion.
 
 lndsrbm:
 - Modified to replace C++ style comments with C style comments.
+
+ledapsAncSrc:
+- Modified the update scripts to correctly write the latitude values for
+  the ozone products.  The ozone values in the baseline text files are actually
+  in the order from southern latitudes to northern latitudes.  The script has
+  been converting the ozone data to be north to south on the output HDF files,
+  but the latitudes were not being updated/flipped to correctly represent
+  this.  Ultimately, for LEDAPS, this wasn't an issue but more of a cosmetic
+  change to make sure the auxiliary files contained correct information for
+  the latitude and longitude dimensions.
 
 Updates on June 19, 2013 - USGS EROS
 Version 1.2.2

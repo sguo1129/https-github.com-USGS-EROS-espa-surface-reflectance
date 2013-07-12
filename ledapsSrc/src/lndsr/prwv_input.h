@@ -57,6 +57,7 @@ typedef struct {
 typedef struct {
   int year;                /* year */
   int doy;                 /* Day of year */
+  char platform[256];      /* Platform for the ozone data */
   Sat_t sat;               /* Satellite */
   Inst_t inst;             /* Instrument */
   Date_t acq_date;         /* Acqsition date/time (scene center) */

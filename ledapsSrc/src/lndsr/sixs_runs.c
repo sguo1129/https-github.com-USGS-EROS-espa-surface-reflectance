@@ -14,6 +14,7 @@ struct etm_spectral_function_t {
 
 int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
 	char cmd[128],sixs_cmd_filename[1024],sixs_out_filename[1024],line_in[256];
+    /* char tmp_file[1024], cmd_string[1024]; */
 	int i,j,k;
 	FILE *fd;
 	float tgoz,tgco2,tgo2,tgno2,tgch4,tgco;
@@ -327,11 +328,19 @@ int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
 				}
 			}
 			fclose(fd);
-		}
-	}
+/* For OZONE debugging:
+	        sprintf (tmp_file, "%s_b%d_aot%02d", sixs_cmd_filename, i, j);
+            sprintf (cmd_string, "cp %s %s", sixs_cmd_filename, tmp_file);
+            system (cmd_string);
+	        sprintf (tmp_file, "%s_b%d_aot%02d", sixs_out_filename, i, j);
+            sprintf (cmd_string, "cp %s %s", sixs_out_filename, tmp_file);
+            system (cmd_string);
+*/
+		}  /* for j */
+	}  /* for i */
 	printf ("\n");
-/*	unlink(sixs_cmd_filename); */
-/*	unlink(sixs_out_filename); */
+	unlink(sixs_cmd_filename);
+	unlink(sixs_out_filename);
 	return 0;
 }
 
