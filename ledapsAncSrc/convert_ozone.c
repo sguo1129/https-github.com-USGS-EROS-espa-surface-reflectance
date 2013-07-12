@@ -19,6 +19,15 @@ int read_ozone(char* fname, short int** data, int* doy, int* year, int* nlats,
                float* maxlon, float* latsteps, float* lonsteps,
                float* lat_array, float* lon_array);
 
+/********************************************************************
+ * History:
+ *   Modified on 7/9/2013 by Gail Schmidt, USGS LSRD Project
+ *   The ozone values are being written from north to south in the HDF
+ *   file, but the actual latitude values are not being written to
+ *   correctly reflect this.  A fix has been made.
+ *
+ ********************************************************************/
+
 int main(int argc,char **argv) {
   int32 sdsout_id;
   int32 dimout_id;
@@ -295,7 +304,7 @@ int read_ozone(char* fname, short int** out_data, int* doy, int* year, int* nlat
      }
    sscanf(&line[i*3+1],"   lat =   %f",&mylat);
    if (0 )   printf("*** in=(%s) mylat=(%f) complat=(%f) ***\n",&line[i*3+1],mylat,comp_lat);
-   lat_array[irow]= comp_lat;
+   lat_array[*nlats-ilat-1]= comp_lat;
    comp_lat += *latsteps;
    ilat++;
  }
