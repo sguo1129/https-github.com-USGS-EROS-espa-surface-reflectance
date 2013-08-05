@@ -40,6 +40,11 @@
    more south than the LR corner.  Comparing the UL and LR corners will allow
    the user to determine if the scene is flipped.
 
+ Revision 1.5 2013/08/05
+ Gail Schmidt, USGS EROS
+ Modified to output the gain and bias values for the reflectance and
+   brightness temperature bands.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -63,7 +68,7 @@
  ! Design Notes:
    1. The following public functions handle the output files:
 
-        CreateOutput - Create new output file.
+    CreateOutput - Create new output file.
 	OutputFile - Setup 'output' data structure.
 	CloseOutput - Close the output file.
 	FreeOutput - Free the 'output' data structure memory.
@@ -105,6 +110,10 @@
 #define OUTPUT_LOCAL_GRAN_ID ("LocalGranuleID")
 #define OUTPUT_PROD_DATE ("ProductionDate")
 #define OUTPUT_LEDAPSVERSION ("LEDAPSVersion")
+#define OUTPUT_REFL_GAINS ("ReflGains")
+#define OUTPUT_REFL_BIAS ("ReflBias")
+#define OUTPUT_TH_GAIN ("ThermalGain")
+#define OUTPUT_TH_BIAS ("ThermalBias")
 
 #define OUTPUT_WEST_BOUND  ("WestBoundingCoordinate")
 #define OUTPUT_EAST_BOUND  ("EastBoundingCoordinate")
@@ -710,7 +719,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
     RETURN_ERROR("writing attribute (solar azimuth)", "PutMetadata", false);
 
   if (meta->wrs_sys != WRS_NULL) {
-
     string = Wrs_string[meta->wrs_sys].string;
     attr.type = DFNT_CHAR8;
     attr.nval = strlen(string);
@@ -731,7 +739,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
     dval[0] = (double)meta->irow;
     if (!PutAttrDouble(this->sds_file_id, &attr, dval))
       RETURN_ERROR("writing attribute (WRS row)", "PutMetadata", false);
-
   }
 
   attr.type = DFNT_INT8;
@@ -748,6 +755,23 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
     dval[ib] = (double)meta->iband[ib];
   if (!PutAttrDouble(this->sds_file_id, &attr, dval))
     RETURN_ERROR("writing attribute (band numbers)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = nband;
+  attr.name = OUTPUT_REFL_GAINS;
+  for (ib = 0; ib < nband; ib++)
+    dval[ib] = (double)meta->gain[ib];
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (reflectance gains)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = nband;
+  attr.name = OUTPUT_REFL_BIAS;
+  for (ib = 0; ib < nband; ib++)
+    dval[ib] = (double)meta->bias[ib];
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (reflectance biases)", "PutMetadata",
+      false);
 
   /* Get the short name, local granule id and production date/time */
   
@@ -827,7 +851,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
     RETURN_ERROR("writing attribute (South Bounding Coords)", "PutMetadata", false);
 
   if (meta->inst == INST_MSS) {
-  
     attr.type = DFNT_FLOAT64;
     attr.nval = nband;
     attr.name =  OUTPUT_MSS_GAINS;
@@ -858,7 +881,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
     }
     if (!PutAttrDouble(this->sds_file_id, &attr, dval))
       RETURN_ERROR("writing attribute (mss refl conv)", "PutMetadata", false);
-  
   }
 
   for (ib = 0; ib < nband; ib++) {
@@ -1140,6 +1162,20 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
   dval[0] = (double)meta->iband_th;
   if (!PutAttrDouble(this->sds_file_id, &attr, dval))
     RETURN_ERROR("writing attribute (band numbers)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_TH_GAIN;
+  dval[0] = (double)meta->gain_th;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (thermal gain)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_TH_BIAS;
+  dval[0] = (double)meta->bias_th;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (thermal bias)", "PutMetadata", false);
 
   /* Added 9/15/05 when replace zero gain/bias with the estimated values for TM thermal band-6   */
   if (param->est_gainbias == 1){

@@ -22,7 +22,7 @@ bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int **line_in, int8 *q
 	float tmpflt;
 	float rho1,rho3,rho4,rho5,rho7,t6;
 	atmos_t interpol_atmos_coef;
-   	int C1,C1p,C2,C2p,C3,C3p,C4,C5,water;
+   	int C1,C1p,C2=0,C2p,C3,C3p,C4=0,C5=0,water;
 	int cld_row,cld_col;
    float vra,ndvi;
 

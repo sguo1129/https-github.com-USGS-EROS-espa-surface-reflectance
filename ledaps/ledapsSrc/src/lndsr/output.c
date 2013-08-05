@@ -37,6 +37,11 @@
  more south than the LR corner.  Comparing the UL and LR corners will allow
  the user to determine if the scene is flipped.
 
+ Revision 1.5 2013/08/05
+ Gail Schmidt, USGS EROS
+ Modified to output the gain and bias values for the reflectance and
+   brightness temperature bands.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -98,6 +103,10 @@
 #define OUTPUT_PROD_DATE ("ProductionDate")
 #define OUTPUT_LEDAPSVERSION ("LEDAPSVersion")
 #define OUTPUT_META_NAME ("LPGSMetadataFile")
+#define OUTPUT_REFL_GAINS ("ReflGains")
+#define OUTPUT_REFL_BIAS ("ReflBias")
+#define OUTPUT_TH_GAIN ("ThermalGain")
+#define OUTPUT_TH_BIAS ("ThermalBias")
 
 #define OUTPUT_WEST_BOUND  ("WestBoundingCoordinate")
 #define OUTPUT_EAST_BOUND  ("EastBoundingCoordinate")
@@ -587,9 +596,9 @@ bool PutOutputLineU8(Output_t *this, int iband, int iline, int *line)
   return true;
 }
 
-bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
-  Lut_t *lut, Geo_bounds_t* bounds, Geo_coord_t *ul_corner,
-  Geo_coord_t *lr_corner)
+bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta,
+  Input_meta_t *th_meta, Param_t *param, Lut_t *lut, Geo_bounds_t* bounds,
+  Geo_coord_t *ul_corner, Geo_coord_t *lr_corner)
 /* 
 !C******************************************************************************
 
@@ -624,7 +633,6 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
 {
   Myhdf_attr_t attr;
   char date[MAX_DATE_LEN + 1];
-/*double dval[1];     */
   double dval[NBAND_SR_MAX];
   char *string
      , short_name[250]
@@ -738,6 +746,37 @@ bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
     if (!PutAttrDouble(this->sds_file_id, &attr, dval))
       RETURN_ERROR("writing attribute (WRS row)", "PutMetadata", false);
   }
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = nband;
+  attr.name = OUTPUT_REFL_GAINS;
+  for (ib = 0; ib < nband; ib++)
+    dval[ib] = (double)meta->gains[ib];
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (reflectance gains)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = nband;
+  attr.name = OUTPUT_REFL_BIAS;
+  for (ib = 0; ib < nband; ib++)
+    dval[ib] = (double)meta->bias[ib];
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (reflectance biases)", "PutMetadata",
+      false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_TH_GAIN;
+  dval[0] = (double)th_meta->th_gain;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (thermal gain)", "PutMetadata", false);
+
+  attr.type = DFNT_FLOAT64;
+  attr.nval = 1;
+  attr.name = OUTPUT_TH_BIAS;
+  dval[0] = (double)th_meta->th_bias;
+  if (!PutAttrDouble(this->sds_file_id, &attr, dval))
+    RETURN_ERROR("writing attribute (thermal bias)", "PutMetadata", false);
 
   /* Get the short name, local granule id and production date/time */
   

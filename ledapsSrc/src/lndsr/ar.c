@@ -1,5 +1,7 @@
 /***************************************************************
 03-08-2005: add other gases to band 7 correction
+08-01-2013: Modified divide by 10000. to multiply by 0.0001 since
+            that is faster.  Gail Schmidt, USGS EROS LSRD
 ***************************************************************/
 #include "ar.h"
 #include "const.h"
@@ -46,7 +48,7 @@ The DDV flag in ddv_line (bit 0) is updated in this routine
   int ib;
   double sum_band[3],sum_band_sq[3];
   double sum_srefl,sum_srefl_sq;
-  float rho_surf;
+/*  float rho_surf; */
   short *collect_band[3],*collect_band7,tmp_short;
   int collect_nbsamps;
   
@@ -127,17 +129,18 @@ compute wv transmittance for band 7
 	nb_all_pixs=0;
     nb_water_pixs=0;
     nb_cld_pixs=0;
+    nb_cldshadow_pixs=0;
     nb_snow_pixs=0;
 	nb_fill_pixs=0;
     for (il = 0; il < lut->ar_region_size.l; il++) {
       for (is = is_start; is < (is_end + 1); is++) {
-		if (ddv_line[il][is]&0x08)
+		nb_all_pixs++;
+		if (ddv_line[il][is]&0x08) {
             is_fill = true;
+			nb_fill_pixs++;
+        }
 		else
         	is_fill = false;
-		nb_all_pixs++;
-		if (is_fill)
-			nb_fill_pixs++;
 	if (!is_fill) {
 		water = ((ddv_line[il][is] & 0x10)==0);
 		if (water) {
@@ -160,14 +163,13 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 			is_fill=true;
 			nb_snow_pixs++;
 		}
-
-	}  
+	}  /* end if !is_fill */  
     if (!is_fill) {
 
 		
 /* band 7 water vapor correction */	 
-	 rho7=line_in[il][5][is]/10000.;
-	 rho4=line_in[il][3][is]/10000.;
+	 rho7=line_in[il][5][is] * 0.0001;
+	 rho4=line_in[il][3][is] * 0.0001;
 	 rho7 /= T_g_b7;  /* correct for water vapor and other gases*/
 	 
 
@@ -178,8 +180,8 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
    if ((rho7>0.015) && (rho4 >0.10) /* &&(rho7<0.05) */) {
 	  n++;
 	 for (ib=0;ib<3;ib++) {
-	  sum_band[ib] += (line_in[il][ib][is]/10000.); 
-	  sum_band_sq[ib] += (line_in[il][ib][is]/10000.)*(line_in[il][ib][is]/10000.);
+	  sum_band[ib] += (line_in[il][ib][is]*0.0001);
+	  sum_band_sq[ib] += (line_in[il][ib][is]*0.0001)*(line_in[il][ib][is]*0.0001);
 	   collect_band[ib][collect_nbsamps]=line_in[il][ib][is];
 	 }
 	  sum_srefl += rho7; 
@@ -191,13 +193,14 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 	}
       
 	}
-      }
-    }
+      }  /* end for is */
+    }  /* end for il */
     
 #ifdef DEBUG_AR
 	if (fd_ar_diags!=NULL)
    		fprintf(fd_ar_diags,"%d %d %d",diags_il_ar,is_ar,collect_nbsamps);
 #endif
+/*printf ("DEBUG: collect_nbsamps: %d\n", collect_nbsamps);*/
     if (collect_nbsamps == 0) {
       line_ar[0][is_ar] = lut->aerosol_fill;
       line_ar[1][is_ar] = lut->aerosol_fill;
@@ -248,8 +251,8 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 			sum_srefl=0.;
 			sum_srefl_sq=0.;
 			for (i=start_i;i<(start_i+AOT_MIN_NB_SAMPLES);i++) {
-				sum_srefl += (collect_band7[i]/10000.);
-				sum_srefl_sq += ((collect_band7[i]/10000.)*(collect_band7[i]/10000.));
+				sum_srefl += (collect_band7[i]*0.0001);
+				sum_srefl_sq += ((collect_band7[i]*0.0001)*(collect_band7[i]*0.0001));
 			}
       		avg_srefl = (sum_srefl) / AOT_MIN_NB_SAMPLES; 
 			std_srefl=sqrt(fabs(sum_srefl_sq-(sum_srefl*sum_srefl/AOT_MIN_NB_SAMPLES))/(AOT_MIN_NB_SAMPLES-1));
@@ -264,15 +267,15 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 			sum_band[ib]=0.;
 			sum_band_sq[ib]=0.;
 			for (i=0;i<collect_nbsamps;i++) {
-				sum_band[ib] += (collect_band[ib][i+start_i]/10000.);
-				sum_band_sq[ib] += ((collect_band[ib][i+start_i]/10000.)*(collect_band[ib][i+start_i]/10000.));
+				sum_band[ib] += (collect_band[ib][i+start_i]*0.0001);
+				sum_band_sq[ib] += ((collect_band[ib][i+start_i]*0.0001)*(collect_band[ib][i+start_i]*0.0001));
 			}
 		}
 		sum_srefl=0.;
 		sum_srefl_sq=0.;
 		for (i=0;i<collect_nbsamps;i++) {
-			sum_srefl += (collect_band7[i+start_i]/10000.);
-			sum_srefl_sq += ((collect_band7[i+start_i]/10000.)*(collect_band7[i+start_i]/10000.));
+			sum_srefl += (collect_band7[i+start_i]*0.0001);
+			sum_srefl_sq += ((collect_band7[i+start_i]*0.0001)*(collect_band7[i+start_i]*0.0001));
 		}
 		/* update stats line */
       avg_srefl = (sum_srefl) / collect_nbsamps; 
@@ -329,19 +332,16 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 	Compute AOT blue band
 ***/
 
-/*    printf("Compute AOT\n"); fflush(stdout); */
-
+/*printf ("DEBUG: std_srefl: %f (<= 1.015)\n", std_srefl);
+printf ("DEBUG: avg_srefl: %f (<= 0.15)\n", avg_srefl);
+printf ("DEBUG: nb_snow_pix: %d (< 5)\n", nb_snow_pixs);
+printf ("DEBUG: fraction_water: %f (< 0.3)\n", fraction_water);
+printf ("DEBUG: fraction_clouds: %f (< 1e-10)\n", fraction_clouds);
+*/
 	 if ((std_srefl <= 1.015) && (avg_srefl <= 0.15) && (nb_snow_pixs < 5 )&& (fraction_water < 0.3) && (fraction_clouds < 1e-10)) {
-		rho_surf=0.33*avg_srefl;
+/*		rho_surf=0.33*avg_srefl; */
 				
 	   compute_aot(0,avg_band[0],avg_band[2],fts,ftv,phi,uoz,uwv,spres,sixs_tables,&avg_aot);
-/*			printf("HOW MANY REAL ONE?\n");*/
-
-/* eric debug 3/07/2011 begin*/
-/* eric commented after sucessfull debug 4/29/2011 begin*/
-/*      avg_aot=0.01;    */
-/* eric commented after sucessfull debug 4/29/2011 end*/
-/* eric debug 3/07/2011 end*/
       	
       line_ar[0][is_ar] = (int)(avg_aot*1000.);
       line_ar_stats[2][is_ar] =(int)(avg_aot*1000.);
@@ -363,11 +363,11 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
     	for (il = 0; il < lut->ar_region_size.l; il++) {
       		for (is = is_start; is < (is_end + 1); is++) {
 			if (!(ddv_line[il][is]&0x08)) {
-				rho=(float)line_in[il][ib][is]/10000.;
-     	                        rho7=(float)line_in[il][5][is]/10000.;
-     	                        rho4=(float)line_in[il][3][is]/10000.;
-     	                        rho6=(float)line_in[il][4][is]/10000.;
-     	                        rho1=(float)line_in[il][0][is]/10000.;
+				rho=(float)line_in[il][ib][is]*0.0001;
+     	                        rho7=(float)line_in[il][5][is]*0.0001;
+     	                        rho4=(float)line_in[il][3][is]*0.0001;
+     	                        rho6=(float)line_in[il][4][is]*0.0001;
+     	                        rho1=(float)line_in[il][0][is]*0.0001;
 	                        rho7 /= T_g_b7;  /* correct for water vapor and other gases*/
      			        rho=(rho/atmos_coef_ar.tgOG[ib][ipt]-atmos_coef_ar.rho_ra[ib][ipt]);
 				rho /= (atmos_coef_ar.tgH2O[ib][ipt]*atmos_coef_ar.td_ra[ib][ipt]*atmos_coef_ar.tu_ra[ib][ipt]);
@@ -454,7 +454,6 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
       line_ar[0][is_ar] = lut->aerosol_fill;
       line_ar[1][is_ar] = lut->aerosol_fill;
       line_ar[2][is_ar] = lut->aerosol_fill;
-/*      printf("DOES IT HAPPEN HERE\n");*/
       line_ar_stats[0][is_ar] = 0;
       line_ar_stats[1][is_ar] = lut->in_fill;
       line_ar_stats[2][is_ar] = lut->in_fill;

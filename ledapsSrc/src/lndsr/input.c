@@ -77,6 +77,10 @@
 #define INPUT_WRS_ROW ("WRS_Row")
 #define INPUT_NBAND ("NumberOfBands")
 #define INPUT_BANDS ("BandNumbers")
+#define INPUT_REFL_GAINS ("ReflGains")
+#define INPUT_REFL_BIAS ("ReflBias")
+#define INPUT_TH_GAIN ("ThermalGain")
+#define INPUT_TH_BIAS ("ThermalBias")
 
 #define N_LSAT_WRS1_ROWS  (251)
 #define N_LSAT_WRS1_PATHS (233)
@@ -192,6 +196,7 @@ Input_t *OpenInput(char *file_name)
     read_qa=0;  /* do not read qa if thermal file */
   else
     read_qa=1;
+
   /* Get SDS information and start SDS access */
 
   for (ib = 0; ib < this->nband; ib++) {
@@ -907,6 +912,58 @@ bool GetInputMeta(Input_t *this)
       RETURN_ERROR("band number out of range", "GetInputMeta", false);
   }
 
+  /* Read the gains and biases.  If there is only one band, then assume
+     that's the thermal product. */
+
+  if (this->nband != 1) {
+    attr.type = DFNT_FLOAT32;
+    attr.nval = this->nband;
+    attr.name = INPUT_REFL_GAINS;
+    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
+      RETURN_ERROR("reading attribute (reflectance gains)", "GetInputMeta",
+          false);
+    if (attr.nval != this->nband) 
+      RETURN_ERROR("invalid number of values (reflectance gains)", 
+                   "GetInputMeta", false);
+    for (ib = 0; ib < this->nband; ib++)
+      meta->gains[ib] = (float) dval[ib];
+
+    attr.type = DFNT_FLOAT32;
+    attr.nval = this->nband;
+    attr.name = INPUT_REFL_BIAS;
+    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
+      RETURN_ERROR("reading attribute (reflectance biases)", "GetInputMeta",
+          false);
+    if (attr.nval != this->nband) 
+      RETURN_ERROR("invalid number of values (reflectance biases)", 
+                   "GetInputMeta", false);
+    for (ib = 0; ib < this->nband; ib++)
+      meta->bias[ib] = (float) dval[ib];
+  }
+  else {
+    attr.type = DFNT_FLOAT32;
+    attr.nval = this->nband;
+    attr.name = INPUT_TH_GAIN;
+    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
+      RETURN_ERROR("reading attribute (reflectance gains)", "GetInputMeta",
+        false);
+    if (attr.nval != this->nband) 
+      RETURN_ERROR("invalid number of values (thermal gains)", "GetInputMeta",
+        false);
+    meta->th_gain = (float) dval[0];
+
+    attr.type = DFNT_FLOAT32;
+    attr.nval = this->nband;
+    attr.name = INPUT_TH_BIAS;
+    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
+      RETURN_ERROR("reading attribute (thermal bias)", "GetInputMeta",
+        false);
+    if (attr.nval != this->nband) 
+      RETURN_ERROR("invalid number of values (thermal bias)", "GetInputMeta",
+        false);
+    meta->th_bias = (float) dval[0];
+  }
+
   /* Check WRS path/rows */
 
   error_string = (char *)NULL;
@@ -998,8 +1055,13 @@ bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy)
   copy->irow = this->irow;
   copy->fill = this->fill;
 
-  for (ib = 0; ib < nband; ib++)
+  for (ib = 0; ib < nband; ib++) {
     copy->iband[ib] = this->iband[ib];
+    copy->gains[ib] = this->gains[ib];
+    copy->bias[ib] = this->bias[ib];
+    copy->th_gain = this->th_gain;
+    copy->th_bias = this->th_bias;
+  }
 
   return true;
 }
