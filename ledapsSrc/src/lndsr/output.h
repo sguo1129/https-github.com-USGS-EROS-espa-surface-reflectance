@@ -71,8 +71,8 @@ bool PutOutputLine(Output_t *this, int iband, int iline, int *line);
 bool PutOutputLineU8(Output_t *this, int iband, int iline, int *line);
 bool CloseOutput(Output_t *this);
 bool FreeOutput(Output_t *this);
-bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Param_t *param,
-  Lut_t *lut, Geo_bounds_t* bounds, Geo_coord_t *ul_corner,
-  Geo_coord_t *lr_corner);
+bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta,
+  Input_meta_t *th_meta, Param_t *param, Lut_t *lut, Geo_bounds_t* bounds,
+  Geo_coord_t *ul_corner, Geo_coord_t *lr_corner);
 
 #endif

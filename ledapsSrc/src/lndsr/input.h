@@ -56,12 +56,20 @@ typedef struct {
   Date_t prod_date;        /* Production date (must be available for ETM) */
   float sun_zen;           /* Solar zenith angle (radians; scene center) */
   float sun_az;            /* Solar azimuth angle (radians; scene center) */
-  Wrs_t wrs_sys;	   /* WRS system */
+  Wrs_t wrs_sys;           /* WRS system */
   int ipath;               /* WRS path number */
   int irow;                /* WRS row number */
   int fill;                /* Fill value */
   int iband[NBAND_REFL_MAX];
                            /* Band numbers */
+  double gains[NBAND_REFL_MAX];  /* Reflectance gains (only used for TOA refl
+                                   file) */
+  double bias[NBAND_REFL_MAX];   /* Reflectance biases (only used for TOA refl
+                                   file) */
+  double th_gain;          /* Thermal gain (only used for brightness temp
+                              file) */
+  double th_bias;          /* Thermal bias (only used for brightness temp
+                              file) */
 } Input_meta_t;
 
 /* Structure for the 'input' data type */
@@ -80,7 +88,6 @@ typedef struct {
 
   Myhdf_sds_t qa_sds;
   int8 *qabuf;
-
 } Input_t;
 
 typedef struct {

@@ -19,6 +19,11 @@
  * revision 1.2.1 3/22/2013  Gail Schmidt, USGS
  * - writing UL and LR corners to the output metadata to be able to detect
  *   ascending scenes or scenes where the image is flipped North to South
+ * revision 1.2.2 8/1/2013  Gail Schmidt, USGS
+ * - validated the TOA reflectance values to make sure they were within
+ *   the valid range of values
+ * - validated the thermal values to make sure they were within the valid
+ *   range of values
  */
 
 bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in, 
@@ -119,6 +124,12 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
     else
       line_out[is] = (int)(ref * 10000.0) + 0.5;
 
+    /* Cap the output using the min/max values */
+    if (line_out[is] < lut->valid_range_ref[0])
+        line_out[is] = lut->valid_range_ref[0];
+    else if (line_out[is] > lut->valid_range_ref[1])
+        line_out[is] = lut->valid_range_ref[1];
+
     if (cal_stats->first[iband]) {
       
       cal_stats->idn_min[iband] = val;
@@ -209,6 +220,12 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int *line_out,
       }
     else
       line_out[is] = (int)(temp * 100.0 + 0.5);
+
+    /* Cap the output using the min/max values */
+    if (line_out[is] < lut->valid_range_th[0])
+        line_out[is] = lut->valid_range_th[0];
+    else if (line_out[is] > lut->valid_range_th[1])
+        line_out[is] = lut->valid_range_th[1];
 
     if (cal_stats->first) {
       

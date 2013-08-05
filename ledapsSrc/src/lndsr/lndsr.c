@@ -54,6 +54,7 @@
 #define ATEMP_INDEX	2
 #define OZ_INDEX	0
 #define DEBUG_FLAG	0
+/* #define DEBUG_AR	0 */
 
 /* DEM Definition: U_char format, 1 count = 100 meters */
 /* 0 = 0 meters */
@@ -641,8 +642,8 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 /*  printf("DEBUG the dimension of the sds is %d %d\n",dim_sizes[0],dim_sizes[1]); */
   start[0]=0;
   start[1]=0;
-  edges[0]=3600;
-  edges[1]=7200;
+  edges[0]=3600;   /* number of lines in the DEM data */
+  edges[1]=7200;   /* number of sampes in the DEM data */
   stride[0]=1;
   stride[1]=1;
   dem_array=(short *)malloc(DEM_NBLAT*DEM_NBLON*sizeof(short));
@@ -707,7 +708,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 /****
 	Run 6S and compute atmcor params
 ****/
-/*    printf ("DEBUG: Interpolating WV at scene center ...\n");*/
+/*    printf ("DEBUG: Interpolating WV at scene center ...\n"); */
    	interpol_spatial_anc(&anc_WV,center_lat,center_lon,tmpflt_arr);
    	tmpint=(int)(scene_gmt/anc_WV.timeres);
    	if (tmpint>=(anc_WV.nblayers-1))
@@ -716,7 +717,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
    	sixs_tables.uwv=(1.-coef)*tmpflt_arr[tmpint]+coef*tmpflt_arr[tmpint+1];
 
    	if (!no_ozone_file) {
-/*        printf ("DEBUG: Interpolating ozone at scene center ...\n");*/
+/*        printf ("DEBUG: Interpolating ozone at scene center ...\n"); */
    		interpol_spatial_anc(&anc_O3,center_lat,center_lon,tmpflt_arr);
    		tmpint=(int)(scene_gmt/anc_O3.timeres);
    		if ( anc_O3.nblayers> 1 ){
@@ -1110,7 +1111,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 #endif
     if (!Ar(il_ar,lut, &input->size, line_in, ddv_line, line_ar[il_ar],
         line_ar_stats[il_ar], &ar_stats, &ar_gridcell, &sixs_tables))
-      ERROR("computing aerosl", "main");
+      ERROR("computing aerosol", "main");
 /***
 	Save dark target map in temporary file
 ***/
@@ -1208,7 +1209,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
         }
 
         /* Process QA for each pixel */
-		if (!refl_is_fill) {
+		if (!refl_is_fill) {  /* AOT / opacity */
 			ArInterp(lut, &loc, line_ar, inter_aot); 
 			line_out[lut->nband][is] = inter_aot[0];
         /**
@@ -1302,8 +1303,8 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   
   /* Write the output metadata */
   
-  if (!PutMetadata(output, input->nband, &input->meta, param, lut, &bounds,
-    &ul_corner, &lr_corner))
+  if (!PutMetadata(output, input->nband, &input->meta, &input_b6->meta, param,
+    lut, &bounds, &ul_corner, &lr_corner))
     ERROR("writing the metadata", "main");
 
   /* Close input files */
