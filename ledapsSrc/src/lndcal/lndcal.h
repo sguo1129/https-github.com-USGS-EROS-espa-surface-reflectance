@@ -6,13 +6,18 @@
 #define max(A,B) (A>B?A:B)
 
 #include "mystring.h"
-#include "space.h"
+#include "espa_metadata.h"
+#include "parse_metadata.h"
+#include "write_metadata.h"
+#include "envi_header.h"
 
 #define NBAND_REFL_MAX (6)
 #define NBAND_QA       (1)
 #define NBAND_CAL_MAX (NBAND_REFL_MAX + NBAND_QA)
 #define QA_BAND_NUM (6)
 
+typedef signed short int16;
+typedef unsigned char uint8;
 
 typedef enum {
   ALG_NASA,
@@ -99,27 +104,6 @@ typedef struct {
 } Img_coord_int_t;
 
 #endif
-
-typedef struct {
-  float DN_to_Radiance_gain[7];
-  float DN_to_Radiance_offset[7];
-  float final_gain[7];
-  float final_offset[7];
-  float reflective_forward_gains[6][16];
-  float reflective_forward_offsets[6][16];
-  float reflective_reverse_gains[6][16];
-  float reflective_reverse_offsets[6][16];
-  float thermal_forward_gains[4];
-  float thermal_forward_offsets[4];
-  float thermal_reverse_gains[4];
-  float thermal_reverse_offsets[4];
-  int reference_detector[7];
-  bool nasa_flag;
-  Algorithm_t algorithm;
-  int completion_year;
-  int completion_month;
-  int completion_day;
-} Param_wo_t;
 
 typedef struct {
   float gains[7];

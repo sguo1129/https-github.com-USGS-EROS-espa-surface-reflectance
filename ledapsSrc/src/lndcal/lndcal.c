@@ -23,8 +23,7 @@
 
 /* Type definitions */
 
-#define NSDS (NBAND_CAL_MAX)
-typedef enum {FAILURE = 0, SUCCESS = 1} Status_t;
+#define NSDS NBAND_CAL_MAX
 
 /* Functions */
 /* !Revision:
@@ -38,236 +37,153 @@ typedef enum {FAILURE = 0, SUCCESS = 1} Status_t;
  *
  * revision 1.1.2 3/22/2013  Gail Schmidt, USGS
  * - modified the application to write the UL and LR lat/long to the metadata
+ *
+ * revision 2.0.0 1/21/2014  Gail Schmidt, USGS
+ * - modified application to use the ESPA internal raw binary file format
+ * - removed any recalibration-related or DN map related code
  */
 
 int main (int argc, const char **argv) {
-  Param_t *param;
-  Input_t *input;
-  Lut_t *lut;
-  Output_t *output;
-  Output_t *output_th= (Output_t*)NULL;
+  Param_t *param = NULL;
+  Input_t *input = NULL;
+  Lut_t *lut = NULL;
+  Output_t *output = NULL;
+  Output_t *output_th = NULL;
   int iline, isamp,oline, ib, jb, iz, val;
-  unsigned char *line_in;
-  int *line_out;
-  int *line_out_qa;
-  int *line_out_th= (int*)NULL;
-  int *line_out_thz= (int*)NULL;
-  unsigned char *line_in_thz= (unsigned char*)NULL;
+  unsigned char *line_in = NULL;
+  unsigned char *line_in_thz = NULL;
+  unsigned char *line_out_qa = NULL;
+  int16 *line_out = NULL;
+  int16 *line_out_th = NULL;
+  int16 *line_out_thz = NULL;
   Cal_stats_t cal_stats;
   Cal_stats6_t cal_stats6;
   int nps,nls, nps6, nls6;
   int zoomx, zoomy;
   int i,odometer_flag=0;
   char msgbuf[1024];
-
-  /*  Space_t *space; */
-  Space_def_t space_def;
-  Space_t *space;
-  Geo_bounds_t bounds;
-  Geo_coord_t ul_corner;
-  Geo_coord_t lr_corner;
-  char *grid_name = "Grid";
-  int isds;
-  int nsds = NSDS;
-  char *sds_names[NSDS];
-  int sds_types[NSDS];
+  char envi_file[STR_SIZE]; /* name of the output ENVI header file */
+  char *cptr=NULL;          /* pointer to the file extension */
   size_t input_psize;
-  int qa_band= QA_BAND_NUM;
-  int nband_refl= NBAND_REFL_MAX;
+  int qa_band = QA_BAND_NUM;
+  int nband_refl = NBAND_REFL_MAX;
   int ifill, num_zero;
-  int maxth=0;\
+  int maxth=0;
   int mss_flag=0;
+  Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
+  Envi_header_t envi_hdr;   /* output ENVI header information */
 
   printf ("\nRunning lndcal ...\n");
   for (i=1; i<argc; i++)if ( !strcmp(argv[i],"-o") )odometer_flag=1;
 
+  /* Read the parameters from the input parameter file */
   param = GetParam(argc, argv);
-  if (param == (Param_t *)NULL) ERROR("getting runtime parameters", "main");
+  if (param == (Param_t *)NULL) EXIT_ERROR("getting runtime parameters",
+    "main");
+
+  /* Validate the input metadata file */
+  if (validate_xml_file (param->input_xml_file_name, ESPA_SCHEMA) != SUCCESS)
+  {  /* Error messages already written */
+    EXIT_ERROR("validating XML file", "main");
+  }
+
+  /* Initialize the metadata structure */
+  init_metadata_struct (&xml_metadata);
+
+  /* Parse the metadata file into our internal metadata structure; also
+     allocates space as needed for various pointers in the global and band
+     metadata */
+  if (parse_metadata (param->input_xml_file_name, &xml_metadata) != SUCCESS)
+  {  /* Error messages already written */
+    EXIT_ERROR("parsing XML file", "main");
+  }
+
+  /* Check to see if the gain and bias values were specified */
+  if (!existGB (&xml_metadata))
+    EXIT_ERROR("Gains and biases don't exist in XML file (toa_reflectance gain "
+      "and bias fields) for each band.  Make sure to utilize the latest LPGS "
+      "MTL file for conversion to the ESPA internal raw binary format as the "
+      "gains and biases should be in that file.", "main");
   
-  if ( !setETM_GB(param) )
-    ERROR("getting ETM_GB", "main");
-    
-  /*
-    if (  param->ETM_GB )
-       printf("*** ETM_GB = true ***\n");
-    else
-       printf("*** ETM_GB = false ***\n");
-  if(1)exit(0); 
-  */
-   
   /* Open input file */
-
-  input = OpenInput(param->input_header_file_name, param);
-  if (input == (Input_t *)NULL) ERROR("bad input header file", "main");
-
-  input->dnout=     param->dnout;
-  input->dn_map[0]= param->dn_map[0];
-  input->dn_map[1]= param->dn_map[1];
-  input->dn_map[2]= param->dn_map[2];
-  input->dn_map[3]= param->dn_map[3];
-
-/* Zero(es) gain/bias of thermal band-6, changed to 0.0551583/1.2377996     9/15/05)*/
-  if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL &&
-       fabs(input->meta.gain_th) < 0.5e-6  &&
-       fabs(input->meta.bias_th) < 0.5e-6)
-     {
-       input->meta.gain_th = 0.0551583;
-       input->meta.bias_th = 1.2377996;
-       param->est_gainbias = 1;
-     }
+  input = OpenInput (&xml_metadata);
+  if (input == (Input_t *)NULL)
+    EXIT_ERROR("setting up input from XML structure", "main");
 
   /* Get Lookup table */
   lut = GetLut(param, input->nband, input);
-  if (lut == (Lut_t *)NULL) ERROR("bad lut file", "main");
+  if (lut == (Lut_t *)NULL) EXIT_ERROR("bad lut file", "main");
 
-  if ( !lut->recal_flag ) 
-    {
-      /*
-    if ( lut->work_order_flag ) 
-      printf("*** work_order alg=(%s) date=(%d/%d/%d) ***\n",
-              ALG[lut->work_order->algorithm]
-	     ,lut->work_order->completion_year
-	     ,lut->work_order->completion_month
-	     ,lut->work_order->completion_day  );
-      */
-    }
-  else
-    {
-    for ( ib=0; ib<6; ib++ ) 
-      {
-      if ( lut->work_order_flag && lut->recal_flag ) 
-    printf(
-"band=%d G-rescale=%10.6f alpha=%10.6f Gold=%10.6f Gnew=%10.6f Gold/Gnew=%10.6f\n",
-         (ib==5?7:ib+1)                                      ,
-         lut->work_order->DN_to_Radiance_gain[ib==5?6:ib]    ,  
-         lut->work_order->final_gain[ib==5?6:ib]             , 
-         lut->work_order->final_gain[ib==5?6:ib] / 
-           lut->work_order->DN_to_Radiance_gain[ib==5?6:ib]  ,
-         lut->gnew->gains[ib==5?6:ib]                        ,
-         ((lut->work_order->final_gain[ib==5?6:ib] / 
-           lut->work_order->DN_to_Radiance_gain[ib==5?6:ib])/ 
-           lut->gnew->gains[ib==5?6:ib])
-        );
-else
-    printf(
-"band=%d  Gold=%10.6f Gnew=%10.6f Gold/Gnew=%10.6f\n",
-         (ib==5?7:ib+1)                                      ,
-         lut->gold->gains[ib==5?6:ib]                        ,
-         lut->gnew->gains[ib==5?6:ib]                        ,
-        (lut->gold->gains[ib==5?6:ib]/
-         lut->gnew->gains[ib==5?6:ib])                       
-        );
-    fflush(stdout);
-    }
-  }
-
-  /* Get space definition from file */
-
-  if (!GetSpaceDefFile(param->input_header_file_name, &space_def))
-    ERROR("getting definition from file", "main");
-
-  /* Setup Space */
-
-  space = SetupSpace(&space_def);
-  if (space == (Space_t *)NULL) ERROR("setting up space", "main");
-    
-  /* compute bounds and UL/LR corners.  For ascending scenes and scenes in
-     the polar regions, the scenes are flipped upside down.  The bounding coords
-     will be correct in North represents the northernmost latitude and South
-     represents the southernmost latitude.  However, the UL corner in this case
-     would be more south than the LR corner.  Comparing the UL and LR corners
-     will allow the user to determine if the scene is flipped. */
-
-  if (!computeBounds(&bounds, &ul_corner, &lr_corner, space, input->size.s,
-    input->size.l))
-    ERROR("computing bounds", "main");
-
-   nps6=  input->size_th.s;
-   nls6=  input->size_th.l;
-   nps =  input->size.s;
-   nls =  input->size.l;
-   zoomx= nint( (float)nps / (float)nps6 );
-   zoomy= nint( (float)nls / (float)nls6 );
+  nps6=  input->size_th.s;
+  nls6=  input->size_th.l;
+  nps =  input->size.s;
+  nls =  input->size.l;
+  zoomx= nint( (float)nps / (float)nps6 );
+  zoomy= nint( (float)nls / (float)nls6 );
 
   for (ib = 0; ib < input->nband; ib++) 
     cal_stats.first[ib] = true;
   cal_stats6.first = true;
-
-  /* Create and open output file */
-
-  if (!CreateOutput(param->output_file_name))
-    ERROR("creating output file", "main");
-    
   if (input->meta.inst == INST_MSS)mss_flag=1; 
 
-  output = OpenOutput(param->output_file_name, input->nband, input->meta.iband, 
-		      &input->size, mss_flag);
-  if (output == (Output_t *)NULL) ERROR("opening output file", "main");
+  /* Open the output files.  Raw binary band files will be be opened. */
+  output = OpenOutput(&xml_metadata, input, param, lut, false /*not thermal*/,
+    mss_flag);
+  if (output == NULL) EXIT_ERROR("opening output file", "main");
 
-   input_psize= ( input->file_type == INPUT_TYPE_BINARY_2BYTE_BIG ||
-                 input->file_type == INPUT_TYPE_BINARY_2BYTE_LITTLE    ) ? 
-                 sizeof(unsigned short int) :  sizeof(unsigned char);
-		 
-  line_in = (unsigned char *)calloc((size_t)input->size.s*nband_refl,
-    input_psize);
-   if (line_in == (unsigned char *)NULL) 
-     ERROR("allocating input line buffer", "main");
+  /* Allocate memory for the input buffer, enough for all reflectance bands */
+  input_psize = sizeof(unsigned char);
+  line_in = calloc (input->size.s * nband_refl, input_psize);
+   if (line_in == NULL) 
+     EXIT_ERROR("allocating input line buffer", "main");
 
-  if ( param->output_therm_file_name  == (char *)NULL )
-    printf("*** no output thermal file ***\n"); 
+  /* Create and open output thermal band, if one exists */
+  if ( input->nband_th > 0 ) {
+    output_th = OpenOutput (&xml_metadata, input, param, lut, true /*thermal*/,
+      mss_flag);
+    if (output_th == NULL)
+      EXIT_ERROR("opening output therm file", "main");
 
-  /* Create and open output thermal file */
+    /* Allocate memory for the thermal input and output buffer, only holds
+       one band */
+    line_out_th = calloc(input->size_th.s, sizeof(int16));
+    if (line_out_th == NULL) 
+      EXIT_ERROR("allocating thermal output line buffer", "main");
 
-  if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL ){
-
-    if (!CreateOutput(param->output_therm_file_name))
-      ERROR("creating output thermal file", "main");
-
-    output_th = OpenOutput(param->output_therm_file_name, input->nband_th,  
-              		   &input->meta.iband_th,  &input->size, mss_flag);
-			   
-    if ( output_th == (Output_t *)NULL)
-      ERROR("opening output therm file", "main");
-
-    line_out_th = (int *)calloc((size_t)input->size_th.s, sizeof(int));
-    if (line_out_th == (int *)NULL) 
-      ERROR("allocating thermal output line buffer", "main");
-
-   if ( zoomx == 1 )
-      {
-      line_out_thz = (int *)line_out_th;
-      line_in_thz = (unsigned char *)line_in;
-      }
-    else {
-      line_out_thz = (int *)calloc((size_t)input->size.s, sizeof(int));
-      if (line_out_thz == (int *)NULL) 
-        ERROR("allocating thermal zoom output line buffer", "main");
-      line_in_thz = (unsigned char *)calloc((size_t)input->size.s, sizeof(char));
-      if (line_in_thz == (unsigned char *)NULL) 
-        ERROR("allocating thermal zoom input line buffer", "main");
+    if (zoomx == 1) {
+      line_out_thz = line_out_th;
+      line_in_thz = line_in;
     }
- } 
+    else {
+      line_out_thz = calloc (input->size.s, sizeof(int16));
+      if (line_out_thz == NULL) 
+        EXIT_ERROR("allocating thermal zoom output line buffer", "main");
+      line_in_thz = calloc (input->size.s, input_psize);
+      if (line_in_thz == NULL) 
+        EXIT_ERROR("allocating thermal zoom input line buffer", "main");
+    }
+  } else {
+    printf("*** no output thermal file ***\n"); 
+  }
 
-  /* Allocate memory for lines */
-  line_out = (int *)calloc((size_t)input->size.s, sizeof(int));
-  if (line_out == (int *)NULL) 
-    ERROR("allocating output line buffer", "main");
+  /* Allocate memory for output lines for both the image and QA data */
+  line_out = calloc (input->size.s, sizeof (int16));
+  if (line_out == NULL) 
+    EXIT_ERROR("allocating output line buffer", "main");
 
-  line_out_qa = (int *)calloc((size_t)input->size.s, sizeof(int));
-  if (line_out_qa == (int *)NULL) 
-    ERROR("allocating qa output line buffer", "main");
-  memset(line_out_qa,0,input->size.s*sizeof(int));    
+  line_out_qa = calloc (input->size.s, sizeof(unsigned char));
+  if (line_out_qa == NULL) 
+    EXIT_ERROR("allocating qa output line buffer", "main");
+  memset (line_out_qa, 0, input->size.s * sizeof(unsigned char));    
 
   /* Do for each THERMAL line */
   oline= 0;
-  if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL )
-  {
-    ifill= input->short_flag ? FILL_VAL6: (int)lut->in_fill;
-    for (iline = 0; iline < input->size_th.l; iline++)
-      {
+  if (input->nband_th > 0) {
+    ifill= (int)lut->in_fill;
+    for (iline = 0; iline < input->size_th.l; iline++) {
       ib=0;
       if (!GetInputLineTh(input, iline, line_in))
-        ERROR("reading input data for a line", "main");
+        EXIT_ERROR("reading input data for a line", "main");
 
       if ( odometer_flag && ( iline==0 || iline ==(nls-1) || iline%100==0  ) ){ 
         if ( zoomy == 1 )
@@ -277,167 +193,180 @@ else
         fflush(stdout); 
       }
 
-      memset(line_out_qa,0,input->size.s*sizeof(int));    
-      if ( !Cal6(lut, input, line_in, line_out_th, line_out_qa, &cal_stats6, iline) )
-        ERROR("doing calibration for a line", "main");
+      memset(line_out_qa, 0, input->size.s*sizeof(unsigned char));    
+      if (!Cal6(lut, input, line_in, line_out_th, line_out_qa, &cal_stats6,
+        iline))
+        EXIT_ERROR("doing calibration for a line", "main");
 
-      if ( zoomx>1 ) 
-        {
+      if ( zoomx>1 ) {
         zoomIt(line_out_thz, line_out_th, nps/zoomx, zoomx );
-        zoomIt8((char*)line_in_thz,  (char*)line_in,   nps/zoomx, zoomx );
-	}
+        zoomIt8(line_in_thz, line_in, nps/zoomx, zoomx );
+      }
 
       for ( iz=0; iz<zoomy; iz++ ) {
-        for (isamp = 0; isamp < input->size.s; isamp++){
-          val= getValue((unsigned char *)line_in_thz, isamp, input->short_flag, input->swap_flag );
+        for (isamp = 0; isamp < input->size.s; isamp++) {
+          val= getValue(line_in_thz, isamp);
           if ( val> maxth) maxth=val;
           if ( val==ifill) line_out_qa[isamp] = lut->qa_fill; 
           else if ( val>=SATU_VAL6 ) line_out_qa[isamp] = ( 0x000001 << 6 ); 
         }
 
         if ( oline<nls ) {
-          if (!PutOutputLine(output_th, ib, oline, line_out_thz)){
-	    sprintf(msgbuf,"write thermal error ib=%d oline=%d iline=%d",ib,oline,iline);
-            ERROR(msgbuf, "main");
-	      }
+          if (!PutOutputLine(output_th, ib, oline, line_out_thz)) {
+            sprintf(msgbuf,"write thermal error ib=%d oline=%d iline=%d",ib,
+              oline,iline);
+            EXIT_ERROR(msgbuf, "main");
+          }
 
           if (input->meta.inst != INST_MSS) 
-            if (!PutOutputLine(output_th, ib+1, oline, line_out_qa)){
-	          sprintf(msgbuf,"write thermal QA error ib=%d oline=%d iline=%d",ib+1,oline,iline);
-              ERROR(msgbuf, "main");
-	      }
+            if (!PutOutputLine(output_th, ib+1, oline, line_out_qa)) {
+	          sprintf(msgbuf,"write thermal QA error ib=%d oline=%d iline=%d",
+                ib+1,oline,iline);
+              EXIT_ERROR(msgbuf, "main");
+            }
         }
         oline++;
       }
-
-  } /* End loop for each thermal line */
+    } /* end loop for each thermal line */
   }
-  if ( odometer_flag )printf("\n");
+  if (odometer_flag) printf("\n");
 
-  if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL )
- {
-   if ( !PutMetadata6(output_th, &input->meta, lut, param) )
-     ERROR("writing the thermal output metadata", "main");
+  if (input->nband_th > 0)
+    if (!CloseOutput(output_th))
+      EXIT_ERROR("closing output thermal file", "main");
 
-   if (!CloseOutput(output_th)) ERROR("closing output thermal file", "main");
- }
-
-  /* Do for each line */
-  ifill= input->short_flag ? FILL_VAL[ib]: (int)lut->in_fill;
+  /* Do for each REFLECTIVE line */
+  ifill= (int)lut->in_fill;
   for (iline = 0; iline < input->size.l; iline++){
-/*if (iline == 6770){
-	printf("  Debug:lndcal.280:iline= %d\n",iline);
-}*/
     /* Do for each band */
 
     if ( odometer_flag && ( iline==0 || iline ==(nls-1) || iline%100==0  ) )
      {printf("--- main reflective loop Line %d ---\r",iline); fflush(stdout);}
 
-    memset(line_out_qa,0,input->size.s*sizeof(int));    
+    memset(line_out_qa, 0, input->size.s*sizeof(unsigned char));
     
     for (ib = 0; ib < input->nband; ib++) {
       if (!GetInputLine(input, ib, iline, &line_in[ib*nps]))
-        ERROR("reading input data for a line", "main");
+        EXIT_ERROR("reading input data for a line", "main");
     }
     
     for (isamp = 0; isamp < input->size.s; isamp++){
       num_zero=0;
       for (ib = 0; ib < input->nband; ib++) {
         jb= (ib != 5 ) ? ib+1 : ib+2;
-        val= getValue((unsigned char *)&line_in[ib*nps], isamp, input->short_flag, input->swap_flag );
-	if ( val==ifill   )num_zero++;
+        val= getValue((unsigned char *)&line_in[ib*nps], isamp);
+	    if ( val==ifill   )num_zero++;
         if ( val==SATU_VAL[ib] ) line_out_qa[isamp]|= ( 0x000001 <<jb ); 
       }
       /* Feng fixed bug by changing "|=" to "=" below (4/17/09) */
       if ( num_zero >  0 )line_out_qa[isamp] = lut->qa_fill; 
     }
-    for (ib = 0; ib < input->nband; ib++) {
 
-     if (!Cal(lut, ib, input, &line_in[ib*nps], line_out, line_out_qa, &cal_stats,iline))
-        ERROR("doing calibraton for a line", "main");
+    for (ib = 0; ib < input->nband; ib++) {
+      if (!Cal(lut, ib, input, &line_in[ib*nps], line_out, line_out_qa,
+        &cal_stats,iline))
+        EXIT_ERROR("doing calibraton for a line", "main");
 
       if (!PutOutputLine(output, ib, iline, line_out))
-        ERROR("reading input data for a line", "main");
-
+        EXIT_ERROR("reading input data for a line", "main");
     } /* End loop for each band */
         
-  if (input->meta.inst != INST_MSS) 
-    if (!PutOutputLine(output, qa_band, iline, line_out_qa))
-      ERROR("writing qa data for a line", "main");
+    if (input->meta.inst != INST_MSS) 
+      if (!PutOutputLine(output, qa_band, iline, line_out_qa))
+        EXIT_ERROR("writing qa data for a line", "main");
   } /* End loop for each line */
 
-if ( odometer_flag )printf("\n");
+  if ( odometer_flag )printf("\n");
 
   for (ib = 0; ib < input->nband; ib++) {
     printf(
-    " band %d rad min %8.5g max %8.4f  |  ref min  %8.5f max  %8.4f\n", 
-            input->meta.iband[ib], 
-	    cal_stats.rad_min[ib], cal_stats.rad_max[ib],
-	    cal_stats.ref_min[ib], cal_stats.ref_max[ib]);
+      " band %d rad min %8.5g max %8.4f  |  ref min  %8.5f max  %8.4f\n", 
+      input->meta.iband[ib], cal_stats.rad_min[ib], cal_stats.rad_max[ib],
+      cal_stats.ref_min[ib], cal_stats.ref_max[ib]);
   }
 
-  if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL )
+  if ( input->nband_th > 0 )
     printf(
-    " band %d rad min %8.5g max %8.4f  |  tmp min  %8.5f max  %8.4f\n", 
-            6,
-	    cal_stats6.rad_min,  cal_stats6.rad_max,
-	    cal_stats6.temp_min, cal_stats6.temp_max);
+      " band %d rad min %8.5g max %8.4f  |  tmp min  %8.5f max  %8.4f\n", 6,
+      cal_stats6.rad_min,  cal_stats6.rad_max,
+      cal_stats6.temp_min, cal_stats6.temp_max);
 
-  /* Write the output metadata */
+  /* Close input and output files */
+  if (!CloseInput(input)) EXIT_ERROR("closing input file", "main");
+  if (!CloseOutput(output)) EXIT_ERROR("closing input file", "main");
 
-    if ( !PutMetadata(output, input->nband, &input->meta, lut, param, &bounds,
-      &ul_corner, &lr_corner))
-    ERROR("writing the output metadata", "main");
+  /* Write the ENVI header for reflectance files */
+  for (ib = 0; ib < output->nband; ib++) {
+    /* Create the ENVI header file this band */
+    if (create_envi_struct (&output->metadata.band[ib], &xml_metadata.global,
+      &envi_hdr) != SUCCESS)
+        EXIT_ERROR("Creating the ENVI header structure for this file.", "main");
 
-  /* Close input files */
-
-  if (!CloseInput(input)) ERROR("closing input file", "main");
-  if (!CloseOutput(output)) ERROR("closing input file", "main");
-  
-  if (input->meta.inst == INST_MSS) nsds--;
-  
-  /* Add the QA band to the number of SDSs */
-
-  for (isds = 0; isds < nsds; isds++) {
-    sds_names[isds] = output->sds[isds].name;
-    sds_types[isds] = output->sds[isds].type;
+    /* Write the ENVI header */
+    strcpy (envi_file, output->metadata.band[ib].file_name);
+    cptr = strchr (envi_file, '.');
+    strcpy (cptr, ".hdr");
+    if (write_envi_hdr (envi_file, &envi_hdr) != SUCCESS)
+        EXIT_ERROR("Writing the ENVI header file.", "main");
   }
-  if (!PutSpaceDefHDF(&space_def, param->output_file_name, nsds,
-                      sds_names, sds_types, grid_name))
-    ERROR("putting space metadata in HDF file", "main");
 
-  /* do the same for the thermal band and its QA band */
+  /* Write the ENVI header for thermal files */
+  for (ib = 0; ib < output_th->nband; ib++) {
+    /* Create the ENVI header file this band */
+    if (create_envi_struct (&output_th->metadata.band[ib], &xml_metadata.global,
+      &envi_hdr) != SUCCESS)
+        EXIT_ERROR("Creating the ENVI header structure for this file.", "main");
 
-  if ( input->nband_th > 0 && param->output_therm_file_name != (char*)NULL )
-  {
-    nsds = 2;
-    for (isds = 0; isds < nsds; isds++) {
-      sds_names[isds] = output_th->sds[isds].name;
-      sds_types[isds] = output_th->sds[isds].type;
-    }
-    if (!PutSpaceDefHDF(&space_def, param->output_therm_file_name, nsds, 
-                        sds_names, sds_types, grid_name))
-     ERROR("putting space metadata in thermal HDF file", "main");
+    /* Write the ENVI header */
+    strcpy (envi_file, output_th->metadata.band[ib].file_name);
+    cptr = strchr (envi_file, '.');
+    strcpy (cptr, ".hdr");
+    if (write_envi_hdr (envi_file, &envi_hdr) != SUCCESS)
+        EXIT_ERROR("Writing the ENVI header file.", "main");
   }
+
+  /* Append the reflective and thermal bands to the XML file */
+  if (append_metadata (output->nband, output->metadata.band,
+    param->input_xml_file_name) != SUCCESS)
+    EXIT_ERROR("appending reflectance and QA bands", "main");
+  if (input->nband_th > 0) {
+    if (append_metadata (output_th->nband, output_th->metadata.band,
+      param->input_xml_file_name) != SUCCESS)
+      EXIT_ERROR("appending thermal and QA bands", "main");
+  }
+
+  /* Free the metadata structure */
+  free_metadata (&xml_metadata);
 
   /* Free memory */
-
   if (!FreeParam(param)) 
-    ERROR("freeing parameter stucture", "main");
+    EXIT_ERROR("freeing parameter stucture", "main");
 
   if (!FreeInput(input)) 
-    ERROR("freeing input file stucture", "main");
+    EXIT_ERROR("freeing input file stucture", "main");
 
   if (!FreeLut(lut)) 
-    ERROR("freeing lut file stucture", "main");
+    EXIT_ERROR("freeing lut file stucture", "main");
 
   if (!FreeOutput(output)) 
-    ERROR("freeing output file stucture", "main");
+    EXIT_ERROR("freeing output file stucture", "main");
 
   free(line_out);
+  line_out = NULL;
   free(line_in);
-  /* All done */
+  line_in = NULL;
+  free(line_out_qa);
+  line_out_qa = NULL;
+  free(line_out_th);
+  line_out_th = NULL;
+  if (zoomx != 1) {
+    free(line_in_thz);
+    free(line_out_thz);
+  }
+  line_in_thz = NULL;
+  line_out_thz = NULL;
 
+  /* All done */
   printf ("lndcal complete.\n");
   return (EXIT_SUCCESS);
 }

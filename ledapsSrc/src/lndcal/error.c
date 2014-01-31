@@ -76,7 +76,6 @@ void Error(const char *message, const char *module,
 !END****************************************************************************
 */
 {
-  if (errno) perror(" i/o error ");
   fprintf(stderr, " error [%s, %s:%ld] : %s\n", module, source, line, message);
   if (done) exit(EXIT_FAILURE);
   else return;

@@ -31,6 +31,8 @@
  Modified applications to use only one version and that is the
  LEDAPSVersion tag which will get updated with each release of LEDAPS
 
+ Revision 2.0 01/21/2014 Gail Schmidt, USGS EROS
+ Modified applications to use the ESPA internal raw binary file format.
 
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
@@ -80,43 +82,19 @@
 #include "util.h"
 #include "error.h"
 
-#define LUT_FILE_NAME ("lndcal_lut_NULL.txt")
-
 typedef enum {
   PARAM_NULL = -1,
   PARAM_START = 0,
-  PARAM_HEADER_FILE,
-  PARAM_WO_FILE,
-  PARAM_REF_FILE,
-  PARAM_DN_FILE,
-  PARAM_THERM_FILE,
-  PARAM_GOLD_FILE,
-  PARAM_GOLD_2003,
-  PARAM_GNEW_FILE,
-  PARAM_ETM_GB,
-  PARAM_RE_CAL,
+  PARAM_XML_FILE,
   PARAM_LEDAPSVERSION,
-  PARAM_DNOUT,
-  PARAM_DN_MAP,
   PARAM_END,
   PARAM_MAX
 } Param_key_t;
 
 Key_string_t Param_string[PARAM_MAX] = {
   {(int)PARAM_START,       "PARAMETER_FILE"},
-  {(int)PARAM_HEADER_FILE, "HEADER_FILE"},
-  {(int)PARAM_WO_FILE,     "WO_FILE"},
-  {(int)PARAM_REF_FILE,    "REF_FILE"},
-  {(int)PARAM_DN_FILE,     "DN_FILE"},
-  {(int)PARAM_THERM_FILE,  "THERM_FILE"},
-  {(int)PARAM_GOLD_FILE,   "GOLD_FILE"},
-  {(int)PARAM_GOLD_2003,   "GOLD_2003"},
-  {(int)PARAM_GNEW_FILE,   "GNEW_FILE"},
-  {(int)PARAM_ETM_GB,      "ETM_GB"},
-  {(int)PARAM_RE_CAL,      "RE_CAL"},
+  {(int)PARAM_XML_FILE,    "XML_FILE"},
   {(int)PARAM_LEDAPSVERSION,  "LEDAPSVersion"},
-  {(int)PARAM_DNOUT,       "DNOUT"},
-  {(int)PARAM_DN_MAP,      "DN_MAP"},
   {(int)PARAM_END,         "END"}
 };
 
@@ -138,112 +116,58 @@ Param_t *GetParam(int argc, const char **argv)
 
 !Team Unique Header:
 
- ! Design Notes:
-   1. An error status is returned when:
-       a. memory allocation is not successful
-       b. an error is returned from the ReadCmdLine function
-       c. certain required parameters are invalid or not entered:
-            input file name, output file name, geolocation file name,
-	    SDS name, output space projection number, 
-	    output space pixel size, output space upper left corner, 
-	    output space image size, either output space sphere or projection
-	    parameter number 0
-	    output space zone number not given for UTM
-       d. the input is 'GRID_SPACE' then and certain required parameters 
-          are invalid or not entered:
-	    input space projection number, input space pixel size, 
-	    input space upper left corner, either input space sphere or 
-	    projection parameter number 0
-       e. the input is 'GRID_SPACE' and the geolocation file name is given
-       f. the resampling kernel is 'USER_KERNEL' and the kernel file name 
-          is invalid or not entered.
-   2. Error of type 'a' are handled with the 'RETURN_ERROR' macro and 
-      the others are handled by writting the error messages to 'stderr' and 
-      then printing the usage information.
-   3. 'FreeParam' should be called to deallocate memory used by the 
-      'param' data structures.
-
 !END****************************************************************************
 */
 {
   Param_t *this;
-  char *error_string = (char *)NULL;
+  char *error_string = NULL;
   FILE *fp;
   Key_t key;
-  int len,i;
+  int len;
   char line[MAX_STR_LEN + 1];
   char temp[MAX_STR_LEN + 1];
   Param_key_t param_key;
   char *param_file_name;
-  char *ETM_GB_STRING, *RE_CAL_STRING;
   bool got_start, got_end;
 
   if (argc < 2) 
-    RETURN_ERROR("no command line parameter", "GetParam", 
-                 (Param_t *)NULL);
+    RETURN_ERROR("no command line parameter", "GetParam", NULL);
   if (argc > 3) 
-    RETURN_ERROR("too many command line parameters", "GetParam", 
-                 (Param_t *)NULL);
+    RETURN_ERROR("too many command line parameters", "GetParam", NULL);
   if (strlen(argv[1]) < 1)
-    RETURN_ERROR("no paramter file name", "GetParam", 
-                 (Param_t *)NULL);
+    RETURN_ERROR("no paramter file name", "GetParam", NULL);
   param_file_name = (char *)argv[1];
 
   /* Open the parameter file */
   
-  if ((fp = fopen(param_file_name, "r")) == (FILE *)NULL)
-    RETURN_ERROR("unable to open parameter file", "GetParam", 
-                 (Param_t *)NULL);
+  if ((fp = fopen(param_file_name, "r")) == NULL)
+    RETURN_ERROR("unable to open parameter file", "GetParam", NULL);
 
   /* Create the Param data structure */
 
   this = (Param_t *)malloc(sizeof(Param_t));
-  if (this == (Param_t *)NULL) {
+  if (this == NULL) {
     fclose(fp);
-    RETURN_ERROR("allocating Input structure", "GetParam", 
-                 (Param_t *)NULL);
+    RETURN_ERROR("allocating Input structure", "GetParam", NULL);
   }
 
   /* set default parameters */
 
-  this->param_file_name         = (char *)NULL;
-  this->input_header_file_name  = (char *)NULL;
-  this->lut_file_name           = (char *)NULL;
-  this->output_file_name        = (char *)NULL;
-  this->work_order_file_name    = (char *)NULL;
-  this->output_therm_file_name  = (char *)NULL;
-  this->LEDAPSVersion           = (char *)NULL;
-  this->dnout                   = false;
-  this->work_order_flag         = false;
-  this->ETM_GB                  = false;
-  this->RE_CAL                  = true;
-  this->dn_map[0]               = 0.0;
-  this->dn_map[1]               = 0.0;
-  this->dn_map[2]               = 0.0;
-  this->dn_map[3]               = 0.0;
-  this->gnew_flag= false; /* set flag for wo file */
-  this->gold_flag= false; /* set flag for wo file */
-  this->gold_2003_flag= false; /* set flag for wo file */
+  this->param_file_name         = NULL;
+  this->input_xml_file_name     = NULL;
+  this->LEDAPSVersion           = NULL;
 
   /* Populate the data structure */
 
   this->param_file_name = DupString(param_file_name);
-  if (this->param_file_name == (char *)NULL)
+  if (this->param_file_name == NULL)
     error_string = "duplicating parameter file name";
 
-  if (error_string == (char *)NULL) {
-    this->lut_file_name = DupString(LUT_FILE_NAME);
-    if (this->lut_file_name == (char *)NULL)
-      error_string = "duplicating lookup table file name";
-  }
-
-  if (error_string != (char *)NULL) {
-    if (this->param_file_name != (char *)NULL) 
-      free(this->param_file_name);
-    if (this->lut_file_name != (char *)NULL) 
-      free(this->lut_file_name);
+  if (error_string != NULL) {
+    free(this->param_file_name);
+    this->param_file_name = NULL;
     FreeParam(this);
-    RETURN_ERROR(error_string, "GetParam", (Param_t *)NULL);
+    RETURN_ERROR(error_string, "GetParam", NULL);
   }
 
   /* Parse the header file */
@@ -287,9 +211,9 @@ Param_t *GetParam(int argc, const char **argv)
 
     switch (param_key) {
 
-      case PARAM_HEADER_FILE:
+      case PARAM_XML_FILE:
         if (key.nval <= 0) {
-	  error_string = "no input header file name";
+	  error_string = "no input XML metadata file name";
 	  break; 
 	} else if (key.nval > 1) {
 	  error_string = "too many input header file names";
@@ -300,169 +224,9 @@ Param_t *GetParam(int argc, const char **argv)
 	  break;
 	}
 	key.value[0][key.len_value[0]] = '\0';
-        this->input_header_file_name = DupString(key.value[0]);
-	if (this->input_header_file_name == (char *)NULL) {
-	  error_string = "duplicating input header file name";
-	  break;
-        }
-        break;
-
-      case PARAM_REF_FILE:
-        if (key.nval <= 0) {
-	  error_string = "no reflectance file name";
-	  break; 
-	} else if (key.nval > 1) {
-	  error_string = "too many reflectance file names";
-	  break; 
-	}
-	if (key.len_value[0] < 1) {
-	  error_string = "no reflectance file name";
-	  break;
-	}
-	key.value[0][key.len_value[0]] = '\0';
-        this->output_file_name = DupString(key.value[0]);
-	if (this->output_file_name == (char *)NULL) {
-	  error_string = "duplicating reflectance file name";
-	  break;
-        }
-        break;
-
-      case PARAM_WO_FILE:
-        if (key.nval > 1) {
-	  error_string = "too many work order file names";
-	  break; 
-	}
-	if (key.len_value[0] >= 1) {
-           key.value[0][key.len_value[0]] = '\0';
-           this->work_order_file_name = DupString(key.value[0]);
-   	   if (this->work_order_file_name == (char *)NULL) {
-              error_string = "duplicating work order file name";
-           break;
-           }
-        this->work_order_flag= true; /* set flag for wo file */
-        }
-        break;
-
-      case PARAM_GOLD_FILE:
-        if (key.nval > 1) {
-	  error_string = "too many g-old file names";
-	  break; 
-	}
-	if (key.len_value[0] >= 1) {
-           key.value[0][key.len_value[0]] = '\0';
-           this->gold_file_name = DupString(key.value[0]);
-   	   if (this->gold_file_name == (char *)NULL) {
-              error_string = "duplicating g-old file name";
-           break;
-           }
-        this->gold_flag= true; /* set flag for wo file */
-        }
-        break;
-
-       case PARAM_GOLD_2003:
-        if (key.nval > 1) {
-	  error_string = "too many g-old 2003 file names";
-	  break; 
-	}
-	if (key.len_value[0] >= 1) {
-           key.value[0][key.len_value[0]] = '\0';
-           this->gold_2003_name = DupString(key.value[0]);
-   	   if (this->gold_2003_name == (char *)NULL) {
-              error_string = "duplicating g-old file name";
-           break;
-           }
-        this->gold_2003_flag= true; /* set flag for wo file */
-        }
-        break;
-
-     case PARAM_GNEW_FILE:
-        if (key.nval > 1) {
-	  error_string = "too many g-new file names";
-	  break; 
-	}
-	if (key.len_value[0] >= 1) {
-           key.value[0][key.len_value[0]] = '\0';
-           this->gnew_file_name = DupString(key.value[0]);
-   	   if (this->gnew_file_name == (char *)NULL) {
-              error_string = "duplicating g-new file name";
-           break;
-           }
-        this->gnew_flag= true; /* set flag for wo file */
-        }
-        break;
-
-     case PARAM_ETM_GB:
-        if (key.nval > 1) {
-	  error_string = "too many ETM_GB";
-	  break; 
-	}
-	if (key.len_value[0] >= 1) {
-           key.value[0][key.len_value[0]] = '\0';
-           ETM_GB_STRING = DupString(key.value[0]);
-   	   if (ETM_GB_STRING == (char *)NULL) {
-              error_string = "duplicating ETM_GB";
-           break;
-           }
-	 if ( ETM_GB_STRING[0]=='Y' || ETM_GB_STRING[0]=='y' || ETM_GB_STRING[0]=='T' || ETM_GB_STRING[0]=='t' )
-             this->ETM_GB= true; /* set flag for ETM_GB */
-        }
-        break;
-
-    case PARAM_RE_CAL:
-        if (key.nval > 1) {
-	  error_string = "too many RE_CAL";
-	  break; 
-	}
-	if (key.len_value[0] >= 1) {
-           key.value[0][key.len_value[0]] = '\0';
-           RE_CAL_STRING = DupString(key.value[0]);
-   	   if (RE_CAL_STRING == (char *)NULL) {
-              error_string = "duplicating RE_CAL";
-           break;
-           }
-	 if ( RE_CAL_STRING[0]=='N' || RE_CAL_STRING[0]=='n' || RE_CAL_STRING[0]=='F' || RE_CAL_STRING[0]=='f' )
-             this->RE_CAL= false; /* set flag for RE_CAL */
-        }
-        break;
-
-      case PARAM_DN_FILE:
-	/*
-        if (key.nval <= 0) {
-	  error_string = "no reflectance file name";
-	  break; 
-	} else if (key.nval > 1) {
-	  error_string = "too many reflectance file names";
-	  break; 
-	}
-	if (key.len_value[0] < 1) {
-	  error_string = "no reflectance file name";
-	  break;
-	}
-	key.value[0][key.len_value[0]] = '\0';
-        this->output_file_name = DupString(key.value[0]);
-	if (this->output_file_name == (char *)NULL) {
-	  error_string = "duplicating reflectance file name";
-	  break;
-        }
-	*/
-        break;
-
-      case PARAM_THERM_FILE:
-        if (key.nval <= 0) {
-	  error_string = "no band6 file name";
-	  break; 
-	} else if (key.nval > 1) {
-	  error_string = "too many band6 file names";
-	  break; 
-	}
-	if (key.len_value[0] < 1) {
-	  error_string = "no band6 file name";
-	  break;
-	}
-	key.value[0][key.len_value[0]] = '\0';
-        this->output_therm_file_name = DupString(key.value[0]);
-	if (this->output_therm_file_name == (char *)NULL) {
-	  error_string = "duplicating band6 file name";
+        this->input_xml_file_name = DupString(key.value[0]);
+	if (this->input_xml_file_name == NULL) {
+	  error_string = "duplicating input XML metadata file name";
 	  break;
         }
         break;
@@ -481,58 +245,10 @@ Param_t *GetParam(int argc, const char **argv)
         }
         key.value[0][key.len_value[0]] = '\0';
         this->LEDAPSVersion = DupString(key.value[0]);
-        if (this->LEDAPSVersion == (char *)NULL) {
+        if (this->LEDAPSVersion == NULL) {
           error_string = "duplicating LEDAPSVersion number";
           break;
         }
-        break;
-
-      case PARAM_DNOUT:
-        if (key.nval <= 0) {
-	  error_string = "no dn output flag value";
-	  break; 
-	} else if (key.nval > NBAND_REFL_MAX) {
-	  error_string = "too many thermal dn output flag";
-	  break; 
-	}
-
-        if (key.len_value[0] < 1) {
-          error_string = "invalid dn output flag string";
-          break;
-         }
-        strncpy(temp, key.value[0], key.len_value[0]);
-        temp[key.len_value[0]] = '\0';
-        if ( !strncasecmp(temp,"yes",3) || !strncasecmp(temp,"true",4) )
-	 this->dnout= true;
-        else
-	 this->dnout= false;
-
-	if (error_string != (char *)NULL) break;
-        break;
-
-      case PARAM_DN_MAP:
-        if (key.nval <= 0) {
-	  error_string = "no dn map values";
-	  break; 
-	} else if (key.nval > 4) {
-	  error_string = "too many dn map values";
-	  break; 
-	}
-	for (i = 0; i < key.nval; i++) {
-          if (key.len_value[i] < 1) {
-	    error_string = "invalid dn map string";
-	    break;
-	  }
-	  strncpy(temp, key.value[i], key.len_value[i]);
-          temp[key.len_value[i]] = '\0';
-
-	  if (sscanf(temp, "%g", &this->dn_map[i]) != 1) {
-	    error_string = "converting dn map";
-	    break;
-	  }
-
-        }
-	if (error_string != (char *)NULL) break;
         break;
 
       case PARAM_END:
@@ -547,7 +263,7 @@ Param_t *GetParam(int argc, const char **argv)
         error_string = "key not implmented";
 
     }
-    if (error_string != (char *)NULL) break;
+    if (error_string != NULL) break;
     if (got_end) break;
 
   }
@@ -556,7 +272,7 @@ Param_t *GetParam(int argc, const char **argv)
 
   fclose(fp);
 
-  if (error_string == (char *)NULL) {
+  if (error_string == NULL) {
     if (!got_start) 
       error_string = "no start key in header";
     else if (!got_end)
@@ -565,34 +281,21 @@ Param_t *GetParam(int argc, const char **argv)
 
   /* Handle null values */
   
-  if (error_string == (char *)NULL) {
-    if (this->input_header_file_name == (char *)NULL) 
-      error_string = "no input file name given";
-    if (this->lut_file_name == (char *)NULL) 
-      error_string = "no lookup table file name given";
-    if (this->output_file_name == (char *)NULL) 
-      error_string = "no output file name given";
-    if (this->LEDAPSVersion == (char *)NULL)
+  if (error_string == NULL) {
+    if (this->input_xml_file_name == NULL) 
+      error_string = "no input XML metadata file name given";
+    if (this->LEDAPSVersion == NULL)
       error_string = "no LEDAPS Version given";
   }
 
   /* Handle errors */
 
-  if (error_string != (char *)NULL) {
-    if (this->param_file_name != (char *)NULL) 
-      free(this->param_file_name);
-    if (this->input_header_file_name != (char *)NULL) 
-      free(this->input_header_file_name);
-    if (this->lut_file_name != (char *)NULL) 
-      free(this->lut_file_name);
-    if (this->output_file_name != (char *)NULL) 
-      free(this->output_file_name);
-    if (this->output_therm_file_name != (char *)NULL) 
-      free(this->output_therm_file_name);
-    if (this->LEDAPSVersion != (char *)NULL)
-      free(this->LEDAPSVersion);
-    if (this != (Param_t *)NULL) free(this);
-    RETURN_ERROR(error_string, "GetParam", (Param_t *)NULL);
+  if (error_string != NULL) {
+    free(this->param_file_name);
+    free(this->input_xml_file_name);
+    free(this->LEDAPSVersion);
+    free(this);
+    RETURN_ERROR(error_string, "GetParam", NULL);
   }
   
   return this;
@@ -606,9 +309,7 @@ bool FreeParam(Param_t *this)
 !Description: 'FreeParam' frees the 'param' data structure memory.
  
 !Input Parameters:
- this           'param' data structure; the following fields are input:
-                   input_file_name, output_file_name, geoloc_file_name, 
-		   input_sds_name, output_sds_name, kernel_file_name
+ this           'param' data structure
 
 !Output Parameters:
  (returns)      status:
@@ -623,45 +324,56 @@ bool FreeParam(Param_t *this)
 !END****************************************************************************
 */
 {
-  if (this != (Param_t *)NULL) {
-    if (this->param_file_name  != (char *)NULL) free(this->param_file_name);
-    if (this->input_header_file_name  != (char *)NULL) 
-      free(this->input_header_file_name);
-    if (this->lut_file_name != (char *)NULL) free(this->lut_file_name);
-    if (this->output_file_name != (char *)NULL) free(this->output_file_name);
+  if (this != NULL) {
+    free(this->param_file_name);
+    free(this->input_xml_file_name);
     free(this);
+    this = NULL;
   }
   return true;
 } 
   
-bool setETM_GB(Param_t *this)
-{
-FILE *iFile;
-char msgbuf[1024];
-char line[1024];
-int ioff;
-bool landsat_7;
+bool existGB(Espa_internal_meta_t *metadata)
+/* 
+!C******************************************************************************
 
-landsat_7= false;   
+!Description: 'existGB' determines if the gains and biases exist and were set
+from the input XML file.
  
-char* fname= this->input_header_file_name;
+!Input Parameters:
+ metadata     'Espa_internal_meta_t' data structure
 
- iFile= fopen(fname,"r");
- if ( !iFile ) 
-   { 
-   sprintf(msgbuf,"unable to open file %s",fname); 
-   RETURN_ERROR(msgbuf, "setETM_GB", false);
-   }
-  while ( mygetline(line,1024,iFile)>=0 )
-   {
-   if ( strstr(line,"LANDSAT_7") != NULL )landsat_7= true;
-   
-   ioff = -999;
-   if ( strstr(line,"BIAS") != NULL )
-       ioff= strstr(line,"BIAS") - line;
-   if ( ioff==0 && landsat_7 )
-     this->ETM_GB= true;
-   }
-  fclose(iFile);
+!Output Parameters:
+ (returns)      N/A
+
+!Team Unique Header:
+
+!END****************************************************************************
+*/
+{
+  int refl_indx = 0;  /* index of band1 in the input file */
+  int i;              /* looping variable */
+
+  /* Find band1 in the input XML file */
+  for (i = 0; i < metadata->nbands; i++)
+  {
+    if (!strcmp (metadata->band[i].name, "band1") &&
+        !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+    {
+      /* this is the index we'll use for reflectance band info */
+      refl_indx = i;
+    }
+  }
+
+  /* If the gain or bias for band1 in the input file is not set, then assume
+     none are set and therefore need to be manually set before continuing. */
+  if (fabs (metadata->band[refl_indx].toa_gain - ESPA_FLOAT_META_FILL) <
+        ESPA_EPSILON ||
+      fabs (metadata->band[refl_indx].toa_bias - ESPA_FLOAT_META_FILL) <
+        ESPA_EPSILON)
+  {
+    return false;
+  }
+
   return true;
 }
