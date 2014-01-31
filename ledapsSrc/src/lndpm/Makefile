@@ -9,10 +9,10 @@ EXTRA  = -g -D_BSD_SOURCE -Wall -O2
 
 TARGET = lndpm
 
-INC = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(ESPAINC)
+INC = -I. -I$(ESPAINC) -I$(XML2INC)
 
-LIB = -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff -L$(JPEGLIB) -ljpeg \
-      -L$(ESPALIB) -l_espa_common -lz -lm
+LIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -L$(XML2LIB) -lxml2 \
+      -lz -lm
 
 OBJ =  lndpm.c
 
