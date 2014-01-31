@@ -47,7 +47,7 @@
 
 #include "bool.h"
 
-#define ERROR(message, module) \
+#define EXIT_ERROR(message, module) \
           Error((message), (module), (__FILE__), (long)(__LINE__), true)
 
 #define RETURN_ERROR(message, module, status) \

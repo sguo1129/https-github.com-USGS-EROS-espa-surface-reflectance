@@ -22,11 +22,8 @@
 /*************************************************************************/
 int mygetline(char* line, int maxlen, FILE* fin);
 int skipline(FILE* f, int n);
-Param_wo_t *get_wo(const char* fname);
-Gains_t* get_gnew(const char* fname, Date_t* adate);
-Gains_t* get_gold(const char* fname, Date_t* adate);
-void zoomIt(int*o,int*i,int n,int z);
-void zoomIt8(char*o,char*i,int n,int z);
+void zoomIt(int16*o,int16*i,int n,int z);
+void zoomIt8(unsigned char*o,unsigned char*i,int n,int z);
 int big_endian();
 /*************************************************************************/
 #endif /* UTIL_HPP */

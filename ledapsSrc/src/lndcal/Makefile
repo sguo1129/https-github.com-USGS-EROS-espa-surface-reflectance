@@ -1,20 +1,26 @@
-EXTRA   = -D_BSD_SOURCE -Wall -O2
+EXTRA   = -g -D_BSD_SOURCE -Wall -O2
 
-INCDIR  = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
+#INCDIR  = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) \
+#          -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
+INCDIR  = -I. -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
-EXLIB	= -L$(GEOTIFF_LIB) -lgeotiff -L$(TIFFLIB) -ltiff \
-          -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
-          -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz
+#EXLIB	= -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
+#          -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
+#          -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
+#          -L$(XML2LIB) -lxml2 -lz
+EXLIB	= -L$(HDFEOS_GCTPLIB) -lGctp \
+          -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
+          -L$(XML2LIB) -lxml2 -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
 TARGET1	= lndcal
-OBJ1    = lndcal.o param.o degdms.o space.o lut.o output.o cal.o util.o\
-          names.o date.o myhdf.o mystring.o error.o input.o
+OBJ1    = lndcal.o param.o lut.o output.o cal.o util.o \
+          date.o mystring.o error.o input.o
 INC1    = lndcal.h keyvalue.h param.h input.h lut.h output.h cal.h \
-          names.h date.h myhdf.h mystring.h bool.h const.h error.h \
-          space.h myproj.h myproj_const.h util.h
+          date.h mystring.h bool.h const.h error.h \
+          myproj.h myproj_const.h util.h
 
 all: $(TARGET1)
 

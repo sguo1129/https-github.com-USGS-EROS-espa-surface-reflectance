@@ -42,7 +42,6 @@
 
 #include <stdlib.h>
 #include <stdio.h>
-#define MYHDF_H
 #include "lndcal.h"
 #include "bool.h"
 #include "const.h"
@@ -67,8 +66,7 @@ typedef enum {
 /* Structure for the 'input metadata' data type */
 
 typedef struct {
-  Provider_t provider;
-                           /* Data provider type */
+  Provider_t provider;     /* Data provider type */
   Sat_t sat;               /* Satellite */
   Inst_t inst;             /* Instrument */
   Date_t acq_date;         /* Acqsition date/time (scene center) */
@@ -76,21 +74,16 @@ typedef struct {
   Date_t prod_date;        /* Production date (must be available for ETM) */
   float sun_zen;           /* Solar zenith angle (radians; scene center) */
   float sun_az;            /* Solar azimuth angle (radians; scene center) */
-  Wrs_t wrs_sys;	   /* WRS system */
+  Wrs_t wrs_sys;           /* WRS system */
   int ipath;               /* WRS path number */
   int irow;                /* WRS row number */
   unsigned char fill;      /* Fill value */
-  int iband[NBAND_REFL_MAX];
-                           /* Band numbers */
+  int iband[NBAND_REFL_MAX]; /* Band numbers */
   int iband_th;            /* Thermal Band number= (6) */
-  Gain_t gain_set[NBAND_REFL_MAX]; 
-                           /* Band gain settings (ETM+ only) */
-  Gain_t gain_setting_th; 
-                           /* Band gain settings Thermal (ETM+ only) */
-  float gain[NBAND_REFL_MAX];
-                           /* Band gain (MSS and TM only) */
-  float bias[NBAND_REFL_MAX]; 
-                           /* Band bias (MSS and TM only) */
+  Gain_t gain_set[NBAND_REFL_MAX]; /* Band gain settings (ETM+ only) */
+  Gain_t gain_setting_th; /* Band gain settings Thermal (ETM+ only) */
+  float gain[NBAND_REFL_MAX]; /* Band gain (MSS and TM only) */
+  float bias[NBAND_REFL_MAX]; /* Band bias (MSS and TM only) */
   float gain_th;           /* Thermal band gain (MSS and TM only) */
   float bias_th;           /* Thermal band bias (MSS and TM only) */
 } Input_meta_t;
@@ -98,7 +91,6 @@ typedef struct {
 /* Structure for the 'input' data type */
 
 typedef struct {
-  char *file_header_name;  /* Input image header file name */
   Input_type_t file_type;  /* Type of the input image files */
   Input_meta_t meta;       /* Input metadata */
   int nband;               /* Number of input image files (bands) */
@@ -113,29 +105,18 @@ typedef struct {
 			      is open for access; 'true' = open, 
 			     'false' = not open */
   bool open_th;            /* thermal open flag */
-  FILE *fp_bin[NBAND_REFL_MAX];  
-                           /* File pointer for binary files */
-  FILE *fp_bin_th;         /* File pointer for thremal binary file */
-  void *fp_tiff[NBAND_REFL_MAX];
-                           /* File pointer for TIFF file */
-  void *fp_tiff_th;        /* File pointer for thermal TIFF file */
-  void *buf[NBAND_REFL_MAX];
-                           /* Input data buffer (one line of data) */
-  void *buf_th;            /* Input (thermal) data buffer (one line of data) */
-  int short_flag;          /* =0 8-bit input,  =1 16-bit input */
-  int swap_flag;           /* =0 no byte swap, =1 perform byte swap */
-  bool dnout;              /* dn output flag */
-  float dn_map[4];         /* map from(0,1) -> (2,3) */
+  FILE *fp_bin[NBAND_REFL_MAX];  /* File pointer for binary files */
+  FILE *fp_bin_th;         /* File pointer for thermal binary file */
 } Input_t;
 
 /* Prototypes */
 
-Input_t *OpenInput(char *file_header_name, Param_t *param);
+Input_t *OpenInput(Espa_internal_meta_t *metadata);
 bool GetInputLine(Input_t *this, int iband, int iline, unsigned char *line);
 bool GetInputLineTh(Input_t *this, int iline, unsigned char *line);
 bool CloseInput(Input_t *this);
 bool FreeInput(Input_t *this);
 bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy);
-bool GetHeaderInput(Input_t *this, char *file_header_name, Param_t *param);
+bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata);
 
 #endif

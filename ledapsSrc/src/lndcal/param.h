@@ -59,35 +59,20 @@
 #define PARAM_H
 
 #include "bool.h"
+#include "espa_metadata.h"
 
 /* Parameter data structure type definition */
 
 typedef struct {
   char *param_file_name;         /* Parameter file name                */
-  char *input_header_file_name;  /* Input image header file name       */
-  char *lut_file_name;           /* Lookup table file name             */
-  char *work_order_file_name;    /* Work Order (wo) file name          */
-  char *gold_file_name;          /* G-old file name                    */
-  char *gold_2003_name;          /* G-old file name                    */
-  char *gnew_file_name;          /* G-new file name                    */
-  char *output_file_name;        /* Output image HDF file name         */
-  char *output_therm_file_name;  /* Output thermal image HDF file name */
+  char *input_xml_file_name;     /* Input XML metadata file name       */
   char *LEDAPSVersion;           /* LEDAPS Version                     */
-  float dn_map[4];               /* map from(0,1) -> (2,3)             */
-  bool dnout;                    /* dn output flag                     */
-  bool work_order_flag;          /* work order input flag              */
-  bool gold_flag;                /* G-old input flag                   */
-  bool gold_2003_flag;           /* G-old input flag                   */
-  bool gnew_flag;                /* G-new input flag                   */
-  bool ETM_GB;                   /* ETM_GB flag                        */
-  bool RE_CAL;                   /* re-calibration flag  (fgao added)  */             
-  int  est_gainbias;             /* estimate Gain/bias?  1=yes         */
 } Param_t;
 
 /* Prototypes */
 
 Param_t *GetParam(int argc, const char **argv);
 bool FreeParam(Param_t *this);
-bool setETM_GB(Param_t *this);
+bool existGB(Espa_internal_meta_t *metadata);
 
 #endif

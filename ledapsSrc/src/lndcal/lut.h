@@ -55,7 +55,7 @@ typedef struct {
   int out_fill;                /* Output fill value                         */
   int out_satu;                /* Output saturation value (Feng, 3/23/09)   */
   int qa_fill;                 /* QA fill value                             */
-  int qa_sat;                  /* QA saturation value                       */
+  int qa_satu;                 /* QA saturation value                       */
   Input_meta_t meta;           /* Input metadata                            */
   float cos_sun_zen;           /* Cosine of the solar zenith angle          */
   float esun[NBAND_REFL_MAX];  /* Mean solar exoatmospheric irradiances     */ 
@@ -78,13 +78,6 @@ typedef struct {
   double add_offset_th;        /* thermal add offset                        */
   double add_offset_err_th;    /* thermal add offset error                  */
   double calibrated_nt_th;     /* thermal calibrated nt                     */
-  bool recal_flag;             /* if true, perform radiometric recalibration*/
-  bool work_order_flag;        /* work order flag                           */
-  Param_wo_t *work_order;      /* work order                                */
-  bool gnew_flag;              /* G-new flag                                */
-  Gains_t* gnew;               /* G-new (new radiometric gains)             */
-  bool gold_flag;              /* G-old flag                                */
-  Gains_t* gold;               /* G-old (old radiometric gains)             */
   double refl_conv[NBAND_REFL_MAX];
 } Lut_t;
 

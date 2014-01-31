@@ -40,42 +40,36 @@
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <time.h>
 #include "lndcal.h"
 #include "input.h"
 #include "bool.h"
-#include "myhdf.h"
 #include "lut.h"
 #include "param.h"
+#include "espa_metadata.h"
+#include "raw_binary_io.h"
 
 /* Structure for the 'output' data type */
 
 typedef struct {
-  char *file_name;      /* Output file name */
-  bool open;            /* Flag to indicate whether output file is open 
+  bool open;            /* Flag to indicate whether output files are open 
                            for access; 'true' = open, 'false' = not open */
   int nband;            /* Number of bands */
   Img_coord_int_t size; /* Output image size */
-  int32 sds_file_id;    /* SDS file id */
-  Myhdf_sds_t sds[NBAND_CAL_MAX];
-                        /* SDS data structures */
-  Myhdf_dim_t dim[MYHDF_MAX_RANK];
-                        /* Dimension data structure */
-  int16 *buf[NBAND_REFL_MAX];
-                        /* Output data buffer (one line of data) */
-  unsigned char *qabuf;
+  Espa_internal_meta_t metadata;  /* metadata container to hold the band
+                           metadata for the output bands; global metadata
+                           won't be valid */
+  FILE *fp_bin[NBAND_CAL_MAX];  /* File pointer for binary files */
 } Output_t;
 
 /* Prototypes */
 
-bool CreateOutput(char *file_name);
-Output_t *OpenOutput(char *file_name, int nband, int *iband, 
-                     Img_coord_int_t *size, int mss_flag);
-bool PutOutputLine(Output_t *this, int iband, int iline, int *line);
+Output_t *OpenOutput(Espa_internal_meta_t *metadata, Input_t *input,
+  Param_t *param, Lut_t *lut, bool thermal, int mss_flag);
+bool PutOutputLine(Output_t *this, int iband, int iline, void *line);
 bool CloseOutput(Output_t *this);
 bool FreeOutput(Output_t *this);
-bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta, Lut_t *lut,
-  Param_t *param, Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
-  Geo_coord_t *lr_corner);
-bool PutMetadata6(Output_t *this, Input_meta_t *meta, Lut_t *lut, Param_t *param);
 
 #endif
