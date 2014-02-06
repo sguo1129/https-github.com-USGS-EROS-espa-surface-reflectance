@@ -57,16 +57,12 @@
 typedef enum {
   INPUT_TYPE_NULL = -1,
   INPUT_TYPE_BINARY = 0, 
-  INPUT_TYPE_BINARY_2BYTE_BIG,
-  INPUT_TYPE_BINARY_2BYTE_LITTLE,
-  INPUT_TYPE_GEOTIFF,
   INPUT_TYPE_MAX
 } Input_type_t;
 
 /* Structure for the 'input metadata' data type */
 
 typedef struct {
-  Provider_t provider;     /* Data provider type */
   Sat_t sat;               /* Satellite */
   Inst_t inst;             /* Instrument */
   Date_t acq_date;         /* Acqsition date/time (scene center) */
@@ -80,12 +76,12 @@ typedef struct {
   unsigned char fill;      /* Fill value */
   int iband[NBAND_REFL_MAX]; /* Band numbers */
   int iband_th;            /* Thermal Band number= (6) */
-  Gain_t gain_set[NBAND_REFL_MAX]; /* Band gain settings (ETM+ only) */
-  Gain_t gain_setting_th; /* Band gain settings Thermal (ETM+ only) */
-  float gain[NBAND_REFL_MAX]; /* Band gain (MSS and TM only) */
-  float bias[NBAND_REFL_MAX]; /* Band bias (MSS and TM only) */
-  float gain_th;           /* Thermal band gain (MSS and TM only) */
-  float bias_th;           /* Thermal band bias (MSS and TM only) */
+  Gain_t gain_set[NBAND_REFL_MAX]; /* Band gain settings */
+  Gain_t gain_setting_th; /* Band gain settings Thermal */
+  float gain[NBAND_REFL_MAX]; /* Band gain */
+  float bias[NBAND_REFL_MAX]; /* Band bias */
+  float gain_th;           /* Thermal band gain */
+  float bias_th;           /* Thermal band bias */
 } Input_meta_t;
 
 /* Structure for the 'input' data type */

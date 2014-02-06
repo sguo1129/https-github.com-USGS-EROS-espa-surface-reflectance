@@ -1,14 +1,8 @@
 EXTRA   = -g -D_BSD_SOURCE -Wall -O2
 
-#INCDIR  = -I. -I$(JPEGINC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFINC) \
-#          -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
 INCDIR  = -I. -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
-#EXLIB	= -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
-#          -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
-#          -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
-#          -L$(XML2LIB) -lxml2 -lz
 EXLIB	= -L$(HDFEOS_GCTPLIB) -lGctp \
           -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
           -L$(XML2LIB) -lxml2 -lz

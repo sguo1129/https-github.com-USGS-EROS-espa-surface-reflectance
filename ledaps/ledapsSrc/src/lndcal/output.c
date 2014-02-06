@@ -75,7 +75,6 @@
 #include <stdlib.h>
 #include "output.h"
 #include "const.h"
-#include "names.h"
 #include "error.h"
 #include "cal.h"
 
@@ -84,8 +83,8 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
 /* 
 !C******************************************************************************
 
-!Description: 'OutputFile' sets up the 'output' data structure, opens the
- output file for write access, and creates the output Science Data Set (SDS).
+!Description: 'OutputFile' sets up the 'output' data structure and opens the
+ output file for write access.
  
 !Input Parameters:
  in_meta        input XML metadata structure (band-related info)
@@ -178,7 +177,7 @@ revision 2.0.0 1/27/2014
 
   /* Determine the scene name */
   strcpy (scene_name, in_meta->band[rep_indx].file_name);
-  mychar = strrchr (scene_name, '_');
+  mychar = strchr (scene_name, '_');
   if (mychar != NULL)
     *mychar = '\0';
 
@@ -326,7 +325,7 @@ bool CloseOutput(Output_t *this)
 /* 
 !C******************************************************************************
 
-!Description: 'CloseOutput' ends SDS access and closes the output file.
+!Description: 'CloseOutput' the output files which are open.
  
 !Input Parameters:
  this           'output' data structure

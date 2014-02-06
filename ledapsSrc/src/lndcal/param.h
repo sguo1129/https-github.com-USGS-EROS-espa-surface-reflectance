@@ -22,6 +22,10 @@
  Robert Wolfe
  Added separate output SDS name.
 
+ Revision 2.0 2014/01/20
+ Gail Schmidt
+ Modified to support the ESPA internal raw binary format
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 

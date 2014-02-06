@@ -25,24 +25,6 @@ typedef enum {
   ALG_CCRS 
 } Algorithm_t;
 
-/* Data provider type definition */
-
-typedef enum {
-  PROVIDER_NULL = -1,
-  PROVIDER_UMD = 0, 
-  PROVIDER_EDC, 
-  PROVIDER_CCRS,
-  PROVIDER_MRLC01,
-  PROVIDER_MRLC92,
-  PROVIDER_USDA,
-  PROVIDER_EROS,
-  PROVIDER_CI,
-  PROVIDER_Scott,
-  PROVIDER_MAX
-} Provider_t;
-
-extern const Key_string_t Provider_string[PROVIDER_MAX];
-
 /* Satellite type definition */
 
 typedef enum {

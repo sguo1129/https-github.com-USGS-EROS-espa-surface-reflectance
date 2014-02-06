@@ -135,16 +135,14 @@ Param_t *GetParam(int argc, const char **argv)
   if (argc > 3) 
     RETURN_ERROR("too many command line parameters", "GetParam", NULL);
   if (strlen(argv[1]) < 1)
-    RETURN_ERROR("no paramter file name", "GetParam", NULL);
+    RETURN_ERROR("no parameter file name", "GetParam", NULL);
   param_file_name = (char *)argv[1];
 
   /* Open the parameter file */
-  
   if ((fp = fopen(param_file_name, "r")) == NULL)
     RETURN_ERROR("unable to open parameter file", "GetParam", NULL);
 
   /* Create the Param data structure */
-
   this = (Param_t *)malloc(sizeof(Param_t));
   if (this == NULL) {
     fclose(fp);
@@ -152,13 +150,11 @@ Param_t *GetParam(int argc, const char **argv)
   }
 
   /* set default parameters */
-
   this->param_file_name         = NULL;
   this->input_xml_file_name     = NULL;
   this->LEDAPSVersion           = NULL;
 
   /* Populate the data structure */
-
   this->param_file_name = DupString(param_file_name);
   if (this->param_file_name == NULL)
     error_string = "duplicating parameter file name";
@@ -171,7 +167,6 @@ Param_t *GetParam(int argc, const char **argv)
   }
 
   /* Parse the header file */
-
   got_start = got_end = false;
 
   while((len = GetLine(fp, line)) > 0) {
@@ -184,9 +179,8 @@ Param_t *GetParam(int argc, const char **argv)
     if (key.len_key <= 0) continue;
     if (key.key[0] == '#') continue;
 
-    param_key = (Param_key_t)
-       KeyString(key.key, key.len_key, Param_string, 
-		 (int)PARAM_NULL, (int)PARAM_MAX);
+    param_key = (Param_key_t) KeyString(key.key, key.len_key, Param_string, 
+       (int)PARAM_NULL, (int)PARAM_MAX);
     if (param_key == PARAM_NULL) {
       key.key[key.len_key] = '\0';
       sprintf(temp, "invalid key; key = %s", key.key);
@@ -196,11 +190,11 @@ Param_t *GetParam(int argc, const char **argv)
     if (!got_start) {
       if (param_key == PARAM_START) {
         if (key.nval != 0) {
-	  error_string = "no value expected (start key)";
-	  break;
-	}
+          error_string = "no value expected (start key)";
+          break;
+        }
         got_start = true;
-	continue;
+        continue;
       } else {
         error_string  = "no start key in parameter file";
         break;
@@ -208,26 +202,25 @@ Param_t *GetParam(int argc, const char **argv)
     }
 
     /* Get the value for each keyword */
-
     switch (param_key) {
 
       case PARAM_XML_FILE:
         if (key.nval <= 0) {
-	  error_string = "no input XML metadata file name";
-	  break; 
-	} else if (key.nval > 1) {
-	  error_string = "too many input header file names";
-	  break; 
-	}
-	if (key.len_value[0] < 1) {
-	  error_string = "no input header file name";
-	  break;
-	}
-	key.value[0][key.len_value[0]] = '\0';
+          error_string = "no input XML metadata file name";
+          break; 
+        } else if (key.nval > 1) {
+          error_string = "too many input XML metadata file names";
+          break; 
+        }
+        if (key.len_value[0] < 1) {
+          error_string = "no input XML metadata file name";
+          break;
+        }
+        key.value[0][key.len_value[0]] = '\0';
         this->input_xml_file_name = DupString(key.value[0]);
-	if (this->input_xml_file_name == NULL) {
-	  error_string = "duplicating input XML metadata file name";
-	  break;
+        if (this->input_xml_file_name == NULL) {
+          error_string = "duplicating input XML metadata file name";
+          break;
         }
         break;
 
@@ -253,23 +246,20 @@ Param_t *GetParam(int argc, const char **argv)
 
       case PARAM_END:
         if (key.nval != 0) {
-	  error_string = "no value expected (end key)";
-	  break; 
-	}
+          error_string = "no value expected (end key)";
+          break; 
+        }
         got_end = true;
         break;
 
       default:
         error_string = "key not implmented";
-
     }
     if (error_string != NULL) break;
     if (got_end) break;
-
   }
 
   /* Close the parameter file */
-
   fclose(fp);
 
   if (error_string == NULL) {
@@ -280,7 +270,6 @@ Param_t *GetParam(int argc, const char **argv)
   }
 
   /* Handle null values */
-  
   if (error_string == NULL) {
     if (this->input_xml_file_name == NULL) 
       error_string = "no input XML metadata file name given";
@@ -289,7 +278,6 @@ Param_t *GetParam(int argc, const char **argv)
   }
 
   /* Handle errors */
-
   if (error_string != NULL) {
     free(this->param_file_name);
     free(this->input_xml_file_name);
@@ -319,7 +307,6 @@ bool FreeParam(Param_t *this)
 
  ! Design Notes:
    1. 'GetParam' must be called before this routine is called.
-   2. An error status is never returned.
 
 !END****************************************************************************
 */
