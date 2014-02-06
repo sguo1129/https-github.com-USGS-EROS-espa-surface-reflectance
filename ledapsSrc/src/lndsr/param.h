@@ -22,6 +22,10 @@
  Robert Wolfe
  Added separate output SDS name.
 
+ Revision 2.0 2014/02/03
+ Gail Schmidt
+ Modified to support the ESPA internal raw binary format
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -63,22 +67,18 @@
 /* Parameter data structure type definition */
 
 typedef struct {
-  char *param_file_name;   /* Parameter file name             */
-  char *input_file_name;   /* Input image file name           */
-  char *metadata_file_name;/* L1G/L1T metadata file name      */
-  char *lut_file_name;     /* Lookup table file name          */
-  char *temp_file_name;    /* Thermal Band 6 file name        */
-  bool thermal_band;       /* True if thermal band file available */
-  char *output_file_name;  /* Output image HDF file name      */
-  char *ncep_file_name[4]; /* Bracketing NCEP file names      */
-  char *prwv_file_name;    /* Bracketing NCEP hdf file names  */
-  char *ozon_file_name;    /* Ozone hdf file names            */
-  char *LEDAPSVersion;     /* LEDAPS Version                  */
-  int  num_ncep_files;     /* number of NCEP files            */
-  int  num_prwv_files;     /* number of PRWV hdf files        */
-  int  num_ozon_files;     /* number of Ozone hdf files       */
-  char *dem_file;          /* DEM file name                   */
-  bool dem_flag;           /* false if not present use default*/
+  char *param_file_name;      /* Parameter file name                 */
+  char *input_xml_file_name;  /* Input XML metadata file name        */
+  bool thermal_band;          /* True if thermal band file available */
+  char *ncep_file_name[4];    /* Bracketing NCEP file names          */
+  char *prwv_file_name;       /* Bracketing NCEP hdf file names      */
+  char *ozon_file_name;       /* Ozone hdf file names                */
+  char *LEDAPSVersion;        /* LEDAPS Version                      */
+  int  num_ncep_files;        /* number of NCEP files                */
+  int  num_prwv_files;        /* number of PRWV hdf files            */
+  int  num_ozon_files;        /* number of Ozone hdf files           */
+  char *dem_file;             /* DEM file name                       */
+  bool dem_flag;              /* false if not present use default    */
 } Param_t;
 
 /* Prototypes */

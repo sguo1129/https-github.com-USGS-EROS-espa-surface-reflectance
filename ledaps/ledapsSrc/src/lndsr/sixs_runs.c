@@ -351,6 +351,7 @@ int create_6S_tables_water(sixs_tables_t *sixs_tables) {
 	FILE *fd;
 	float tgoz,tgco2,tgo2,tgno2,tgch4,tgco;
 	int tm_band[SIXS_NB_BANDS]={25,26,27,28,29,30};
+    char *tmpstr;
 	
 	struct etm_spectral_function_t etm_spectral_function = {
 		{54,61,65,81,131,155},
@@ -382,8 +383,14 @@ int create_6S_tables_water(sixs_tables_t *sixs_tables) {
 	sixs_tables->aot[14]=2.00;
 	printf ("DEBUG: GAIL in compute_6S_tables_water -- shouldn't be here!\n");
 	
-	tmpnam(sixs_cmd_filename);
-	tmpnam(sixs_out_filename);
+	if ((tmpstr = tmpnam(sixs_cmd_filename)) == NULL) {
+      fprintf(stderr,"ERROR: creating temporary file %s\n",sixs_cmd_filename);
+      exit(-1);
+    }
+	if ((tmpstr = tmpnam(sixs_out_filename)) == NULL) {
+      fprintf(stderr,"ERROR: creating temporary file %s\n",sixs_out_filename);
+      exit(-1);
+    }
 	
 	for (i=0;i<SIXS_NB_BANDS;i++) {
 		for (j=0;j<SIXS_NB_AOT;j++) {
@@ -656,11 +663,18 @@ int compute_atmos_params_6S(sixs_atmos_params_t *sixs_atmos_params) {
 	int k;
 	float tgoz,tgco2,tgo2,tgno2,tgch4,tgco;
 	int tm_band[SIXS_NB_BANDS]={25,26,27,28,29,30};
+    char *tmpstr;
 	FILE *fd;
 	printf ("DEBUG: GAIL in compute_atmos_params_6S -- shouldn't be here!\n");
 	
-	tmpnam(sixs_cmd_filename);
-	tmpnam(sixs_out_filename);
+	if ((tmpstr = tmpnam(sixs_cmd_filename)) == NULL) {
+      fprintf(stderr,"ERROR: creating temporary file %s\n",sixs_cmd_filename);
+      exit(-1);
+    }
+	if ((tmpstr = tmpnam(sixs_out_filename)) == NULL) {
+      fprintf(stderr,"ERROR: creating temporary file %s\n",sixs_out_filename);
+      exit(-1);
+    }
 
 	if ((fd=fopen(sixs_cmd_filename,"w"))==NULL) {
 		fprintf(stderr,"ERROR: creating temporary file %s\n",sixs_cmd_filename);

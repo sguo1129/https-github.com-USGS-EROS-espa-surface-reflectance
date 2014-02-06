@@ -1,7 +1,6 @@
 #ifndef SIXS_H
 #define SIXS_H
 #include "input.h"
-#include "names.h"
 
 #define SIXS_NB_AOT 15
 #define SIXS_NB_BANDS 6

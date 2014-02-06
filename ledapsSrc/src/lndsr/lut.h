@@ -71,6 +71,7 @@ typedef struct {
   char* units;             /* units */
   double scale_factor;     /* scale factor */
   double scale_factor_err; /* scale factor error */
+  double atmos_opacity_scale_factor;  /* Atmospheric opacity scale factor */
   double add_offset;       /* add offset */
   double add_offset_err;   /* add offset error */
   double calibrated_nt;    /* calibrated nt */
@@ -78,8 +79,7 @@ typedef struct {
 
 /* Prototypes */
 
-Lut_t *GetLut(char *file_name, int nband, Input_meta_t *input_meta,
-              Img_coord_int_t *input_size);
+Lut_t *GetLut(int nband, Input_meta_t *input_meta, Img_coord_int_t *input_size);
 bool FreeLut(Lut_t *this);
 
 #endif

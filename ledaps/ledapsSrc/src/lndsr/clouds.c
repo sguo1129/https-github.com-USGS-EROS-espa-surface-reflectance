@@ -4,6 +4,17 @@
 #include "sixs_runs.h"
 #include "clouds.h"
 
+/****************************************************************************
+History:
+Modified on 2/5/2014 by Gail Schmidt, USGS/EROS
+  Band 6 is now in Kelvin vs. degrees Celsius so conversion (+273.) is no
+    longer needed.
+  The scaling factor of band 6 has changed from 0.01 to 0.1.
+  Instead of dividing by 10000 and 10 for the scaling, modified to multiply
+    by 0.0001 and 0.1.  Multiplication is faster.
+****************************************************************************/
+
+
 /* #define VRA_THRESHOLD 0.1 */
 #define VRA_THRESHOLD 0.08
 
@@ -13,8 +24,7 @@ int allocate_mem_atmos_coeff(int nbpts,atmos_t *atmos_coef);
 int free_mem_atmos_coeff(atmos_t *atmos_coef);
 int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,atmos_t *interpol_atmos_coef);
 
-bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int **line_in, int8 *qa_line, int *b6_line,float *atemp_line,
-		  cld_diags_t *cld_diags) {
+bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int16 **line_in, uint8 *qa_line, int16 *b6_line, float *atemp_line, cld_diags_t *cld_diags) {
 
 	int is;
 	bool is_fill;
@@ -26,7 +36,6 @@ bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int **line_in, int8 *q
 	int cld_row,cld_col;
    float vra,ndvi;
 
-
 	allocate_mem_atmos_coeff(1,&interpol_atmos_coef);
   	loc.l = il;
 	cld_row=il/cld_diags->cellheight;
@@ -35,11 +44,6 @@ bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int **line_in, int8 *q
     	loc.s = is;
 		cld_col=is/cld_diags->cellwidth;
 
-/*
-		if ((line_in[0][is]== lut->in_fill) || (line_in[1][is]== lut->in_fill) || (line_in[2][is]== lut->in_fill) ||
-			(line_in[3][is]== lut->in_fill) || (line_in[4][is]== lut->in_fill) ||
-			(line_in[5][is]== lut->in_fill) || (b6_line[is]== lut->in_fill))
-*/
 		if ((qa_line[is]&0x01)==0x01)
 			is_fill=true;
 		else
@@ -48,41 +52,37 @@ bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int **line_in, int8 *q
 		  if (((qa_line[is]&0x08)==0x00)||((lut->meta.inst==INST_TM)&&(line_in[2][is]<5000))) { /* no saturation in band 3 */
 	 		SrInterpAtmCoef(lut, &loc, &atmos_coef, &interpol_atmos_coef);
 			
-	 		rho1=line_in[0][is]/10000.;
+	 		rho1=line_in[0][is]*0.0001;
       		rho1=(rho1/interpol_atmos_coef.tgOG[0][0]-interpol_atmos_coef.rho_ra[0][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[0][0]*interpol_atmos_coef.td_ra[0][0]*interpol_atmos_coef.tu_ra[0][0]);
 			rho1 /= tmpflt;
 			rho1 /= (1.+interpol_atmos_coef.S_ra[0][0]*rho1);
-	 		rho3=line_in[2][is]/10000.;
+	 		rho3=line_in[2][is]*0.0001;
       		rho3=(rho3/interpol_atmos_coef.tgOG[2][0]-interpol_atmos_coef.rho_ra[2][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[2][0]*interpol_atmos_coef.td_ra[2][0]*interpol_atmos_coef.tu_ra[2][0]);
 			rho3 /= tmpflt;
 			rho3 /= (1.+interpol_atmos_coef.S_ra[2][0]*rho3);
-	 		rho4=line_in[3][is]/10000.;
+	 		rho4=line_in[3][is]*0.0001;
       		rho4=(rho4/interpol_atmos_coef.tgOG[3][0]-interpol_atmos_coef.rho_ra[3][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[3][0]*interpol_atmos_coef.td_ra[3][0]*interpol_atmos_coef.tu_ra[3][0]);
 			rho4 /= tmpflt;
 			rho4 /= (1.+interpol_atmos_coef.S_ra[3][0]*rho4);
-	 		rho5=line_in[4][is]/10000.;
+	 		rho5=line_in[4][is]*0.0001;
       		rho5=(rho5/interpol_atmos_coef.tgOG[4][0]-interpol_atmos_coef.rho_ra[4][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[4][0]*interpol_atmos_coef.td_ra[4][0]*interpol_atmos_coef.tu_ra[4][0]);
 			rho5 /= tmpflt;
 			rho5 /= (1.+interpol_atmos_coef.S_ra[4][0]*rho5);
-	 		rho7=line_in[5][is]/10000.;
+	 		rho7=line_in[5][is]*0.0001;
       		rho7=(rho7/interpol_atmos_coef.tgOG[5][0]-interpol_atmos_coef.rho_ra[5][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[5][0]*interpol_atmos_coef.td_ra[5][0]*interpol_atmos_coef.tu_ra[5][0]);
 			rho7 /= tmpflt;
 			rho7 /= (1.+interpol_atmos_coef.S_ra[5][0]*rho7);
-			t6=b6_line[is]/100.+273.;
+			t6=b6_line[is]*0.1;
 
 			vra=rho1-rho3/2;
 					
 			C1=(int)(vra>VRA_THRESHOLD);
 			C1p=!C1;
-/*					
-			C2=(t6 < (atemp_line[is]-10.));  
-			C2p=(t6 > (atemp_line[is]-10.));
-*/
 			C2=(t6 < (atemp_line[is]-7.));  
 			C2p=(t6 > (atemp_line[is]-7.));
    
@@ -123,8 +123,7 @@ bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int **line_in, int8 *q
 	return true;
 }
 
-bool cloud_detection_pass2(Lut_t *lut, int nsamp, int il, int **line_in, int8 *qa_line, int *b6_line,
-		  cld_diags_t *cld_diags,char *ddv_line) {
+bool cloud_detection_pass2(Lut_t *lut, int nsamp, int il, int16 **line_in, uint8 *qa_line, int16 *b6_line, cld_diags_t *cld_diags, char *ddv_line) {
 
 /**
 use ddv_line to store internal cloud screening info
@@ -146,8 +145,6 @@ bit 7 = snow
 	float vra,ndvi,ndsi,temp_snow_thshld;
 	float temp_b6_clear,temp_thshld1,temp_thshld2,avg_b7_clear,atemp_ancillary;
 	float tmpflt,tmpflt_arr[10];
-
-
 
 	thermal_band=true;
 	if (b6_line == NULL) 
@@ -173,11 +170,7 @@ bit 7 = snow
 				ddv_line[is] = 0x08;
 			}
 		}
-/*
-		if ((line_in[0][is]== lut->in_fill) || (line_in[1][is]== lut->in_fill) || (line_in[2][is]== lut->in_fill) ||
-			(line_in[3][is]== lut->in_fill) || (line_in[4][is]== lut->in_fill) ||
-			(line_in[5][is]== lut->in_fill)) {
-*/
+
 		if ((qa_line[is]&0x01)==0x01) {
 			is_fill=true;
 			ddv_line[is] = 0x08;
@@ -187,7 +180,7 @@ bit 7 = snow
 
 		  if (((qa_line[is]&0x08)==0x08)||((lut->meta.inst==INST_TM)&&(line_in[2][is]>=5000))) {  /* saturated band 3 */
 			if (thermal_band) {
-				t6=b6_line[is]/100.+273.;
+				t6=b6_line[is]*0.1;
 
 				interpol_clddiags_1pixel(cld_diags, il,is,tmpflt_arr);
 				temp_b6_clear=tmpflt_arr[0];
@@ -220,42 +213,41 @@ bit 7 = snow
 		  } else {
 	 		SrInterpAtmCoef(lut, &loc, &atmos_coef, &interpol_atmos_coef);
 			
-	 		rho1=line_in[0][is]/10000.;
+	 		rho1=line_in[0][is]*0.0001;
       		rho1=(rho1/interpol_atmos_coef.tgOG[0][0]-interpol_atmos_coef.rho_ra[0][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[0][0]*interpol_atmos_coef.td_ra[0][0]*interpol_atmos_coef.tu_ra[0][0]);
 			rho1 /= tmpflt;
 			rho1 /= (1.+interpol_atmos_coef.S_ra[0][0]*rho1);
-	 		rho2=line_in[1][is]/10000.;
+	 		rho2=line_in[1][is]*0.0001;
       		rho2=(rho2/interpol_atmos_coef.tgOG[1][0]-interpol_atmos_coef.rho_ra[1][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[1][0]*interpol_atmos_coef.td_ra[1][0]*interpol_atmos_coef.tu_ra[1][0]);
 			rho2 /= tmpflt;
 			rho2 /= (1.+interpol_atmos_coef.S_ra[1][0]*rho2);
-	 		rho3=line_in[2][is]/10000.;
+	 		rho3=line_in[2][is]*0.0001;
       		rho3=(rho3/interpol_atmos_coef.tgOG[2][0]-interpol_atmos_coef.rho_ra[2][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[2][0]*interpol_atmos_coef.td_ra[2][0]*interpol_atmos_coef.tu_ra[2][0]);
 			rho3 /= tmpflt;
 			rho3 /= (1.+interpol_atmos_coef.S_ra[2][0]*rho3);
-	 		rho4=line_in[3][is]/10000.;
+	 		rho4=line_in[3][is]*0.0001;
       		rho4=(rho4/interpol_atmos_coef.tgOG[3][0]-interpol_atmos_coef.rho_ra[3][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[3][0]*interpol_atmos_coef.td_ra[3][0]*interpol_atmos_coef.tu_ra[3][0]);
 			rho4 /= tmpflt;
 			rho4 /= (1.+interpol_atmos_coef.S_ra[3][0]*rho4);
-	 		rho5=line_in[4][is]/10000.;
+	 		rho5=line_in[4][is]*0.0001;
       		rho5=(rho5/interpol_atmos_coef.tgOG[4][0]-interpol_atmos_coef.rho_ra[4][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[4][0]*interpol_atmos_coef.td_ra[4][0]*interpol_atmos_coef.tu_ra[4][0]);
 			rho5 /= tmpflt;
 			rho5 /= (1.+interpol_atmos_coef.S_ra[4][0]*rho5);
-	 		rho7=line_in[5][is]/10000.;
+	 		rho7=line_in[5][is]*0.0001;
       		rho7=(rho7/interpol_atmos_coef.tgOG[5][0]-interpol_atmos_coef.rho_ra[5][0]);
 			tmpflt=(interpol_atmos_coef.tgH2O[5][0]*interpol_atmos_coef.td_ra[5][0]*interpol_atmos_coef.tu_ra[5][0]);
 			rho7 /= tmpflt;
 			rho7 /= (1.+interpol_atmos_coef.S_ra[5][0]*rho7);
 			if (thermal_band)
-				t6=b6_line[is]/100.+273.;
+				t6=b6_line[is]*0.1;
 
 			interpol_clddiags_1pixel(cld_diags, il,is,tmpflt_arr);
 			temp_b6_clear=tmpflt_arr[0];
-/*			printf("temp_b6_clear %f\n",temp_b6_clear);*/
 			avg_b7_clear=tmpflt_arr[1];
 			atemp_ancillary=tmpflt_arr[2];
 			if (temp_b6_clear < 0.) {
@@ -297,10 +289,6 @@ bit 7 = snow
 
             	C5=(t6 < temp_thshld2)&&C1;
 			}
-/*
-			printf ("PASS2: T6=%f THRESH=%f R7=%f  C2=%d  C4=%d\n",t6,temp_thshld1,rho7,C2,C4);
-*/					
-
 					
 /**
 			Water test :
@@ -392,8 +380,7 @@ bit 7 = snow
 }
 
 
-bool cast_cloud_shadow(Lut_t *lut, int nsamp, int il_start, int ***line_in, int **b6_line,
-		  cld_diags_t *cld_diags,char ***cloud_buf, Ar_gridcell_t *ar_gridcell,float pixel_size,float adjust_north) {
+bool cast_cloud_shadow(Lut_t *lut, int nsamp, int il_start, int16 ***line_in, int16 **b6_line, cld_diags_t *cld_diags, char ***cloud_buf, Ar_gridcell_t *ar_gridcell, float pixel_size, float adjust_north) {
 
 	int il,is,il_ar,is_ar,shd_buf_ind;
 	float t6,temp_b6_clear,atemp_ancillary,tmpflt_arr[10];
@@ -412,7 +399,7 @@ bool cast_cloud_shadow(Lut_t *lut, int nsamp, int il_start, int ***line_in, int 
 			if (is_ar >= lut->ar_size.s)
 				is_ar = lut->ar_size.s - 1;
 
-			t6=b6_line[il][is]/100.+273.;
+			t6=b6_line[il][is]*0.1;
 			interpol_clddiags_1pixel(cld_diags, il+il_start,is,tmpflt_arr);
 			temp_b6_clear=tmpflt_arr[0];
 			atemp_ancillary=tmpflt_arr[2];

@@ -43,77 +43,52 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "lndsr.h"
-#include "myhdf.h"
 #include "const.h"
 #include "date.h"
 
+#define ANGLE_FILL -999.0
+#define WRS_FILL -1
+
 typedef struct {
-  Provider_t provider;
-                           /* Data provider type */
   Sat_t sat;               /* Satellite */
   Inst_t inst;             /* Instrument */
   Date_t acq_date;         /* Acqsition date/time (scene center) */
-  Date_t prod_date;        /* Production date (must be available for ETM) */
   float sun_zen;           /* Solar zenith angle (radians; scene center) */
   float sun_az;            /* Solar azimuth angle (radians; scene center) */
   Wrs_t wrs_sys;           /* WRS system */
   int ipath;               /* WRS path number */
   int irow;                /* WRS row number */
   int fill;                /* Fill value */
-  int iband[NBAND_REFL_MAX];
-                           /* Band numbers */
-  double gains[NBAND_REFL_MAX];  /* Reflectance gains (only used for TOA refl
-                                   file) */
-  double bias[NBAND_REFL_MAX];   /* Reflectance biases (only used for TOA refl
-                                   file) */
-  double th_gain;          /* Thermal gain (only used for brightness temp
-                              file) */
-  double th_bias;          /* Thermal bias (only used for brightness temp
-                              file) */
+  int iband[NBAND_REFL_MAX]; /* Reflectance band numbers */
+  int iband_qa;            /* QA band number */
 } Input_meta_t;
 
 /* Structure for the 'input' data type */
 
 typedef struct {
-  char *file_name;         /* Input image file name */
-  bool open;               /* Open file flag; open = true */
   Input_meta_t meta;       /* Input metadata */
-  int nband;               /* Number of input image files (bands) */
+  int nband;               /* Number of input image bands */
   Img_coord_int_t size;    /* Input file size */
-  int32 sds_file_id;       /* SDS file id */
-  Myhdf_sds_t sds[NBAND_REFL_MAX];
-                           /* SDS data structures */
-  int16 *buf[NBAND_REFL_MAX];
-                           /* Input data buffer (one line of data) */
-
-  Myhdf_sds_t qa_sds;
-  int8 *qabuf;
+  char *file_name[NBAND_REFL_MAX];  /* Name of the input image files */
+  char *file_name_qa;      /* Name of the input QA file */
+  FILE *fp_bin[NBAND_REFL_MAX];  /* File pointer for input binary files */
+  bool open[NBAND_REFL_MAX]; /* Flag to indicate whether the specific input
+                                file is open for access; 'true' = open, 
+                                'false' = not open */
+  FILE *fp_bin_qa;         /* File pointer for QA binary file */
+  bool open_qa;            /* Flag to indicate whether the specific input
+                              file is open for access; 'true' = open, 
+                              'false' = not open */
 } Input_t;
-
-typedef struct {
-  char *file_name;         /* Input image file name */
-  bool open;               /* Open file flag; open = true */
-  Img_coord_int_t size;    /* Input file size */
-  int32 sds_file_id;       /* SDS file id */
-  Myhdf_sds_t sds[NBAND_REFL_MAX];
-                           /* SDS data structures */
-  uint8 *buf[NBAND_REFL_MAX];
-                           /* Input data buffer (one line of data) */
-} InputMask_t;
 
 /* Prototypes */
 
-Input_t *OpenInput(char *file_name);
-bool GetInputLine(Input_t *this, int iband, int iline, int *line);
+Input_t *OpenInput(Espa_internal_meta_t *metadata, bool thermal);
+bool GetInputLine(Input_t *this, int iband, int iline, int16 *line);
 bool CloseInput(Input_t *this);
 bool FreeInput(Input_t *this);
 bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy);
-bool GetInputMeta(Input_t *this);
-
-InputMask_t *OpenInputMask(char *file_name);
-bool GetInputQALine(Input_t *this, int iline, int8 *line);
-bool GetInputMaskLine(InputMask_t *this, int iline, char *line);
-bool FreeInputMask(InputMask_t *this);
-bool CloseInputMask(InputMask_t *this);
+bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata, bool thermal);
+bool GetInputQALine(Input_t *this, int iline, uint8 *line);
 
 #endif

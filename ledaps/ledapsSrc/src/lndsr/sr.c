@@ -13,39 +13,21 @@
 extern atmos_t atmos_coef;
 int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,atmos_t *interpol_atmos_coef); 
 
-bool Sr(Lut_t *lut, int nsamp, int il, int **line_in, int **line_out,
+bool Sr(Lut_t *lut, int nsamp, int il, int16 **line_in, int16 **line_out,
         Sr_stats_t *sr_stats) 
 {
   int is;
-  bool is_fill, not_fill;
+  bool is_fill;
   int ib;
-  int iband_ar;
   Img_coord_int_t loc;
   float rho,tmpflt;
-  int i_aot,j_aot,ipt;
-	atmos_t interpol_atmos_coef;
+  atmos_t interpol_atmos_coef;
 
-
-	allocate_mem_atmos_coeff(1,&interpol_atmos_coef);
-
-  iband_ar = lut->nband;
+  allocate_mem_atmos_coeff(1,&interpol_atmos_coef);
   loc.l = il;
-
-  i_aot=il/lut->ar_region_size.l;
 
   for (is = 0; is < nsamp; is++) {
     loc.s = is;
-    
-    j_aot=is/lut->ar_region_size.s;
-    ipt=i_aot*lut->ar_size.s+j_aot;
-
-    not_fill = true;
-    for (ib = 0; ib < lut->nband; ib++) {
-      if (line_in[ib][is] == lut->in_fill) {
-        not_fill = false;
-        break;
-      }
-    }
     is_fill = false;
 
 /*
@@ -216,105 +198,3 @@ int SrInterpAtmCoef(Lut_t *lut, Img_coord_int_t *input_loc, atmos_t *atmos_coef,
   return 0;
 }
 
-/* 
-!C******************************************************************************
-
-!Description: 'computeBounds' computes the boundary corners of the output image
-and also outputs the UL and LR corners.  For ascending scenes and scenes in
-the polar regions, the scenes are flipped upside down.  The bounding coords
-will be correct in North represents the northernmost latitude and South
-represents the southernmost latitude.  However, the UL corner in this case
-would be more south than the LR corner.  Comparing the UL and LR corners will
-allow the user to determine if the scene is flipped.
-
-!Prototype : 
-  bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
-    Geo_coord_t lr_corner, Space_t *space, int nps, int nls)
- 
-!Input Parameters:
- space            space (transformation) definition structure that defines
-                  the transformation between geo to map coordinates
-                  (Space_t*)
- nps              image size number of samples (int)
- nls              image size number of lines   (int)
-
-
-!Output Parameters:
- bounds           output boundary structure (Geo_bounds_t)
- ul_corner        output UL corner (Geo_coord_t)
- lr_corner        output LR corner (Geo_coord_t)
-
-!Team Unique Header:
-
- ! Design Notes:
-   1. An error status is returned when:
-       a. the transformaion can not proceed
-
-   2. Error messages are handled with the 'RETURN_ERROR' macro.
-
-!END****************************************************************************
-*/
-bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
-    Geo_coord_t *lr_corner, Space_t *space, int nps, int nls)
-{
-  const float pixcorn_x[4]={-0.5,-0.5, 0.5, 0.5}; /* 4 corners of a pixel */
-  const float pixcorn_y[4]={-0.5, 0.5,-0.5, 0.5}; /* 4 corners of a pixel */
-  Img_coord_float_t img;
-  Geo_coord_t geo;
-  int i,ix,iy,ic;
-  bounds->min_lat=  99999.9999;
-  bounds->min_lon=  99999.9999;
-  bounds->max_lat= -99999.9999;
-  bounds->max_lon= -99999.9999;
-
-  for ( i=0; i<(nps*2+nls*2); i++ )
-    {
-    if ( i<nps ) /* top edge */
-      {
-      ix= i;
-      iy= 0;
-      }
-    else if ( i<(nps*2) )
-      {
-      ix= i-nps;
-      iy= (nls-1);
-      }
-    else if ( i <(nps*2+nls) )
-      {
-      ix= 0;
-      iy= i-2*nps;
-      }
-    else
-      {
-      ix= nps-1;
-      iy= i-(2*nps+nls);
-      }
-    for ( ic=0; ic<4; ic++ )
-      {
-      img.l = (double)iy + pixcorn_y[ic];
-      img.s = (double)ix + pixcorn_x[ic];
-      img.is_fill = false;
-      if (!FromSpace(space, &img, &geo))
-        RETURN_ERROR("mapping from space", "computeBounds", false);
-      bounds->max_lat= max(bounds->max_lat,geo.lat);
-      bounds->min_lat= min(bounds->min_lat,geo.lat);
-      bounds->max_lon= max(bounds->max_lon,geo.lon);
-      bounds->min_lon= min(bounds->min_lon,geo.lon);
-      }
-    }
-
-  /* Determine the exact UL and LR corners */
-  img.l = 0;
-  img.s = 0;
-  img.is_fill = false;
-  if (!FromSpace(space, &img, ul_corner))
-    RETURN_ERROR("mapping from space for UL corner", "computeBounds", false);
-
-  img.l = nls-1;
-  img.s = nps-1;
-  img.is_fill = false;
-  if (!FromSpace(space, &img, lr_corner))
-    RETURN_ERROR("mapping from space for LR corner", "computeBounds", false);
-
-  return true;
- }

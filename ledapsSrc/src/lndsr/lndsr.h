@@ -2,12 +2,17 @@
 #define LNDSR_H
 
 #define bounded(A,B,C) (A>B?(A<C?A:C):B)
-#define min(A,B) (A>B?B:A)
-#define max(A,B) (A>B?A:B)
 #define nint(A)(A<0?(int)(A-0.5):(int)(A+0.5))
 
+#include <stdio.h>
+#include "hdf.h"
+#include "mfhdf.h"
 #include "mystring.h"
-#include "space.h"
+#include "espa_metadata.h"
+#include "parse_metadata.h"
+#include "write_metadata.h"
+#include "envi_header.h"
+#include "espa_geoloc.h"
 
 /* Extra bands - atmos_opacity, fill_QA, DDV_QA, cloud_QA, cloud_shadow_QA,
    snow_QA, land_water_QA, adjacent_cloud_QA, nb_dark_pixels, avg_dark_sr_b7,
@@ -34,24 +39,6 @@ typedef enum {
   QA_OFF = 0,
   QA_ON = 255
 } QA_t;
-
-/* Data provider type definition */
-
-typedef enum {
-  PROVIDER_NULL = -1,
-  PROVIDER_UMD = 0, 
-  PROVIDER_EDC,
-  PROVIDER_CCRS,
-  PROVIDER_MRLC01,
-  PROVIDER_MRLC92,
-  PROVIDER_USDA,
-  PROVIDER_EROS,
-  PROVIDER_CI,
-  PROVIDER_Scott,
-  PROVIDER_MAX
-} Provider_t;
-
-extern const Key_string_t Provider_string[PROVIDER_MAX];
 
 /* Satellite type definition */
 
@@ -91,17 +78,6 @@ typedef enum {
 
 extern const Key_string_t Wrs_string[WRS_MAX];
 
-/* Band gain settings (ETM+ only) */
-
-typedef enum {
-  GAIN_NULL = -1,
-  GAIN_HIGH = 0, 
-  GAIN_LOW, 
-  GAIN_MAX
-} Gain_t;
-
-extern const Key_string_t Gain_string[GAIN_MAX];
-
 /* Ozone source */
 
 typedef enum {
@@ -119,14 +95,6 @@ typedef enum {
 
 extern const Key_string_t Ozsrc_string[OZSRC_MAX];
 
-/* Integer image coordinates data structure */
-#ifndef IMG_COORD_INT_TYPE_DEFINED
-#define IMG_COORD_INT_TYPE_DEFINED
-typedef struct {
-  int l;                /* line number */
-  int s;                /* sample number */
-} Img_coord_int_t;
-#endif
 typedef struct {
   int nbrows,nbcols;
   float *lat,*lon;
@@ -135,14 +103,6 @@ typedef struct {
   float *line_lat,*line_lon,*line_sun_zen,*line_view_zen,*line_rel_az;
   float *line_wv,*line_spres,*line_ozone,*line_spres_dem;
 } Ar_gridcell_t;
-
-typedef struct {
-  double min_lon;  /* Geodetic longitude coordinate (degrees) */ 
-  double min_lat;  /* Geodetic latitude coordinate (degrees) */ 
-  double max_lon;  /* Geodetic longitude coordinate (degrees) */ 
-  double max_lat;  /* Geodetic latitude coordinate (degrees) */ 
-  bool is_fill;    /* Flag to indicate whether the point is a fill value; */
-} Geo_bounds_t;
 
 typedef struct {
 int *computed;

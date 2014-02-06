@@ -14,6 +14,15 @@
  Robert Wolfe
  Added handling for SDS's with ranks greater than 2.
 
+ Modified on 8/17/2012 by Gail Schmidt, USGS EROS
+  When freeing the thermal band in FreeInput, the QA SDS is not valid
+  and should not be attempted to be freed.  OpenInput does not read the
+  QA for the thermal band.
+  
+ Revision 2.0 2014/01/24
+ Gail Schmidt, USGS EROS
+ Modified to use ESPA internal raw binary format
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -34,11 +43,6 @@
       robert.e.wolfe.1@gsfc.nasa.gov    4400 Forbes Blvd.
       phone: 301-614-5508               Lanham, MD 20770  
 
-	  Modified on 8/17/2012 by Gail Schmidt, USGS EROS
-	  When freeing the thermal band in FreeInput, the QA SDS is not valid
-	  and should not be attempted to be freed.  OpenInput does not read the
-	  QA for the thermal band.
-  
  ! Design Notes:
    1. The following public functions handle the input data:
 
@@ -48,7 +52,6 @@
 
    2. 'OpenInput' must be called before any of the other routines.  
    3. 'FreeInput' should be used to free the 'input' data structure.
-   4. The only input file type supported is HDF.
 
 !END****************************************************************************
 */
@@ -65,11 +68,9 @@
 #define SDS_CSM ("cloud_snow_mask")
 #define INPUT_FILL (-9999)
 
-#define INPUT_PROVIDER ("DataProvider")
 #define INPUT_SAT ("Satellite")
 #define INPUT_INST ("Instrument")
 #define INPUT_ACQ_DATE ("AcquisitionDate")
-#define INPUT_PROD_DATE ("Level1ProductionDate")
 #define INPUT_SUN_ZEN ("SolarZenith")
 #define INPUT_SUN_AZ ("SolarAzimuth")
 #define INPUT_WRS_SYS ("WRS_System")
@@ -77,10 +78,6 @@
 #define INPUT_WRS_ROW ("WRS_Row")
 #define INPUT_NBAND ("NumberOfBands")
 #define INPUT_BANDS ("BandNumbers")
-#define INPUT_REFL_GAINS ("ReflGains")
-#define INPUT_REFL_BIAS ("ReflBias")
-#define INPUT_TH_GAIN ("ThermalGain")
-#define INPUT_TH_BIAS ("ThermalBias")
 
 #define N_LSAT_WRS1_ROWS  (251)
 #define N_LSAT_WRS1_PATHS (233)
@@ -88,397 +85,80 @@
 #define N_LSAT_WRS2_PATHS (233)
 
 /* Functions */
-
-Input_t *OpenInput(char *file_name)
+Input_t *OpenInput(Espa_internal_meta_t *metadata, bool thermal)
 /* 
 !C******************************************************************************
 
 !Description: 'OpenInput' sets up the 'input' data structure, opens the
- input file for read access.
+ input raw binary files for read access.
  
 !Input Parameters:
- file_name      input file name
- sds_name       name of sds to be read
- iband          band number for application of band offset
- rank           rank of the input SDS
- dim            dimension flags; the line and sample dimensions are 
-                indicated by a -1 and -2 in this array, respectively;
-		the index in the other dimensions are indicated by a value 
-		of zero or greater
- input_space_type  input space type; either 'SWATH_SPACE' for L1 and L2 input 
-                data or 'GRID_SPACE' for L2G, L3 and L4 input data
+ metadata     'Espa_internal_meta_t' data structure with XML info
+ thermal      boolean to indicate if thermal data is being processed
 
 !Output Parameters:
- dim            dimension flags
  (returns)      'input' data structure or NULL when an error occurs
 
 !Team Unique Header:
 
- ! Design Notes:
-   1. When 'OpenInput' returns, the file is open for HDF access and the 
-      SDS is open for access.
-   2. For an input space type of 'GRID_SPACE', a band number of -1 should be 
-      given.
-   3. The only input HDF data types supported are CHAR8, UNIT8, INT16 and
-      UNIT16.
-   4. An error status is returned when:
-       a. the SDS rank is less than 2 or greater than 'MYHDF_MAX_RANK'
-       b. the band number is less than -1 or greater than or equal to
-          'NBAND_OFFSET'
-       c. either none or more than one dimension is given for the line 
-          or sample dimension
-       d. an invalid dimension field is given
-       e. duplicating strings is not successful
-       f. errors occur when opening the input HDF file
-       g. errors occur when reading SDS dimensions or attributes
-       h. errors occur when opening the SDS for read access
-       i. the given SDS rank or dimensions do not match the input file
-       j. for a input space type of SWATH_SPACE, the dimensions of a swath 
-          are not 1, 2 or 4 times the nominal size of a MODIS swath
-       k. for a input space type of SWATH_SPACE, the number of lines is not 
-          an integral multiple of the size of the scan at the given resolution
-       l. memory allocation is not successful
-       m. an invalid input data type is not supported.
-   5. Error messages are handled with the 'RETURN_ERROR' macro.
-   6. 'FreeInput' should be called to deallocate memory used by the 
-      'input' data structures.
-   7. 'CloseInput' should be called after all of the data is written and 
-      before the 'input' data structure memory is released.
-
 !END****************************************************************************
 */
 {
-  Input_t *this;
+  Input_t *this = NULL;
   char *error_string = (char *)NULL;
-  char sds_name[40];
-  int ir;
-  bool sds_open[NBAND_REFL_MAX],qa_sds_open;
-  Myhdf_dim_t *dim[2];
-  int ib,read_qa;
-  int16 *buf;
+  int ib;
 
   /* Create the Input data structure */
-
   this = (Input_t *)malloc(sizeof(Input_t));
   if (this == (Input_t *)NULL) 
-    RETURN_ERROR("allocating Input data structure", "OpenInput", 
-                 (Input_t *)NULL);
+    RETURN_ERROR("allocating Input data structure", "OpenInput", NULL);
 
-  /* Populate the data structure */
-
-  this->file_name = DupString(file_name);
-  if (this->file_name == (char *)NULL) {
+  /* Initialize and get input from header file */
+  if (!GetXMLInput (this, metadata, thermal)) {
     free(this);
-    RETURN_ERROR("duplicating file name", "OpenInput", (Input_t *)NULL);
+    this = NULL;
+    RETURN_ERROR("getting input from header file", "OpenInput", NULL);
   }
 
-  /* Open file for SD access */
-
-  this->sds_file_id = SDstart((char *)file_name, DFACC_RDONLY);
-  if (this->sds_file_id == HDF_ERROR) {
-    free(this->file_name);
-    free(this);  
-    RETURN_ERROR("opening input file", "OpenInput", 
-                 (Input_t *)NULL); 
-  }
-  this->open = true;
-
-  /* Get the input metadata */
-
-  if (!GetInputMeta(this)) {
-    free(this->file_name);
-    free(this);  
-    RETURN_ERROR("getting input metadata", "OpenInput", 
-                 (Input_t *)NULL); 
+  /* Open TOA reflectance files for access */
+  for (ib = 0; ib < this->nband; ib++) {
+    this->fp_bin[ib] = fopen(this->file_name[ib], "r");
+    if (this->fp_bin[ib] == NULL) {
+      error_string = "opening input TOA binary file";
+      break;
+    }
+    this->open[ib] = true;
   }
 
-  if (this->nband == 1)
-    read_qa=0;  /* do not read qa if thermal file */
+  /* Open QA file for access */
+  this->fp_bin_qa = fopen(this->file_name_qa, "r");
+  if (this->fp_bin_qa == NULL) 
+    error_string = "opening QA binary file";
   else
-    read_qa=1;
+    this->open_qa = true;
 
-  /* Get SDS information and start SDS access */
-
-  for (ib = 0; ib < this->nband; ib++) {
-    this->sds[ib].name = (char *)NULL;
-    this->sds[ib].dim[0].name = (char *)NULL;
-    this->sds[ib].dim[1].name = (char *)NULL;
-    sds_open[ib] = false;
-    this->buf[ib] = (int16 *)NULL;
-  }
-  this->qa_sds.name = (char *)NULL;
-  this->qa_sds.dim[0].name = (char *)NULL;
-  this->qa_sds.dim[1].name = (char *)NULL;
-  qa_sds_open = false;
-  this->qabuf = (int8 *)NULL;
-
-  for (ib = 0; ib < this->nband; ib++) {
-
-    if (sprintf(sds_name, "%s%d", SDS_PREFIX, this->meta.iband[ib]) < 0) {
-      error_string = "creating SDS name";
-      break;
-    }
-
-    this->sds[ib].name = DupString(sds_name);
-    if (this->sds[ib].name == (char *)NULL) {
-      error_string = "setting SDS name";
-      break;
-    }
-
-    if (!GetSDSInfo(this->sds_file_id, &this->sds[ib])) {
-      error_string = "getting sds info";
-      break;
-    }
-    sds_open[ib] = true;
-
-    /* Check rank */
-
-    if (this->sds[ib].rank != 2) {
-      error_string = "invalid rank";
-      break;
-    }
-
-    /* Check SDS type */
-
-    if (this->sds[ib].type != DFNT_INT16) {
-      error_string = "invalid number type";
-      break;
-    }
-
-    /* Get dimensions */
-
-    for (ir = 0; ir < this->sds[ib].rank; ir++) {
-      dim[ir] = &this->sds[ib].dim[ir];
-      if (!GetSDSDimInfo(this->sds[ib].id, dim[ir], ir)) {
-        error_string = "getting dimensions";
-        break;
-      }
-    }
-
-    if (error_string != (char *)NULL) break;
-
-    /* Save and check line and sample dimensions */
-
-    if (ib == 0) {
-      this->size.l = dim[0]->nval;
-      this->size.s = dim[1]->nval;
-    } else {
-      if (this->size.l != dim[0]->nval) {
-        error_string = "all line dimensions do not match";
-        break;
-      }
-      if (this->size.s != dim[1]->nval) {
-        error_string = "all sample dimensions do not match";
-        break;
-      }
-    }
-
-  }
-
-
-  if (read_qa) {
-    strcpy(sds_name, "lndcal_QA");
-    this->qa_sds.name = DupString(sds_name);
-    if (this->qa_sds.name == (char *)NULL) {
-      error_string = "setting qa SDS name";
-    }
-
-    if (!GetSDSInfo(this->sds_file_id, &this->qa_sds)) {
-      error_string = "getting qa sds info";
-    }
-    qa_sds_open = true;
-
-    /* Check rank */
-
-    if (this->qa_sds.rank != 2) {
-      error_string = "invalid qa rank";
-    }
-
-    /* Check SDS type */
-    if (this->qa_sds.type != DFNT_UINT8) {
-      error_string = "invalid qa number type";
-    }
-
-    /* Get dimensions */
-    for (ir = 0; ir < this->qa_sds.rank; ir++) {
-      dim[ir] = &this->qa_sds.dim[ir];
-      if (!GetSDSDimInfo(this->qa_sds.id, dim[ir], ir)) {
-        error_string = "getting qa dimensions";
-        break;
-      }
-    }
-
-    /* Save and check line and sample dimensions */
-
-     if (this->size.l != dim[0]->nval) {
-       error_string = "all line dimensions do not match";
-     }
-     if (this->size.s != dim[1]->nval) {
-       error_string = "all sample dimensions do not match";
-     }
-    /* Allocate QA buffer */
-   this->qabuf=(int8 *)calloc((size_t) this->size.s, sizeof(int8));
-    if (this->qabuf == (int8 *)NULL)
-      error_string = "allocating qa input buffer";
-  }
-
-  /* Allocate input buffer */
-
-  if (sizeof(int16) != sizeof(int)) {
-    buf = (int16 *)calloc((size_t)(this->size.s * this->nband), sizeof(int16));
-    if (buf == (int16 *)NULL)
-      error_string = "allocating input buffer";
-    else {
-      this->buf[0] = buf;
-      for (ib = 1; ib < this->nband; ib++)
-        this->buf[ib] = this->buf[ib - 1] + this->size.s;
-    }
-  }
-
-  if (error_string != (char *)NULL) {
+  if (error_string != NULL) {
     for (ib = 0; ib < this->nband; ib++) {
-      for (ir = 0; ir < this->sds[ib].rank; ir++) {
-        if (this->sds[ib].dim[ir].name != (char *)NULL)
-          free(this->sds[ib].dim[ir].name);
+      free(this->file_name[ib]);
+      this->file_name[ib] = NULL;
+
+      if (this->open[ib]) {
+        fclose(this->fp_bin[ib]);
+        this->open[ib] = false;
       }
-      if (sds_open[ib])
-        SDendaccess(this->sds[ib].id);
-      if (this->sds[ib].name != (char *)NULL)
-        free(this->sds[ib].name);
-      if (this->buf[ib] != (int16 *)NULL)
-        free(this->buf[ib]);
-
     }
-	if (qa_sds_open)
-	    SDendaccess(this->qa_sds.id);
-    for (ir = 0; ir < this->qa_sds.rank; ir++) {
-	    if (this->qa_sds.dim[ir].name != (char *)NULL)
-          free(this->qa_sds.dim[ir].name);
-    }
-    if (this->qa_sds.name != (char *)NULL)
-        free(this->qa_sds.name);
-    if (this->qabuf != (int8 *)NULL)
-        free(this->qabuf);
-
-    SDend(this->sds_file_id);
-    free(this->file_name);
+    free(this->file_name_qa);
+    this->file_name_qa = NULL;
+    fclose(this->fp_bin_qa);  
+    this->open_qa = false;
     free(this);
-    RETURN_ERROR(error_string, "OpenInput", (Input_t *)NULL);
+    this = NULL;
+    RETURN_ERROR(error_string, "OpenInput", NULL);
   }
 
   return this;
 }
 
-InputMask_t *OpenInputMask(char *file_name)
-{
-  InputMask_t *this;
-  char *error_string = (char *)NULL;
-  int ir;
-  bool sds_open[NBAND_REFL_MAX];
-  Myhdf_dim_t *dim[2];
-  uint8 *buf;
-
-  /* Create the Input data structure */
-
-  this = (InputMask_t *)malloc(sizeof(InputMask_t));
-  if (this == (InputMask_t *)NULL) 
-    RETURN_ERROR("allocating Input data structure", "OpenInput", 
-                 (InputMask_t *)NULL);
-
-  /* Populate the data structure */
-
-  this->file_name = DupString(file_name);
-  if (this->file_name == (char *)NULL) {
-    free(this);
-    RETURN_ERROR("duplicating file name", "OpenInput", (InputMask_t *)NULL);
-  }
-  /* Open file for SD access */
-
-  this->sds_file_id = SDstart((char *)file_name, DFACC_RDONLY);
-  if (this->sds_file_id == HDF_ERROR) {
-    free(this->file_name);
-    free(this);  
-    RETURN_ERROR("opening input file", "OpenInput", 
-                 (InputMask_t *)NULL); 
-  }
-  this->open = true;
-
-  /* Get SDS information and start SDS access */
-
-  this->sds[0].name = (char *)NULL;
-  this->sds[0].dim[0].name = (char *)NULL;
-  this->sds[0].dim[1].name = (char *)NULL;
-  sds_open[0] = false;
-  this->buf[0] = (uint8 *)NULL;
-
-  this->sds[0].name = DupString(SDS_CSM);
-  if (this->sds[0].name == (char *)NULL) {
-    error_string = "setting SDS name";
-  }
-
-  if (!GetSDSInfo(this->sds_file_id, &this->sds[0])) {
-    error_string = "getting sds info";
-  }
-  sds_open[0] = true;
-
-    /* Check rank */
-
-  if (this->sds[0].rank != 2) {
-    error_string = "invalid rank";
-  }
-
-    /* Check SDS type */
-
-  if (this->sds[0].type != DFNT_UINT8) {
-    error_string = "invalid number type";
-  }
-
-    /* Get dimensions */
-
-  for (ir = 0; ir < this->sds[0].rank; ir++) {
-    dim[ir] = &this->sds[0].dim[ir];
-    if (!GetSDSDimInfo(this->sds[0].id, dim[ir], ir)) {
-      error_string = "getting dimensions";
-      break;
-    }
-  }
-
-    /* Save and check line and sample dimensions */
-
-    this->size.l = dim[0]->nval;
-    this->size.s = dim[1]->nval;
-
-  /* Allocate input buffer */
-
-  if (sizeof(uint8) != sizeof(unsigned char)) {
-    buf = (uint8 *)calloc((size_t)(this->size.s), sizeof(uint8));
-    if (buf == (uint8 *)NULL)
-      error_string = "allocating input buffer";
-    else {
-      this->buf[0] = buf;
-    }
-  }
-
-  if (error_string != (char *)NULL) {
-    for (ir = 0; ir < this->sds[0].rank; ir++) {
-      if (this->sds[0].dim[ir].name != (char *)NULL)
-        free(this->sds[0].dim[ir].name);
-      }
-    if (sds_open[0])
-      SDendaccess(this->sds[0].id);
-    if (this->sds[0].name != (char *)NULL)
-      free(this->sds[0].name);
-    if (this->buf[0] != (uint8 *)NULL)
-      free(this->buf[0]);
-
-    SDend(this->sds_file_id);
-    free(this->file_name);
-    free(this);
-    RETURN_ERROR(error_string, "OpenInputMask", (InputMask_t *)NULL);
-  }
-
-  return this;
-}
 
 bool CloseInput(Input_t *this)
 /* 
@@ -499,50 +179,37 @@ bool CloseInput(Input_t *this)
 
 !Team Unique Header:
 
- ! Design Notes:
-   1. An error status is returned when:
-       a. the file is not open for access
-       b. an error occurs when closing access to the SDS.
-   2. Error messages are handled with the 'RETURN_ERROR' macro.
-   3. 'OpenInput' must be called before this routine is called.
-   4. 'FreeInput' should be called to deallocate memory used by the 
-      'input' data structure.
-
 !END****************************************************************************
 */
 {
   int ib;
+  bool none_open;
 
-  if (!this->open)
-    RETURN_ERROR("file not open", "CloseInput", false);
+  if (this == NULL) 
+    RETURN_ERROR("invalid input structure", "CloseInput", false);
 
+  none_open = true;
   for (ib = 0; ib < this->nband; ib++) {
-    if (SDendaccess(this->sds[ib].id) == HDF_ERROR) 
-      RETURN_ERROR("ending sds access", "CloseInput", false);
+    if (this->open[ib]) {
+      none_open = false;
+      fclose(this->fp_bin[ib]);
+      this->open[ib] = false;
+    }
   }
 
-  if (SDendaccess(this->qa_sds.id) == HDF_ERROR)
-      RETURN_ERROR("ending qa sds access", "CloseInput", false);
+  /*** now close the QA file ***/
+  if (this->open_qa) 
+  {
+    fclose(this->fp_bin_qa);
+    this->open_qa = false;
+  }
 
-  SDend(this->sds_file_id);
-  this->open = false;
-
-  return true;
-}
-
-bool CloseInputMask(InputMask_t *this)
-{
-  if (!this->open)
-    RETURN_ERROR("file not open", "CloseInputMask", false);
-
-  if (SDendaccess(this->sds[0].id) == HDF_ERROR) 
-    RETURN_ERROR("ending sds access", "CloseInputMask", false);
-
-  SDend(this->sds_file_id);
-  this->open = false;
+  if (none_open)
+    RETURN_ERROR("no files open", "CloseInput", false);
 
   return true;
 }
+
 
 bool FreeInput(Input_t *this)
 /* 
@@ -551,8 +218,7 @@ bool FreeInput(Input_t *this)
 !Description: 'FreeInput' frees the 'input' data structure memory.
  
 !Input Parameters:
- this           'input' data structure; the following fields are input:
-                   sds.rank, sds.dim[*].name, sds.name, file_name
+ this           'input' data structure
 
 !Output Parameters:
  (returns)      status:
@@ -560,475 +226,78 @@ bool FreeInput(Input_t *this)
 
 !Team Unique Header:
 
- ! Design Notes:
-   1. 'OpenInput' and 'CloseInput' must be called before this routine is called.
-   2. An error status is never returned.
-
 !END****************************************************************************
 */
 {
-  int ib, ir;
+  int ib;
 
   if (this != (Input_t *)NULL) {
     for (ib = 0; ib < this->nband; ib++) {
-      for (ir = 0; ir < this->sds[ib].rank; ir++) {
-        if (this->sds[ib].dim[ir].name != (char *)NULL) 
-          free(this->sds[ib].dim[ir].name);
-      }
-      if (this->sds[ib].name != (char *)NULL) 
-        free(this->sds[ib].name);
+      free(this->file_name[ib]);
+      this->file_name[ib] = NULL;
     }
+    free(this->file_name_qa);
+    this->file_name_qa = NULL;
 
-	/* If the nband count is 1, then this is the thermal band and no QA
-	 * data was read for that band.  Thus it can't be freed and the rank is
-	 * invalid */
-	if (this->nband > 1)
-    {
-        for (ir = 0; ir < this->qa_sds.rank; ir++) {
-          if (this->qa_sds.dim[ir].name != (char *)NULL) 
-            free(this->qa_sds.dim[ir].name);
-    }
-    if (this->qa_sds.name != (char *)NULL) 
-      free(this->qa_sds.name);
-	}
-
-    if (this->buf[0] != (int16 *)NULL)
-      free(this->buf[0]);
-    if (this->qabuf != (int8 *)NULL)
-      free(this->qabuf);
-
-    if (this->file_name != (char *)NULL) free(this->file_name);
     free(this);
+    this = NULL;
   }
 
   return true;
 }
 
-bool FreeInputMask(InputMask_t *this)
+
+bool GetInputLine(Input_t *this, int iband, int iline, int16 *line)
 {
-  int ir;
-
-  if (this != (InputMask_t *)NULL) {
-
-      for (ir = 0; ir < this->sds[0].rank; ir++) {
-        if (this->sds[0].dim[ir].name != (char *)NULL) 
-          free(this->sds[0].dim[ir].name);
-      }
-      if (this->sds[0].name != (char *)NULL) 
-        free(this->sds[0].name);
-
-    if (this->buf[0] != (uint8 *)NULL)
-      free(this->buf[0]);
-    if (this->file_name != (char *)NULL) free(this->file_name);
-    free(this);
-  }
-
-  return true;
-}
-
-bool GetInputLine(Input_t *this, int iband, int iline, int *line)
-/* 
-!C******************************************************************************
-
-!Description: 'WriteOutput' writes a line of data to the output file.
- 
-!Input Parameters:
- this           'output' data structure; the following fields are input:
-                   open, size, sds.id
- iline          output line number
- buf            buffer of data to be written
-
-!Output Parameters:
- this           'output' data structure; the following fields are modified:
- (returns)      status:
-                  'true' = okay
-		  'false' = error return
-
-!Team Unique Header:
-
- ! Design Notes:
-   1. An error status is returned when:
-       a. the file is not open for access
-       b. the line number is invalid (< 0; >= 'this->size.l')
-       b. an error occurs when writting to the SDS.
-   2. Error messages are handled with the 'RETURN_ERROR' macro.
-   3. 'OutputFile' must be called before this routine is called.
-
-!END****************************************************************************
-*/
-{
-  int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
-  void *buf;
-  int is;
+  long loc;
+  void *buf_void = NULL;
 
   /* Check the parameters */
-
-  if (this == (Input_t *)NULL) 
+  if (this == NULL) 
     RETURN_ERROR("invalid input structure", "GetIntputLine", false);
-  if (!this->open)
-    RETURN_ERROR("file not open", "GetInputLine", false);
-  if (iband < 0  ||  iband >= this->nband)
-    RETURN_ERROR("invalid band number", "GetInputLine", false);
-  if (iline < 0  ||  iline >= this->size.l)
-    RETURN_ERROR("invalid line number", "GetInputLine", false);
-
-  if (sizeof(int16) == sizeof(int))
-    buf = (void *)line;
-  else
-    buf = (void *)this->buf[iband];
+  if (iband < 0 || iband >= this->nband)
+    RETURN_ERROR("band number out of range", "GetInputLine", false);
+  if (iline < 0 || iline >= this->size.l)
+    RETURN_ERROR("line number out of range", "GetInputLine", false);
+  if (!this->open[iband])
+    RETURN_ERROR("band not open", "GetInputLine", false);
 
   /* Read the data */
-
-  start[0] = iline;
-  start[1] = 0;
-  nval[0] = 1;
-  nval[1] = this->size.s;
-
-  if (SDreaddata(this->sds[iband].id, start, NULL, nval, buf) == HDF_ERROR)
-    RETURN_ERROR("reading input", "GetInputLine", false);
-
-  if (sizeof(int16) != sizeof(int)) {
-    for (is = 0; is < this->size.s; is++) 
-      line[is] = (int)this->buf[iband][is];
-  }
+  buf_void = (void *)line;
+  loc = (long) (iline * this->size.s * sizeof(int16));
+  if (fseek(this->fp_bin[iband], loc, SEEK_SET))
+    RETURN_ERROR("error seeking line (binary)", "GetInputLine", false);
+  if (fread(buf_void, sizeof(int16), (size_t)this->size.s, 
+            this->fp_bin[iband]) != (size_t)this->size.s)
+    RETURN_ERROR("error reading line (binary)", "GetInputLine", false);
 
   return true;
 }
 
-bool GetInputQALine(Input_t *this, int iline, int8 *line)
+
+bool GetInputQALine(Input_t *this, int iline, uint8 *line) 
 {
-  int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
-  void *buf;
+  long loc;
+  void *buf_void = NULL;
 
-  /* Check the parameters */
+  if (this == NULL) 
+    RETURN_ERROR("invalid input structure", "GetInputQALine", false);
+  if (iline < 0  ||  iline >= this->size.l) 
+    RETURN_ERROR("line index out of range", "GetInputQALine", false);
+  if (!this->open_qa)
+    RETURN_ERROR("QA band not open", "GetInputQALine", false);
 
-  if (this == (Input_t *)NULL) 
-    RETURN_ERROR("invalid input structure", "GetIntputLine", false);
-  if (!this->open)
-    RETURN_ERROR("file not open", "GetInputLine", false);
-  if (iline < 0  ||  iline >= this->size.l)
-    RETURN_ERROR("invalid line number", "GetInputLine", false);
-
-  buf = (void *)line;
-
-  /* Read the data */
-
-  start[0] = iline;
-  start[1] = 0;
-  nval[0] = 1;
-  nval[1] = this->size.s;
-
-  if (SDreaddata(this->qa_sds.id, start, NULL, nval, buf) == HDF_ERROR)
-    RETURN_ERROR("reading input", "GetInputLine", false);
+  buf_void = (void *)line;
+  loc = (long) (iline * this->size.s * sizeof(uint8));
+  if (fseek(this->fp_bin_qa, loc, SEEK_SET))
+    RETURN_ERROR("error seeking line (binary)", "GetInputQALine", false);
+  if (fread(buf_void, sizeof(uint8), (size_t)this->size.s, 
+            this->fp_bin_qa) != (size_t)this->size.s)
+    RETURN_ERROR("error reading line (binary)", "GetInputQALine", false);
 
   return true;
 }
 
-bool GetInputMaskLine(InputMask_t *this, int iline, char *line)
-{
-  int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
-  void *buf;
-  int is;
-
-  /* Check the parameters */
-
-  if (this == (InputMask_t *)NULL) 
-    RETURN_ERROR("invalid input structure", "GetIntputLine", false);
-  if (!this->open)
-    RETURN_ERROR("file not open", "GetInputLine", false);
-  if (iline < 0  ||  iline >= this->size.l)
-    RETURN_ERROR("invalid line number", "GetInputLine", false);
-
-  if (sizeof(uint8) == sizeof(unsigned char)) 
-    buf = (void *)line;
-  else
-    buf = (void *)this->buf[0];
-
-  /* Read the data */
-
-  start[0] = iline;
-  start[1] = 0;
-  nval[0] = 1;
-  nval[1] = this->size.s;
-
-
-  if (SDreaddata(this->sds[0].id, start, NULL, nval, buf) == HDF_ERROR)
-    RETURN_ERROR("reading input", "GetInputMaskLine", false);
-
-  if (sizeof(uint8) != sizeof(unsigned char)) {
-    for (is = 0; is < this->size.s; is++) 
-      line[is] = (int)this->buf[0][is];
-  }
-
-  return true;
-}
-
-bool GetInputMeta(Input_t *this) 
-{
-  Myhdf_attr_t attr;
-  double dval[NBAND_REFL_MAX];
-  char string[MAX_STR_LEN + 1];
-  char date[MAX_DATE_LEN + 1];
-  int ib;
-  Input_meta_t *meta;
-  char *error_string;
-
-  /* Check the parameters */
-
-  if (!this->open)
-    RETURN_ERROR("file not open", "GetInputMeta", false);
-
-  meta = &this->meta;
-  meta->fill = INPUT_FILL;
-
-  /* Read the metadata */
-
-  attr.type = DFNT_CHAR8;
-  attr.nval = MAX_STR_LEN;
-  attr.name = INPUT_PROVIDER;
-  if (!GetAttrString(this->sds_file_id, &attr, string))
-    RETURN_ERROR("reading attribute (data provider)", "GetInputMeta", false);
-  meta->provider = (Provider_t)KeyString(string, attr.nval, Provider_string, 
-		                         (int)PROVIDER_NULL, (int)PROVIDER_MAX);
-  if (meta->provider == PROVIDER_NULL)
-    RETURN_ERROR("invalid input metadata (data provider)", 
-                 "GetInputMeta", false);
-
-  attr.type = DFNT_CHAR8;
-  attr.nval = MAX_STR_LEN;
-  attr.name = INPUT_SAT;
-  if (!GetAttrString(this->sds_file_id, &attr, string))
-    RETURN_ERROR("reading attribute (instrument)", "GetInputMeta", false);
-  meta->sat = (Sat_t)KeyString(string, attr.nval, Sat_string, 
-		               (int)SAT_NULL, (int)SAT_MAX);
-  if (meta->sat == SAT_NULL)
-    RETURN_ERROR("invalid input metadata (satellite)", "GetInputMeta", false);
-
-  attr.type = DFNT_CHAR8;
-  attr.nval = MAX_STR_LEN;
-  attr.name = INPUT_INST;
-  if (!GetAttrString(this->sds_file_id, &attr, string))
-    RETURN_ERROR("reading attribute (instrument)", "GetInputMeta", false);
-  meta->inst = (Inst_t)KeyString(string, attr.nval, Inst_string, 
-		                 (int)INST_NULL, (int)INST_MAX);
-  if (meta->inst == INST_NULL)
-    RETURN_ERROR("invalid input metadata (instrument)", "GetInputMeta", false);
-
-  attr.type = DFNT_CHAR8;
-  attr.nval = MAX_DATE_LEN;
-  attr.name = INPUT_ACQ_DATE;
-  if (!GetAttrString(this->sds_file_id, &attr, date))
-    RETURN_ERROR("reading attribute (acquisition date)", "GetInputMeta", false);
-  if (!DateInit(&meta->acq_date, date, DATE_FORMAT_DATEA_TIME))
-    RETURN_ERROR("converting acquisition date", "GetInputMeta", false);
-
-  attr.type = DFNT_CHAR8;
-  attr.nval = MAX_DATE_LEN;
-  attr.name = INPUT_PROD_DATE;
-  if (!GetAttrString(this->sds_file_id, &attr, date))
-    RETURN_ERROR("reading attribute (production date)", "GetInputMeta", false);
-  if (!DateInit(&meta->prod_date, date, DATE_FORMAT_DATEA_TIME))
-    RETURN_ERROR("converting production date", "GetInputMeta", false);
-
-  attr.type = DFNT_FLOAT32;
-  attr.nval = 1;
-  attr.name = INPUT_SUN_ZEN;
-  if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("reading attribute (solar zenith)", "GetInputMeta", false);
-  if (attr.nval != 1) 
-    RETURN_ERROR("invalid number of values (solar zenith)", 
-                  "GetInputMeta", false);
-  if (dval[0] < -90.0  ||  dval[0] > 90.0)
-    RETURN_ERROR("solar zenith angle out of range", "GetInputMeta", false);
-  meta->sun_zen = (float)(dval[0] * RAD);
-
-  attr.type = DFNT_FLOAT32;
-  attr.nval = 1;
-  attr.name = INPUT_SUN_AZ;
-  if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("reading attribute (solar azimuth)", "GetInputMeta", false);
-  if (attr.nval != 1) 
-    RETURN_ERROR("invalid number of values (solar azimuth)", 
-                 "GetInputMeta", false);
-  if (dval[0] < -360.0  ||  dval[0] > 360.0)
-    RETURN_ERROR("solar azimuth angle out of range", "GetInputMeta", false);
-  meta->sun_az = (float)(dval[0] * RAD);
-
-  attr.type = DFNT_CHAR8;
-  attr.nval = MAX_STR_LEN;
-  attr.name = INPUT_WRS_SYS;
-  if (!GetAttrString(this->sds_file_id, &attr, string))
-    RETURN_ERROR("reading attribute (WRS system)", "GetInputMeta", false);
-  meta->wrs_sys = (Wrs_t)KeyString(string, attr.nval, Wrs_string, 
-		                       (int)WRS_NULL, (int)WRS_MAX);
-  if (meta->wrs_sys == WRS_NULL)
-    RETURN_ERROR("invalid input metadata (WRS sytem)", "GetInputMeta", false);
-
-  attr.type = DFNT_INT16;
-  attr.nval = 1;
-  attr.name = INPUT_WRS_PATH;
-  if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("reading attribute (WRS path)", "GetInputMeta", false);
-  if (attr.nval != 1) 
-    RETURN_ERROR("invalid number of values (WRS path)", "GetInputMeta", false);
-  meta->ipath = (int)floor(dval[0] + 0.5);
-  if (meta->ipath < 1) 
-    RETURN_ERROR("WRS path out of range", "GetInputMeta", false);
-
-  attr.type = DFNT_INT16;
-  attr.nval = 1;
-  attr.name = INPUT_WRS_ROW;
-  if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("reading attribute (WRS row)", "GetInputMeta", false);
-  if (attr.nval != 1) 
-    RETURN_ERROR("invalid number of values (WRS row)", "GetInputMeta", false);
-  meta->irow = (int)floor(dval[0] + 0.5);
-  if (meta->irow < 1) 
-    RETURN_ERROR("WRS path out of range", "GetInputMeta", false);
-
-  attr.type = DFNT_INT8;
-  attr.nval = 1;
-  attr.name = INPUT_NBAND;
-  if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("reading attribute (number of bands)", "GetInputMeta", false);
-  if (attr.nval != 1) 
-    RETURN_ERROR("invalid number of values (number of bands)", 
-                 "GetInputMeta", false);
-  this->nband = (int)floor(dval[0] + 0.5);
-  if (this->nband < 1  ||  this->nband > NBAND_REFL_MAX) 
-    RETURN_ERROR("number of bands out of range", "GetInputMeta", false);
-
-  attr.type = DFNT_INT8;
-  attr.nval = this->nband;
-  attr.name = INPUT_BANDS;
-  if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-    RETURN_ERROR("reading attribute (band numbers)", "GetInputMeta", false);
-  if (attr.nval != this->nband) 
-    RETURN_ERROR("invalid number of values (band numbers)", 
-                 "GetInputMeta", false);
-  for (ib = 0; ib < this->nband; ib++) {
-    meta->iband[ib] = (int)floor(dval[ib] + 0.5);
-    if (meta->iband[ib] < 1)
-      RETURN_ERROR("band number out of range", "GetInputMeta", false);
-  }
-
-  /* Read the gains and biases.  If there is only one band, then assume
-     that's the thermal product. */
-
-  if (this->nband != 1) {
-    attr.type = DFNT_FLOAT32;
-    attr.nval = this->nband;
-    attr.name = INPUT_REFL_GAINS;
-    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-      RETURN_ERROR("reading attribute (reflectance gains)", "GetInputMeta",
-          false);
-    if (attr.nval != this->nband) 
-      RETURN_ERROR("invalid number of values (reflectance gains)", 
-                   "GetInputMeta", false);
-    for (ib = 0; ib < this->nband; ib++)
-      meta->gains[ib] = (float) dval[ib];
-
-    attr.type = DFNT_FLOAT32;
-    attr.nval = this->nband;
-    attr.name = INPUT_REFL_BIAS;
-    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-      RETURN_ERROR("reading attribute (reflectance biases)", "GetInputMeta",
-          false);
-    if (attr.nval != this->nband) 
-      RETURN_ERROR("invalid number of values (reflectance biases)", 
-                   "GetInputMeta", false);
-    for (ib = 0; ib < this->nband; ib++)
-      meta->bias[ib] = (float) dval[ib];
-  }
-  else {
-    attr.type = DFNT_FLOAT32;
-    attr.nval = this->nband;
-    attr.name = INPUT_TH_GAIN;
-    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-      RETURN_ERROR("reading attribute (reflectance gains)", "GetInputMeta",
-        false);
-    if (attr.nval != this->nband) 
-      RETURN_ERROR("invalid number of values (thermal gains)", "GetInputMeta",
-        false);
-    meta->th_gain = (float) dval[0];
-
-    attr.type = DFNT_FLOAT32;
-    attr.nval = this->nband;
-    attr.name = INPUT_TH_BIAS;
-    if (!GetAttrDouble(this->sds_file_id, &attr, dval))
-      RETURN_ERROR("reading attribute (thermal bias)", "GetInputMeta",
-        false);
-    if (attr.nval != this->nband) 
-      RETURN_ERROR("invalid number of values (thermal bias)", "GetInputMeta",
-        false);
-    meta->th_bias = (float) dval[0];
-  }
-
-  /* Check WRS path/rows */
-
-  error_string = (char *)NULL;
-
-  if (meta->wrs_sys == WRS_1) {
-    if (meta->ipath > N_LSAT_WRS1_PATHS)
-      error_string = "WRS path number out of range";
-    else if (meta->irow > N_LSAT_WRS1_ROWS)
-      error_string = "WRS row number out of range";
-  } else if (meta->wrs_sys == WRS_2) {
-    if (meta->ipath > N_LSAT_WRS2_PATHS)
-      error_string = "WRS path number out of range";
-    else if (meta->irow > N_LSAT_WRS2_ROWS)
-      error_string = "WRS row number out of range";
-  } else
-    error_string = "invalid WRS system";
-
-  if (error_string != (char *)NULL)
-    RETURN_ERROR(error_string, "GetInputMeta", false);
-
-  /* Check satellite/instrument combination */
-  
-  if (meta->inst == INST_MSS) {
-    if (meta->sat != SAT_LANDSAT_1  &&  
-        meta->sat != SAT_LANDSAT_2  &&
-        meta->sat != SAT_LANDSAT_3  &&  
-	  meta->sat != SAT_LANDSAT_4  &&
-        meta->sat != SAT_LANDSAT_5)
-      error_string = "invalid insturment/satellite combination";
-  } else if (meta->inst == INST_TM) {
-    if (meta->sat != SAT_LANDSAT_4  &&  
-        meta->sat != SAT_LANDSAT_5)
-      error_string = "invalid insturment/satellite combination";
-  } else if (meta->inst == INST_ETM) {
-    if (meta->sat != SAT_LANDSAT_7)
-      error_string = "invalid insturment/satellite combination";
-  } else
-    error_string = "invalid instrument type";
-
-  if (error_string != (char *)NULL)
-    RETURN_ERROR(error_string, "GetInputMeta", false);
-
-  /* Check band numbers */
-
-  if (meta->inst == INST_MSS) {
-    for (ib = 0; ib < this->nband; ib++)
-      if (meta->iband[ib] > 4) {
-        error_string = "band number out of range";
-	break;
-      }
-  } else if (meta->inst == INST_TM  ||
-             meta->inst == INST_ETM) {
-    for (ib = 0; ib < this->nband; ib++)
-      if ( meta->iband[ib] > 7) {
-        error_string = "band number out of range";
-	break;
-      }
-  } else
-    error_string = "invalid instrument type";
-
-  if (error_string != (char *)NULL)
-    RETURN_ERROR(error_string, "GetInputMeta", false);
-
-  return true;
-}
 
 bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy) 
 {
@@ -1041,13 +310,10 @@ bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy)
   if (nband < 1  ||  nband > NBAND_REFL_MAX)
     RETURN_ERROR("invalid number of bands", "InputMetaCopy", false);
 
-  copy->provider = this->provider;
   copy->sat = this->sat;
   copy->inst = this->inst;
   if (!DateCopy(&this->acq_date, &copy->acq_date)) 
     RETURN_ERROR("copying acquisition date/time", "InputMetaCopy", false);
-  if (!DateCopy(&this->prod_date, &copy->prod_date)) 
-    RETURN_ERROR("copying production date/time", "InputMetaCopy", false);
   copy->sun_zen = this->sun_zen;
   copy->sun_az = this->sun_az;
   copy->wrs_sys = this->wrs_sys;
@@ -1057,11 +323,301 @@ bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy)
 
   for (ib = 0; ib < nband; ib++) {
     copy->iband[ib] = this->iband[ib];
-    copy->gains[ib] = this->gains[ib];
-    copy->bias[ib] = this->bias[ib];
-    copy->th_gain = this->th_gain;
-    copy->th_bias = this->th_bias;
   }
+  copy->iband_qa = this->iband_qa;
 
   return true;
 }
+
+
+#define DATE_STRING_LEN (50)
+#define TIME_STRING_LEN (50)
+
+bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata, bool thermal)
+/* 
+!C******************************************************************************
+
+!Description: 'GetXMLInput' pulls input values from the XML structure.
+ 
+!Input Parameters:
+ this         'Input_t' data structure to be populated
+ metadata     'Espa_internal_meta_t' data structure with XML info
+ thermal      boolean to indicate if thermal data is being processed
+
+!Output Parameters:
+ (returns)      status:
+                  'true' = okay (always returned)
+                  'false' = error getting metadata from the XML file
+
+!Team Unique Header:
+
+! Design Notes:
+  1. This replaces the previous GetInputMeta so the input values are pulled
+     from the XML file instead of the HDF and MTL files.
+
+!END****************************************************************************
+*/
+{
+    char *error_string = NULL;
+    int ib;
+    char acq_date[DATE_STRING_LEN + 1];
+    char acq_time[TIME_STRING_LEN + 1];
+    char temp[MAX_STR_LEN + 1];
+    int i;               /* looping variable */
+    int indx=-1;         /* band index in XML file for band1 or band6 */
+    Espa_global_meta_t *gmeta = &metadata->global; /* pointer to global meta */
+
+    /* Initialize the input fields.  Set file type to binary, since that is
+       the ESPA internal format for the input TOA products. */
+    acq_date[0] = acq_time[0] = '\0';
+    this->meta.sat = SAT_NULL;
+    this->meta.inst = INST_NULL;
+    this->meta.acq_date.fill = true;
+    this->meta.sun_zen = ANGLE_FILL;
+    this->meta.sun_az = ANGLE_FILL;
+    this->meta.wrs_sys = (Wrs_t)WRS_FILL;
+    this->meta.ipath = -1;
+    this->meta.irow = -1;
+    this->meta.fill = INPUT_FILL;
+    this->nband = 0;
+    this->size.s = this->size.l = -1;
+    for (ib = 0; ib < NBAND_REFL_MAX; ib++)
+    {
+        this->meta.iband[ib] = -1;
+        this->file_name[ib] = NULL;
+        this->open[ib] = false;
+        this->fp_bin[ib] = NULL;
+    }
+    this->open_qa = false;
+    this->file_name_qa = NULL;
+    this->fp_bin_qa = NULL;
+
+    /* Pull the appropriate data from the XML file */
+    if (!strcmp (gmeta->satellite, "LANDSAT_1"))
+        this->meta.sat = SAT_LANDSAT_1;
+    else if (!strcmp (gmeta->satellite, "LANDSAT_2"))
+        this->meta.sat = SAT_LANDSAT_2;
+    else if (!strcmp (gmeta->satellite, "LANDSAT_3"))
+        this->meta.sat = SAT_LANDSAT_3;
+    else if (!strcmp (gmeta->satellite, "LANDSAT_4"))
+        this->meta.sat = SAT_LANDSAT_4;
+    else if (!strcmp (gmeta->satellite, "LANDSAT_5"))
+        this->meta.sat = SAT_LANDSAT_5;
+    else if (!strcmp (gmeta->satellite, "LANDSAT_7"))
+        this->meta.sat = SAT_LANDSAT_7;
+    else
+    {
+        sprintf (temp, "invalid satellite; value = %s", gmeta->satellite);
+        RETURN_ERROR (temp, "GetXMLInput", true);
+    }
+
+    if (!strcmp (gmeta->instrument, "TM"))
+        this->meta.inst = INST_TM;
+    else if (!strncmp (gmeta->instrument, "ETM", 3))
+        this->meta.inst = INST_ETM;
+    else
+    {
+        sprintf (temp, "invalid instrument; value = %s", gmeta->instrument);
+        RETURN_ERROR (temp, "GetXMLInput", true);
+    }
+
+    strcpy (acq_date, gmeta->acquisition_date);
+    strcpy (acq_time, gmeta->scene_center_time);
+
+    /* Make sure the acquisition time is not too long (i.e. contains too
+       many decimal points for the date/time routines).  The time should be
+       hh:mm:ss.ssssssZ (see DATE_FORMAT_DATEA_TIME in date.h) which is 16
+       characters long.  If the time is longer than that, just chop it off. */
+    if (strlen (acq_time) > 16)
+        sprintf (&acq_time[15], "Z");
+
+    this->meta.sun_zen = gmeta->solar_zenith;
+    if (this->meta.sun_zen < -90.0 || this->meta.sun_zen > 90.0)
+    {
+        error_string = "solar zenith angle out of range";
+        RETURN_ERROR (error_string, "GetXMLInput", true);
+    }
+    this->meta.sun_zen *= RAD;   /* convert to radians */
+
+    this->meta.sun_az = gmeta->solar_azimuth;
+    if (this->meta.sun_az < -360.0 || this->meta.sun_az > 360.0)
+    {
+        error_string = "solar azimuth angle out of range";
+        RETURN_ERROR (error_string, "GetXMLInput", true);
+    }
+    this->meta.sun_az *= RAD;    /* convert to radians */
+
+    switch (gmeta->wrs_system)
+    {
+        case 1: this->meta.wrs_sys = WRS_1; break;
+        case 2: this->meta.wrs_sys = WRS_2; break;
+        default:
+            sprintf (temp, "invalid WRS system; value = %d",
+                gmeta->wrs_system);
+            RETURN_ERROR (temp, "GetXMLInput", true);
+    }
+    this->meta.ipath = gmeta->wrs_path;
+    this->meta.irow = gmeta->wrs_row;
+
+    if (this->meta.inst == INST_TM || this->meta.inst == INST_ETM)
+    {
+        if (!thermal)
+        {  /* reflectance bands */
+            this->nband = 6;     /* number of reflectance bands */
+            this->meta.iband[0] = 1;
+            this->meta.iband[1] = 2;
+            this->meta.iband[2] = 3;
+            this->meta.iband[3] = 4;
+            this->meta.iband[4] = 5;
+            this->meta.iband[5] = 7;
+        }
+        else
+        {  /* thermal band */
+            this->nband = 1;     /* number of thermal bands */
+            this->meta.iband[0] = 6;
+        }
+    }
+
+    /* Find TOA band 1 in the input XML file to obtain band-related
+       information */
+    if (!thermal)
+    {  /* reflectance bands */
+        for (i = 0; i < metadata->nbands; i++)
+        {
+            if (!strcmp (metadata->band[i].name, "toa_band1") &&
+                !strcmp (metadata->band[i].product, "toa_refl"))
+            {
+                /* this is the index we'll use for reflectance band info */
+                indx = i;
+
+                /* get the band1 info */
+                this->file_name[0] = strdup (metadata->band[i].file_name);
+            }
+            else if (!strcmp (metadata->band[i].name, "toa_band2") &&
+                !strcmp (metadata->band[i].product, "toa_refl"))
+            {
+                this->file_name[1] = strdup (metadata->band[i].file_name);
+            }
+            else if (!strcmp (metadata->band[i].name, "toa_band3") &&
+                !strcmp (metadata->band[i].product, "toa_refl"))
+            {
+                this->file_name[2] = strdup (metadata->band[i].file_name);
+            }
+            else if (!strcmp (metadata->band[i].name, "toa_band4") &&
+                !strcmp (metadata->band[i].product, "toa_refl"))
+            {
+                this->file_name[3] = strdup (metadata->band[i].file_name);
+            }
+            else if (!strcmp (metadata->band[i].name, "toa_band5") &&
+                !strcmp (metadata->band[i].product, "toa_refl"))
+            {
+                this->file_name[4] = strdup (metadata->band[i].file_name);
+            }
+            else if (!strcmp (metadata->band[i].name, "toa_band7") &&
+                !strcmp (metadata->band[i].product, "toa_refl"))
+            {
+                this->file_name[5] = strdup (metadata->band[i].file_name);
+            }
+
+            if (!strcmp (metadata->band[i].name, "toa_qa") &&
+                !strcmp (metadata->band[i].product, "toa_refl"))
+            {
+                this->file_name_qa = strdup (metadata->band[i].file_name);
+            }
+        }  /* for i */
+    }  /* for i */
+    else
+    {  /* thermal band */
+        for (i = 0; i < metadata->nbands; i++)
+        {
+            if (!strcmp (metadata->band[i].name, "toa_band6") &&
+                !strcmp (metadata->band[i].product, "toa_bt"))
+            {
+                /* this is the index we'll use for reflectance band info */
+                indx = i;
+
+                /* get the band1 info */
+                this->file_name[0] = strdup (metadata->band[i].file_name);
+            }
+
+            if (!strcmp (metadata->band[i].name, "toa_bt_qa") &&
+                !strcmp (metadata->band[i].product, "toa_bt"))
+            {
+                this->file_name_qa = strdup (metadata->band[i].file_name);
+            }
+        }  /* for i */
+    }
+
+    if (indx == -1)
+    {
+        error_string = "not able to find the reflectance/thermal index band";
+        RETURN_ERROR (error_string, "GetXMLInput", true);
+    }
+
+    /* Pull the reflectance info from band1 in the XML file */
+    this->size.s = metadata->band[indx].nsamps;
+    this->size.l = metadata->band[indx].nlines;
+
+    /* Check WRS path/rows */
+    if (this->meta.wrs_sys == WRS_1)
+    {
+        if (this->meta.ipath > 251)
+            error_string = "WRS path number out of range";
+        else if (this->meta.irow > 248)
+            error_string = "WRS row number out of range";
+    }
+    else if (this->meta.wrs_sys == WRS_2)
+    {
+        if (this->meta.ipath > 233)
+            error_string = "WRS path number out of range";
+        else if (this->meta.irow > 248)
+            error_string = "WRS row number out of range";
+    }
+    else
+        error_string = "invalid WRS system";
+
+    if (error_string != NULL)
+    {
+        RETURN_ERROR (error_string, "GetHeaderInput", true);
+    }
+
+    /* Check satellite/instrument combination */
+    if (this->meta.inst == INST_MSS)
+    {
+        if (this->meta.sat != SAT_LANDSAT_1 &&
+            this->meta.sat != SAT_LANDSAT_2 &&
+            this->meta.sat != SAT_LANDSAT_3 &&
+            this->meta.sat != SAT_LANDSAT_4 &&
+            this->meta.sat != SAT_LANDSAT_5)
+            error_string = "invalid insturment/satellite combination";
+    }
+    else if (this->meta.inst == INST_TM)
+    {
+        if (this->meta.sat != SAT_LANDSAT_4 &&
+            this->meta.sat != SAT_LANDSAT_5)
+            error_string = "invalid insturment/satellite combination";
+    }
+    else if (this->meta.inst == INST_ETM)
+    {
+        if (this->meta.sat != SAT_LANDSAT_7)
+            error_string = "invalid insturment/satellite combination";
+    }
+    else
+        error_string = "invalid instrument type";
+
+    if (error_string != NULL)
+    {
+        RETURN_ERROR (error_string, "GetHeaderInput", true);
+    }
+
+    /* Convert the acquisition date/time values */
+    sprintf (temp, "%sT%s", acq_date, acq_time);
+    if (!DateInit (&this->meta.acq_date, temp, DATE_FORMAT_DATEA_TIME))
+    {
+        error_string = "converting acquisition date/time";
+        RETURN_ERROR (error_string, "GetHeaderInput", false);
+    }
+
+    return true;
+}
+

@@ -16,30 +16,22 @@
 #define LONG_NAME_PREFIX ("band %d reflectance")
 #define UNITS            ("reflectance")
 #define SCALE_FACTOR     (0.0001)
+#define ATMOS_OPACITY_SCALE_FACTOR (0.001)
 #define ADD_OFFSET       (0.0)
 #define SCALE_FACTOR_ERR (0.0)
 #define ADD_OFFSET_ERR   (0.0)
 #define CALIBRATED_NT    (DFNT_FLOAT32)
 
-Lut_t *GetLut(char *file_name, int nband, Input_meta_t *meta, 
-              Img_coord_int_t *input_size) {
+Lut_t *GetLut(int nband, Input_meta_t *meta, Img_coord_int_t *input_size) {
   Lut_t *this;
 
   /* Create the lookup table data structure */
 
   this = (Lut_t *)malloc(sizeof(Lut_t));
-  if (this == (Lut_t *)NULL) 
-    RETURN_ERROR("allocating Input data structure", "OpenInput", 
-                 (Lut_t *)NULL);
+  if (this == NULL) 
+    RETURN_ERROR("allocating Input data structure", "OpenInput", NULL);
 
   /* Populate the data structure */
-
-  this->file_name = DupString(file_name);
-  if (this->file_name == (char *)NULL) {
-    free(this);
-    RETURN_ERROR("duplicating file name", "GetLut", (Lut_t *)NULL);
-  }
-
   this->nband = nband;
   this->in_fill = meta->fill;
   this->output_fill = OUTPUT_FILL;
@@ -51,6 +43,7 @@ Lut_t *GetLut(char *file_name, int nband, Input_meta_t *meta,
   this->ar_size.s = ((input_size->s - 1) / this->ar_region_size.s) + 1;
   this->min_valid_sr = MIN_VALID_SR;
   this->max_valid_sr = MAX_VALID_SR;
+  this->atmos_opacity_scale_factor= ATMOS_OPACITY_SCALE_FACTOR;
   this->scale_factor=     SCALE_FACTOR;     /* scale factor            */
   this->scale_factor_err= SCALE_FACTOR_ERR; /* scale factor error      */
   this->add_offset=       ADD_OFFSET;       /* add offset              */
@@ -58,21 +51,20 @@ Lut_t *GetLut(char *file_name, int nband, Input_meta_t *meta,
   this->calibrated_nt=    CALIBRATED_NT;    /* calibrated nt           */
 
   this->long_name_prefix = DupString(LONG_NAME_PREFIX);
-  if (this->long_name_prefix == (char *)NULL) {
+  if (this->long_name_prefix == NULL) {
     free(this);
-    RETURN_ERROR("duplicating long name prefix", "GetLut", (Lut_t *)NULL);
+    RETURN_ERROR("duplicating long name prefix", "GetLut", NULL);
   }
 
   this->units = DupString(UNITS);
-  if (this->units == (char *)NULL) {
+  if (this->units == NULL) {
     free(this);
-    RETURN_ERROR("duplicating ref units", "GetLut", (Lut_t *)NULL);
+    RETURN_ERROR("duplicating ref units", "GetLut", NULL);
   }
 
   if (!InputMetaCopy(meta, nband, &this->meta)) {
-    free(this->file_name);
     free(this);
-    RETURN_ERROR("copying input metadata", "GetLut", (Lut_t *)NULL);
+    RETURN_ERROR("copying input metadata", "GetLut", NULL);
   }
 
   return this;
@@ -80,8 +72,7 @@ Lut_t *GetLut(char *file_name, int nband, Input_meta_t *meta,
 
 bool FreeLut(Lut_t *this) {
 
-  if (this != (Lut_t *)NULL) {
-    if (this->file_name != (char *)NULL) free(this->file_name);
+  if (this != NULL) {
     free(this);
   }
 
