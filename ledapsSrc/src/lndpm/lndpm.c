@@ -24,6 +24,10 @@ Date         Programmer       Reason
                               file, since outputs are handled in the XML file.
 1/30/2014    Gail Schmidt     Removed any recalibration-related or DN map
                               related code
+2/3/2014     Gail Schmidt     Reflective, thermal input and surface reflectance
+                              output files are no longer needed as parameters
+                              in the lndsr*.txt file, since inputs and outputs
+                              are handled in the XML file.
 
 NOTES:
   1. The XML metadata format written via this library follows the ESPA internal
@@ -234,9 +238,6 @@ int main (int argc, char *argv[])
         fprintf (out, "OZON_FIL = %s\n", ozone);
     }
     fprintf (out, "PRWV_FIL = %s\n", reanalysis);
-    fprintf (out, "REF_FILE = lndcal.%s.hdf\n", scene_name);
-    fprintf (out, "TEMP_FILE = lndth.%s.hdf\n", scene_name);
-    fprintf (out, "SR_FILE = lndsr.%s.hdf\n", scene_name);
     fprintf (out, "LEDAPSVersion = %s\n", LEDAPS_VERSION);
     fprintf (out, "END\n");
     fclose (out);
