@@ -31,9 +31,9 @@
       phone: 301-614-5508               Lanham, MD 20770  
   
  ! Design Notes:
-   1. See 'error.h' for information on the 'ERROR' and 'ERROR_RETURN' macros 
-      that automatically populate the source code file name, line number and 
-      exit flag.  
+   1. See 'error.h' for information on the 'EXIT_ERROR' and 'ERROR_RETURN'
+      macros that automatically populate the source code file name, line number
+      and exit flag.  
 
 !END****************************************************************************
 */

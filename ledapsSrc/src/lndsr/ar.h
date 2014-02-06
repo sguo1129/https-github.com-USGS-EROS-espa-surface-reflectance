@@ -13,7 +13,7 @@ typedef struct {
   long nfill;
 } Ar_stats_t;
 
-bool Ar(int il_ar,Lut_t *lut, Img_coord_int_t *size_in, int ***line_in,
+bool Ar(int il_ar,Lut_t *lut, Img_coord_int_t *size_in, int16 ***line_in,
         char **ddv_line, int **line_ar, int **line_ar_stats,
         Ar_stats_t *ar_stats, Ar_gridcell_t *ar_gridcell,
         sixs_tables_t *sixs_tables);

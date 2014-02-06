@@ -40,39 +40,35 @@
 #ifndef OUTPUT_H
 #define OUTPUT_H
 
+#include <time.h>
 #include "lndsr.h"
 #include "bool.h"
-#include "myhdf.h"
 #include "input.h"
 #include "param.h"
 #include "lut.h"
+#include "espa_metadata.h"
+#include "raw_binary_io.h"
 
 /* Structure for the 'output' data type */
 
 typedef struct {
-  char *file_name;      /* Output file name */
   bool open;            /* Flag to indicate whether output file is open 
                            for access; 'true' = open, 'false' = not open */
-  int nband_tot;        /* Number of output image bands */
+  int nband_tot;        /* Number of output image bands for processing */
+  int nband_out;        /* Number of output image bands for writing */
   Img_coord_int_t size; /* Output image size */
-  int32 sds_file_id;    /* SDS file id */
-  Myhdf_sds_t sds_sr[NBAND_SR_MAX];
-                        /* SDS data structures */
-  int16 *buf_sr[NBAND_SR_MAX];
-                        /* Output data buffer (one line of data) */
+  Espa_internal_meta_t metadata;  /* metadata container to hold the band
+                           metadata for the output bands; global metadata
+                           won't be valid */
+  FILE *fp_bin[NBAND_SR_MAX];  /* File pointer for binary files */
 } Output_t;
 
 /* Prototypes */
 
-bool CreateOutput(char *file_name);
-Output_t *OpenOutput(char *file_name, int nband, int *iband, 
-                     Img_coord_int_t *size);
-bool PutOutputLine(Output_t *this, int iband, int iline, int *line);
-bool PutOutputLineU8(Output_t *this, int iband, int iline, int *line);
+Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
+  Param_t *param, Lut_t *lut);
+bool PutOutputLine(Output_t *this, int iband, int iline, int16 *line);
 bool CloseOutput(Output_t *this);
 bool FreeOutput(Output_t *this);
-bool PutMetadata(Output_t *this, int nband, Input_meta_t *meta,
-  Input_meta_t *th_meta, Param_t *param, Lut_t *lut, Geo_bounds_t* bounds,
-  Geo_coord_t *ul_corner, Geo_coord_t *lr_corner);
 
 #endif

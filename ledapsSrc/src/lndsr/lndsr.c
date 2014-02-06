@@ -20,6 +20,10 @@
   Adjusted the sun azimuth for polar scenes which are ascending/flipped.  The
   sun azimuth is north up, but these scenes are south up.  So the azimuth
   needs to be adjusted by 180 degrees when applied to the scene.
+
+  Modified on 2/3/2014 by Gail Schmidt, USGS EROS, v2.0.0
+  Modified application to use the ESPA internal raw binary file format.
+  tempnam is deprecated, so switched to mkstemp.
 **************************************************************************/
 
 #include <stdio.h>
@@ -39,7 +43,6 @@
 #include "output.h"
 #include "sr.h"
 #include "ar.h"
-#include "space.h"
 #include "bool.h"
 #include "error.h"
 #include "clouds.h"
@@ -72,9 +75,6 @@
 
 /* Type definitions */
 
-typedef enum {FAILURE = 0, SUCCESS = 1} Status_t;
-
-
 atmos_t atmos_coef;
 #ifdef DEBUG_AR
 FILE *fd_ar_diags;
@@ -99,6 +99,9 @@ void csalbr(float *tau_ray,float *actual_S_r);
 int update_atmos_coefs(atmos_t *atmos_coef,Ar_gridcell_t *ar_gridcell, sixs_tables_t *sixs_tables,int ***line_ar,Lut_t *lut,int nband, int bkgd_aerosol);
 int update_gridcell_atmos_coefs(int irow,int icol,atmos_t *atmos_coef,Ar_gridcell_t *ar_gridcell, sixs_tables_t *sixs_tables,int **line_ar,Lut_t *lut,int nband, int bkgd_aerosol);
 void set_sixs_path_from(const char *path);
+float calcuoz(short jday,float flat);
+float get_dem_spres(short *dem,float lat,float lon);
+void swapbytes(void *val,int nbbytes);
 
 #ifdef SAVE_6S_RESULTS
 #define SIXS_RESULTS_FILENAME "SIXS_RUN_RESULTS.TXT"
@@ -110,34 +113,36 @@ void sun_angles (short jday,float gmt,float flat,float flon,float *ts,float *fs)
 
 int main (int argc, const char **argv) {
   Param_t *param = NULL;
-  Input_t *input = NULL,*input_b6 = NULL;
+  Input_t *input = NULL, *input_b6 = NULL;
   InputPrwv_t *prwv_input = NULL;
   InputOzon_t *ozon_input = NULL;
   Lut_t *lut = NULL;
   Output_t *output = NULL;
   int i,j,il, is,ib,i_aot,j_aot,ifree;
   int il_start, il_end, il_ar, il_region, is_ar;
-  int *line_out[NBAND_SR_MAX];
-  int *line_out_buf = NULL;
-  int ***line_in = NULL;
-  int **line_in_band_buf = NULL;
-  int *line_in_buf = NULL;
+  int16 *line_out[NBAND_SR_MAX];
+  int16 *line_out_buf = NULL;
+  int16 ***line_in = NULL;
+  int16 **line_in_band_buf = NULL;
+  int16 *line_in_buf = NULL;
   int ***line_ar = NULL;
   int **line_ar_band_buf = NULL;
   int *line_ar_buf = NULL;
   int ***line_ar_stats = NULL;
   int **line_ar_stats_band_buf = NULL;
   int *line_ar_stats_buf = NULL;
-  int** b6_line = NULL;
-  int* b6_line_buf = NULL;
+  int16** b6_line = NULL;
+  int16* b6_line_buf = NULL;
   float *atemp_line = NULL;
-  int8** qa_line = NULL;
-  int8* qa_line_buf = NULL;
+  uint8** qa_line = NULL;
+  uint8* qa_line_buf = NULL;
   char **ddv_line = NULL;
   char *ddv_line_buf = NULL;
   char **rot_cld[3],**ptr_rot_cld[3],**ptr_tmp_cld;
   char **rot_cld_block_buf = NULL;
   char *rot_cld_buf = NULL;
+  char envi_file[STR_SIZE]; /* name of the output ENVI header file */
+  char *cptr=NULL;          /* pointer to the file extension */
   bool refl_is_fill;
 
   Sr_stats_t sr_stats;
@@ -153,25 +158,17 @@ int main (int argc, const char **argv) {
   int inter_aot[3];
   float scene_gmt;
 
-  Space_t *space = NULL;
+  Geoloc_t *space = NULL;
   Space_def_t space_def;
-  char *grid_name = "Grid";
-  char *dem_name;
+  char *dem_name = NULL;
   Img_coord_float_t img;
   Img_coord_int_t loc;
   Geo_coord_t geo;
-  Geo_bounds_t bounds;
-  Geo_coord_t ul_corner;
-  Geo_coord_t lr_corner;
-  int nsds,isds;
-  char *sds_names[NBAND_SR_MAX];
-  int sds_types[NBAND_SR_MAX];
 
   t_ncep_ancillary anc_O3,anc_WV,anc_SP,anc_ATEMP;
   double sum_spres_anc,sum_spres_dem;
   int nb_spres_anc,nb_spres_dem;
-  /* float ratio_spres; */
-  float tmpflt_arr[4] /*,tmpflt */;
+  float tmpflt_arr[4];
   double coef;
   int tmpint;
   int osize;
@@ -179,8 +176,9 @@ int main (int argc, const char **argv) {
 
   sixs_tables_t sixs_tables;
   float center_lat,center_lon;
-  char *charptr,tmpfilename[128];
+  char tmpfilename[128];
   FILE *fdtmp/*, *fdtmp2 */;
+  int tmpid;                  /* file ID for temporary file (ID not used) */
   
   short *dem_array;
   int dem_available;
@@ -194,102 +192,107 @@ int main (int argc, const char **argv) {
   float sum_value,sumsq_value;
   int no_ozone_file;
   short jday;
+
+  Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
+  Espa_global_meta_t *gmeta = NULL;   /* pointer to global meta */
+  Envi_header_t envi_hdr;             /* output ENVI header information */
   
   /* Vermote additional variable declaration for the cloud mask May 29 2007 */
   int anom;
   float t6,t6s_seuil;
   
-  float calcuoz(short jday,float flat);
-  float get_dem_spres(short *dem,float lat,float lon);
-  void swapbytes(void *val,int nbbytes);
-
   printf ("\nRunning lndsr ....\n");
   debug_flag= DEBUG_FLAG;
-
   no_ozone_file=0;
   
   set_sixs_path_from(argv[0]);
 
+  /* Read the parameters from the input parameter file */
   param = GetParam(argc, argv);
-  if (param == (Param_t *)NULL) ERROR("getting runtime parameters", "main");
+  if (param == NULL) EXIT_ERROR("getting runtime parameters", "main");
 
-  /* Open input file */
-
-  input = OpenInput(param->input_file_name);
-  if (input == (Input_t *)NULL) ERROR("bad input file", "main");
-
-  if (param->thermal_band) {
-    input_b6 = OpenInput(param->temp_file_name);
-    if (input_b6 == (Input_t *)NULL) ERROR("bad band 6 input file", "main");
+  /* Validate the input metadata file */
+  if (validate_xml_file (param->input_xml_file_name, ESPA_SCHEMA) != SUCCESS)
+  {  /* Error messages already written */
+    EXIT_ERROR("validating XML file", "main");
   }
 
-  if ( param->num_prwv_files > 0  && param->num_ncep_files > 0  ) {
-     ERROR("both PRWV and PRWV_FIL files specified", "main");
+  /* Initialize the metadata structure */
+  init_metadata_struct (&xml_metadata);
+
+  /* Parse the metadata file into our internal metadata structure; also
+     allocates space as needed for various pointers in the global and band
+     metadata */
+  if (parse_metadata (param->input_xml_file_name, &xml_metadata) != SUCCESS)
+  {  /* Error messages already written */
+    EXIT_ERROR("parsing XML file", "main");
   }
+  gmeta = &xml_metadata.global; /* pointer to global meta */
+
+  /* Open input files; grab QA band for reflectance band */
+  input = OpenInput(&xml_metadata, false /* not thermal */);
+  if (input == NULL) EXIT_ERROR("bad input file", "main");
+
+  input_b6 = OpenInput(&xml_metadata, true /* thermal */);
+  if (input_b6 == NULL) {
+    param->thermal_band = false;
+    printf ("WARNING: no thermal brightness temp band available. Processing "
+      "without.");
+  } else
+    param->thermal_band = true;
+
+  if (param->num_prwv_files > 0  && param->num_ncep_files > 0) {
+     EXIT_ERROR("both PRWV and PRWV_FIL files specified", "main");
+  }
+
   /* Open prwv input file */
-
-  if ( param->num_prwv_files > 0  ) {
+  if (param->num_prwv_files > 0) {
     prwv_input = OpenInputPrwv(param->prwv_file_name);
-    if (prwv_input==(InputPrwv_t *)NULL) ERROR("bad input prwv file","main");
+    if (prwv_input==NULL) EXIT_ERROR("bad input prwv file","main");
 
     osize= 3 * 
       (prwv_input->size.ntime*prwv_input->size.nlat*prwv_input->size.nlon);
 
     prwv_in_buf = (int *)calloc((size_t)(osize),sizeof(int));
-    if (prwv_in_buf == (int *)NULL) 
-      ERROR("allocating input prwv buffer", "main");
+    if (prwv_in_buf == NULL) EXIT_ERROR("allocating input prwv buffer", "main");
     prwv_in[0] = prwv_in_buf;
     for (ib = 1; ib < prwv_input->nband; ib++)
       prwv_in[ib] = prwv_in[ib - 1] + 
         (prwv_input->size.ntime*prwv_input->size.nlat*prwv_input->size.nlon);
 
-    for (ib = 0; ib < prwv_input->nband; ib++)
-      {
+    for (ib = 0; ib < prwv_input->nband; ib++) {
       if (!GetInputPrwv(prwv_input, ib, prwv_in[ib]))
-        ERROR("reading input prwv data", "main");
-      }
+        EXIT_ERROR("reading input prwv data", "main");
+    }
+
     /**** ozone ***/
-   if ( param->num_ozon_files<1 )
-     no_ozone_file=1;
-   else {
-    ozon_input = OpenInputOzon(param->ozon_file_name);
-    if (ozon_input==(InputOzon_t *)NULL) ERROR("bad input ozon file", "main");
+    if ( param->num_ozon_files<1 )
+      no_ozone_file=1;
+    else {
+      ozon_input = OpenInputOzon(param->ozon_file_name);
+      if (ozon_input==NULL) EXIT_ERROR("bad input ozon file", "main");
 
-    osize= 
-      (ozon_input->size.ntime*ozon_input->size.nlat*ozon_input->size.nlon);
+      osize= 
+        (ozon_input->size.ntime*ozon_input->size.nlat*ozon_input->size.nlon);
 
-    ozon_in = (int *)calloc((size_t)(osize),sizeof(int));
-    if (ozon_in == (int *)NULL) 
-      ERROR("allocating input ozone buffer", "main");
+      ozon_in = (int *)calloc((size_t)(osize),sizeof(int));
+      if (ozon_in == NULL) EXIT_ERROR("allocating input ozone buffer", "main");
 
       if (!GetInputOzon(ozon_input, 0, ozon_in))
-        ERROR("reading input ozone data", "main");
-   }
+        EXIT_ERROR("reading input ozone data", "main");
+    }
   }
 
-  /* Get Lookup table */
-
-  lut = GetLut(param->lut_file_name, input->nband, &input->meta, &input->size);
-  if (lut == (Lut_t *)NULL) ERROR("bad lut file", "main");
+  /* Get Lookup table, based on reflectance information */
+  lut = GetLut(input->nband, &input->meta, &input->size);
+  if (lut == NULL) EXIT_ERROR("bad lut file", "main");
   
-  /* Get space definition */
-  if (!GetSpaceDefHDF(&space_def, param->input_file_name, grid_name))
-    ERROR("getting space metadata from HDF file", "main");
-
-  /* Setup Space */
-  space = SetupSpace(&space_def);
-  if (space == (Space_t *)NULL) 
-    ERROR("setting up space", "main");
-
-  /* compute bounds and UL/LR corners.  For ascending scenes and scenes in
-     the polar regions, the scenes are flipped upside down.  The bounding coords
-     will be correct in North represents the northernmost latitude and South
-     represents the southernmost latitude.  However, the UL corner in this case
-     would be more south than the LR corner.  Comparing the UL and LR corners
-     will allow the user to determine if the scene is flipped. */
-  if (!computeBounds( &bounds, &ul_corner, &lr_corner, space, input->size.s,
-    input->size.l))
-    ERROR("computing bounds", "main");
+  /* Get geolocation space definition */
+  if (!get_geoloc_info(&xml_metadata, &space_def))
+    EXIT_ERROR("getting space metadata from XML file", "main");
+  space = setup_mapping(&space_def);
+  if (space == NULL)
+    EXIT_ERROR("getting setting up geolocation mapping", "main");
 
   printf ("Number of input bands: %d\n", input->nband);
   printf ("Number of input lines: %d\n", input->size.l);
@@ -300,9 +303,7 @@ int main (int argc, const char **argv) {
      this case would be north down and the solar azimuth is based on north
      being up. */
   corrected_sun_az = input->meta.sun_az * DEG;
-  if (!ul_corner.is_fill && !lr_corner.is_fill &&
-      ul_corner.lat < lr_corner.lat)
-  {
+  if (gmeta->ul_corner[0] < gmeta->lr_corner[0]) {
     corrected_sun_az += 180.0;
     if (corrected_sun_az > 360.0)
       corrected_sun_az -= 360.0;
@@ -311,13 +312,10 @@ int main (int argc, const char **argv) {
       corrected_sun_az*RAD, corrected_sun_az);
   }
 
-  /* Create and open output file */
-  if (!CreateOutput(param->output_file_name))
-    ERROR("creating output file", "main");
-
-  output = OpenOutput(param->output_file_name, input->nband, input->meta.iband, 
-                      &input->size);
-  if (output == (Output_t *)NULL) ERROR("opening output file", "main");
+  /* Open the output files and set up the necessary information for appending
+     to the XML file */
+  output = OpenOutput(&xml_metadata, input, param, lut);
+  if (output == NULL) EXIT_ERROR("opening output file", "main");
 
   /* Open diagnostics files if needed */
 #ifdef DEBUG_AR
@@ -338,20 +336,20 @@ int main (int argc, const char **argv) {
 #endif
   /* Allocate memory for input lines */
 
-  line_in = (int ***)calloc((size_t)(lut->ar_region_size.l), 
-                            sizeof(int **));
-  if (line_in == (int ***)NULL) 
-    ERROR("allocating input line buffer (a)", "main");
+  line_in = (int16 ***)calloc((size_t)(lut->ar_region_size.l), 
+    sizeof(int16 **));
+  if (line_in == NULL) 
+    EXIT_ERROR("allocating input line buffer (a)", "main");
 
-  line_in_band_buf = (int **)calloc((size_t)(lut->ar_region_size.l * 
-                                             input->nband), sizeof(int *));
-  if (line_in_band_buf == (int **)NULL) 
-    ERROR("allocating input line buffer (b)", "main");
+  line_in_band_buf = (int16 **)calloc((size_t)(lut->ar_region_size.l * 
+    input->nband), sizeof(int16 *));
+  if (line_in_band_buf == NULL) 
+    EXIT_ERROR("allocating input line buffer (b)", "main");
 
-  line_in_buf = (int *)calloc((size_t)(input->size.s * lut->ar_region_size.l *
-                                       input->nband), sizeof(int));
-  if (line_in_buf == (int *)NULL) 
-    ERROR("allocating input line buffer (c)", "main");
+  line_in_buf = (int16 *)calloc((size_t)(input->size.s * lut->ar_region_size.l *
+    input->nband), sizeof(int16));
+  if (line_in_buf == NULL) 
+    EXIT_ERROR("allocating input line buffer (c)", "main");
 
   for (il = 0; il < lut->ar_region_size.l; il++) {
     line_in[il] = line_in_band_buf;
@@ -363,35 +361,38 @@ int main (int argc, const char **argv) {
   }
 
   /* Allocate memory for qa line */
-    qa_line = (int8**)calloc((size_t)(lut->ar_region_size.l),sizeof(int8 *));
-    if (qa_line == (int8**)NULL)ERROR("allocating qa line", "main");
-    qa_line_buf = (int8*)calloc((size_t)(input->size.s * lut->ar_region_size.l),sizeof(int8));
-    if (qa_line_buf == (char*)NULL)ERROR("allocating qa line buffer", "main");
-	for (il = 0; il < lut->ar_region_size.l; il++) {
-	 	qa_line[il]=qa_line_buf;
-		qa_line_buf += input->size.s;
-	 }
+  qa_line = (uint8**)calloc((size_t)(lut->ar_region_size.l),sizeof(uint8 *));
+  if (qa_line == NULL) EXIT_ERROR("allocating qa line", "main");
+  qa_line_buf = (uint8*)calloc((size_t)(input->size.s * lut->ar_region_size.l),
+    sizeof(uint8));
+  if (qa_line_buf == NULL) EXIT_ERROR("allocating qa line buffer", "main");
+  for (il = 0; il < lut->ar_region_size.l; il++) {
+    qa_line[il]=qa_line_buf;
+    qa_line_buf += input->size.s;
+  }
 
   /* Allocate memory for one band 6 line */
   if (param->thermal_band) {
-    b6_line = (int**)calloc((size_t)(lut->ar_region_size.l),sizeof(int *));
-    if (b6_line == (int**)NULL)ERROR("allocating b6 line", "main");
-    b6_line_buf = (int*)calloc((size_t)(input_b6->size.s * lut->ar_region_size.l),sizeof(int));
-    if (b6_line_buf == (int*)NULL)ERROR("allocating b6 line buffer", "main");
-	 for (il = 0; il < lut->ar_region_size.l; il++) {
-	 	b6_line[il]=b6_line_buf;
-		b6_line_buf += input_b6->size.s;
-	 }
+    b6_line = (int16**)calloc((size_t)(lut->ar_region_size.l),sizeof(int16 *));
+    if (b6_line == NULL) EXIT_ERROR("allocating b6 line", "main");
+    b6_line_buf = (int16*)calloc((size_t)(input_b6->size.s *
+      lut->ar_region_size.l),sizeof(int16));
+    if (b6_line_buf == NULL) EXIT_ERROR("allocating b6 line buffer", "main");
+    for (il = 0; il < lut->ar_region_size.l; il++) {
+      b6_line[il]=b6_line_buf;
+      b6_line_buf += input_b6->size.s;
+	}
   }
+
   /* Allocate memory for one air temperature line */
     atemp_line = (float *)calloc((size_t)(input->size.s),sizeof(float));
-    if (atemp_line == (float*)NULL)ERROR("allocating atemp line", "main");
+    if (atemp_line == NULL) EXIT_ERROR("allocating atemp line", "main");
 	 
   /* Allocate memory for ddv line */
     ddv_line = (char**)calloc((size_t)(lut->ar_region_size.l),sizeof(char *));
-    if (ddv_line == (char**)NULL)ERROR("allocating ddv line", "main");
+    if (ddv_line == NULL) EXIT_ERROR("allocating ddv line", "main");
     ddv_line_buf = (char*)calloc((size_t)(input->size.s * lut->ar_region_size.l),sizeof(char));
-    if (ddv_line_buf == (char*)NULL)ERROR("allocating ddv line buffer", "main");
+    if (ddv_line_buf == NULL) EXIT_ERROR("allocating ddv line buffer", "main");
 	 for (il = 0; il < lut->ar_region_size.l; il++) {
 	 	ddv_line[il]=ddv_line_buf;
 		ddv_line_buf += input->size.s;
@@ -400,11 +401,11 @@ int main (int argc, const char **argv) {
   /* Allocate memory for rotating cloud buffer */
 
   rot_cld_buf=(char *)calloc((size_t)(input->size.s*lut->ar_region_size.l*3), sizeof(char));
-  if (rot_cld_buf == (char *)NULL) 
-      ERROR("allocating roatting cloud buffer (a)", "main");
+  if (rot_cld_buf == NULL) 
+      EXIT_ERROR("allocating roatting cloud buffer (a)", "main");
   rot_cld_block_buf=(char **)calloc((size_t)(lut->ar_region_size.l*3), sizeof(char *));
-  if (rot_cld_block_buf == (char **)NULL) 
-    ERROR("allocating rotating cloud buffer (b)", "main");
+  if (rot_cld_block_buf == NULL) 
+    EXIT_ERROR("allocating rotating cloud buffer (b)", "main");
   
   for (ib = 0; ib < 3; ib++) {
     rot_cld[ib]=rot_cld_block_buf;
@@ -419,58 +420,56 @@ int main (int argc, const char **argv) {
   ar_gridcell.nbrows=lut->ar_size.l;
   ar_gridcell.nbcols=lut->ar_size.s;
   ar_gridcell.lat=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.lat == (float *) NULL)
-    ERROR("allocating ar_gridcell.lat", "main");
+  if (ar_gridcell.lat == NULL)
+    EXIT_ERROR("allocating ar_gridcell.lat", "main");
   ar_gridcell.lon=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.lon == (float *)NULL)
-    ERROR("allocating ar_gridcell.lon", "main");
+  if (ar_gridcell.lon == NULL)
+    EXIT_ERROR("allocating ar_gridcell.lon", "main");
   ar_gridcell.sun_zen=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.sun_zen == (float *)NULL)
-    ERROR("allocating ar_gridcell.sun_zen", "main");
+  if (ar_gridcell.sun_zen == NULL)
+    EXIT_ERROR("allocating ar_gridcell.sun_zen", "main");
   ar_gridcell.view_zen=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.view_zen == (float *)NULL)
-    ERROR("allocating ar_gridcell.view_zen", "main");
+  if (ar_gridcell.view_zen == NULL)
+    EXIT_ERROR("allocating ar_gridcell.view_zen", "main");
   ar_gridcell.rel_az=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.rel_az == (float *)NULL)
-    ERROR("allocating ar_gridcell.rel_az", "main");
+  if (ar_gridcell.rel_az == NULL)
+    EXIT_ERROR("allocating ar_gridcell.rel_az", "main");
   ar_gridcell.wv=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.wv == (float *)NULL)
-    ERROR("allocating ar_gridcell.wv", "main");
+  if (ar_gridcell.wv == NULL)
+    EXIT_ERROR("allocating ar_gridcell.wv", "main");
   ar_gridcell.spres=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.spres == (float *)NULL)
-    ERROR("allocating ar_gridcell.spres", "main");
+  if (ar_gridcell.spres == NULL)
+    EXIT_ERROR("allocating ar_gridcell.spres", "main");
   ar_gridcell.ozone=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.ozone == (float *)NULL)
-    ERROR("allocating ar_gridcell.ozone", "main");
+  if (ar_gridcell.ozone == NULL)
+    EXIT_ERROR("allocating ar_gridcell.ozone", "main");
   ar_gridcell.spres_dem=(float *)calloc((size_t)(lut->ar_size.s * lut->ar_size.l),sizeof(float));
-  if (ar_gridcell.spres_dem == (float *)NULL)
-    ERROR("allocating ar_gridcell.spres_dem", "main");
+  if (ar_gridcell.spres_dem == NULL)
+    EXIT_ERROR("allocating ar_gridcell.spres_dem", "main");
 
 
   /* Allocate memory for output lines */
-
-  line_out_buf = (int *)calloc((size_t)(output->size.s * output->nband_tot), 
-                               sizeof(int));
-  if (line_out_buf == (int *)NULL) 
-    ERROR("allocating output line buffer", "main");
+  line_out_buf = (int16 *)calloc((size_t)(output->size.s * output->nband_tot), 
+    sizeof(int16));
+  if (line_out_buf == NULL) 
+    EXIT_ERROR("allocating output line buffer", "main");
   line_out[0] = line_out_buf;
   for (ib = 1; ib < output->nband_tot; ib++)
     line_out[ib] = line_out[ib - 1] + output->size.s;
 
   /* Allocate memory for the aerosol lines */
-
   line_ar = (int ***)calloc((size_t)lut->ar_size.l, sizeof(int **));
-  if (line_ar == (int ***)NULL) 
-    ERROR("allocating aerosol line buffer (a)", "main");
+  if (line_ar == NULL) 
+    EXIT_ERROR("allocating aerosol line buffer (a)", "main");
 
   line_ar_band_buf = (int **)calloc((size_t)(lut->ar_size.l * AERO_NB_BANDS), sizeof(int *));
-  if (line_ar_band_buf == (int **)NULL) 
-    ERROR("allocating aerosol line buffer (b)", "main");
+  if (line_ar_band_buf == NULL) 
+    EXIT_ERROR("allocating aerosol line buffer (b)", "main");
 
   line_ar_buf = (int *)calloc((size_t)(lut->ar_size.l * lut->ar_size.s * AERO_NB_BANDS), 
                                sizeof(int));
-  if (line_ar_buf == (int *)NULL) 
-    ERROR("allocating aerosol line buffer (c)", "main");
+  if (line_ar_buf == NULL) 
+    EXIT_ERROR("allocating aerosol line buffer (c)", "main");
 
   for (il = 0; il < lut->ar_size.l; il++) {
     line_ar[il] = line_ar_band_buf;
@@ -482,17 +481,17 @@ int main (int argc, const char **argv) {
   }
 
   line_ar_stats = (int ***)calloc((size_t)lut->ar_size.l, sizeof(int **));
-  if (line_ar_stats == (int ***)NULL) 
-    ERROR("allocating aerosol stats line buffer (a)", "main");
+  if (line_ar_stats == NULL) 
+    EXIT_ERROR("allocating aerosol stats line buffer (a)", "main");
 
   line_ar_stats_band_buf = (int **)calloc((size_t)(lut->ar_size.l * AERO_STATS_NB_BANDS), sizeof(int *));
-  if (line_ar_stats_band_buf == (int **)NULL) 
-    ERROR("allocating aerosol stats line buffer (b)", "main");
+  if (line_ar_stats_band_buf == NULL) 
+    EXIT_ERROR("allocating aerosol stats line buffer (b)", "main");
 
   line_ar_stats_buf = (int *)calloc((size_t)(lut->ar_size.l * lut->ar_size.s * AERO_STATS_NB_BANDS), 
                                sizeof(int));
-  if (line_ar_stats_buf == (int *)NULL) 
-    ERROR("allocating aerosol stats line buffer (c)", "main");
+  if (line_ar_stats_buf == NULL) 
+    EXIT_ERROR("allocating aerosol stats line buffer (c)", "main");
 
   for (il = 0; il < lut->ar_size.l; il++) {
     line_ar_stats[il] = line_ar_stats_band_buf;
@@ -508,7 +507,7 @@ int main (int argc, const char **argv) {
   ar_stats.nfill = 0;
   ar_stats.first = true;
 
-  for (ib = 0; ib < output->nband_tot-3; ib++) {
+  for (ib = 0; ib < output->nband_out; ib++) {
     sr_stats.nfill[ib] = 0;
     sr_stats.nout_range[ib] = 0;
     sr_stats.first[ib] = true;
@@ -519,8 +518,8 @@ int main (int argc, const char **argv) {
 	img.l=input->size.l/2.; 
 	img.s=input->size.s/2.; 
 	img.is_fill=false;
-	if (!FromSpace(space, &img, &geo))
-    	ERROR("mapping from space (0)", "main");
+	if (!from_space(space, &img, &geo))
+    	EXIT_ERROR("mapping from space (0)", "main");
    center_lat=geo.lat * DEG;
    center_lon=geo.lon * DEG;
 
@@ -533,21 +532,19 @@ int main (int argc, const char **argv) {
   if ( scene_gmt < 0.) scene_gmt=scene_gmt+24.;
 
 printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->meta.acq_date.minute, input->meta.acq_date.second);
-/*printf ("DEBUG: scene_gmt: %f\n", scene_gmt); */
-/*printf ("DEBUG: approximated scene_gmt: %f\n", 10.5-center_lon/15.); */
   
    /* Read PRWV Data */
    if ( param->num_prwv_files > 0  ) {
 
      if (!get_prwv_anc(&anc_SP,prwv_input,prwv_in[SP_INDEX],SP_INDEX))
-       ERROR("Can't get PRWV SP data","main");
+       EXIT_ERROR("Can't get PRWV SP data","main");
      if (!get_prwv_anc(&anc_WV,prwv_input,prwv_in[WV_INDEX],WV_INDEX))
-       ERROR("Can't get PRWV WV data","main");
+       EXIT_ERROR("Can't get PRWV WV data","main");
      if (!get_prwv_anc(&anc_ATEMP,prwv_input,prwv_in[ATEMP_INDEX],ATEMP_INDEX))
-       ERROR("Can't get PRWV ATEMP data","main");
+       EXIT_ERROR("Can't get PRWV ATEMP data","main");
      if (!no_ozone_file)
      	if (!get_ozon_anc(&anc_O3,ozon_input,ozon_in,OZ_INDEX))
-       		ERROR("Can't get OZONE data","main");
+       		EXIT_ERROR("Can't get OZONE data","main");
 
    } else if ( param->num_ncep_files > 0  ) {
 
@@ -564,7 +561,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      strcpy(anc_O3.filename[3],param->ncep_file_name[3]);
 
      if (read_grib_anc(&anc_O3,TYPE_OZONE_DATA))
-          ERROR("Can't read NCEP Ozone data","main");
+          EXIT_ERROR("Can't read NCEP Ozone data","main");
 
      anc_WV.data[0]=NULL;
      anc_WV.data[1]=NULL;
@@ -578,7 +575,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      strcpy(anc_WV.filename[2],param->ncep_file_name[2]);
      strcpy(anc_WV.filename[3],param->ncep_file_name[3]);
      if (read_grib_anc(&anc_WV,TYPE_WV_DATA))
-       ERROR("Can't read NCEP WV data","main");
+       EXIT_ERROR("Can't read NCEP WV data","main");
 
      anc_SP.data[0]=NULL;
      anc_SP.data[1]=NULL;
@@ -592,7 +589,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      strcpy(anc_SP.filename[2],param->ncep_file_name[2]);
      strcpy(anc_SP.filename[3],param->ncep_file_name[3]);
      if (read_grib_anc(&anc_SP,TYPE_SP_DATA))
-       ERROR("Can't read NCEP SP data","main");
+       EXIT_ERROR("Can't read NCEP SP data","main");
 
      anc_ATEMP.data[0]=NULL;
      anc_ATEMP.data[1]=NULL;
@@ -606,10 +603,10 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
      strcpy(anc_ATEMP.filename[2],param->ncep_file_name[2]);
      strcpy(anc_ATEMP.filename[3],param->ncep_file_name[3]);
      if (read_grib_anc(&anc_ATEMP,TYPE_ATEMP_DATA))
-       ERROR("Can't read NCEP SP data","main");
+       EXIT_ERROR("Can't read NCEP SP data","main");
 
    } else {
-     ERROR("No input NCEP or PRWV data specified","main");
+     EXIT_ERROR("No input NCEP or PRWV data specified","main");
    }
 
   /* Convert the units */
@@ -632,14 +629,11 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   /* Open file for SD access */
   sds_file_id = SDstart((char *)dem_name, DFACC_RDONLY);
   if (sds_file_id == HDF_ERROR) {
-    ERROR("opening dem_file", "OpenDem");
+    EXIT_ERROR("opening dem_file", "OpenDem");
   }
   sds_index=0;		   
   sds_id= SDselect(sds_file_id,sds_index);
   status=  SDgetinfo(sds_id, sds_name, &rank, dim_sizes, &data_type,&n_attrs);
-/*  printf("DEBUG the name of the sds is %s\n",sds_name); */
-/*  printf("DEBUG the rank of the sds is %d\n",rank); */
-/*  printf("DEBUG the dimension of the sds is %d %d\n",dim_sizes[0],dim_sizes[1]); */
   start[0]=0;
   start[1]=0;
   edges[0]=3600;   /* number of lines in the DEM data */
@@ -671,8 +665,8 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	img.l=input->size.l/2.; 
 	img.s=input->size.s/2.; 
 	img.is_fill=false;
-	if (!FromSpace(space, &img, &geo))
-    	ERROR("mapping from space (0)", "main");
+	if (!from_space(space, &img, &geo))
+    	EXIT_ERROR("mapping from space (0)", "main");
    center_lat=geo.lat * DEG;
    center_lon=geo.lon * DEG;
 	printf ("(y0,x0)=(%d,%d)  (lat0,lon0)=(%f,%f)\n",
@@ -684,19 +678,16 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	img.l=input->size.l/2.-100.; 
 	img.s=input->size.s/2.; 
 	img.is_fill=false;
-	if (!FromSpace(space, &img, &geo))
-    	ERROR("mapping from space (0)", "main");
-/*printf ("DEBUG: (y1,x1)=(%d,%d)  (lat1,lon1)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG)); */
+	if (!from_space(space, &img, &geo))
+    	EXIT_ERROR("mapping from space (0)", "main");
 
 	geo.lon=center_lon*RAD;
 	geo.is_fill=false;
-	if (!ToSpace(space, &geo, &img))
-    	ERROR("mapping to space (0)", "main");
-/*printf ("DEBUG: (y2,x2)=(%d,%d)  (lat2,lon2)=(%f,%f)\n", (int)img.l,(int)img.s,(float)(geo.lat * DEG),(float)(geo.lon * DEG)); */
+	if (!to_space(space, &geo, &img))
+    	EXIT_ERROR("mapping to space (0)", "main");
 
 	delta_y = delta_y - img.l;
 	delta_x = img.s - delta_x;
-/*printf ("DEBUG: delta_x, delta_y = %f, %f\n", delta_x, delta_y); */
 	adjust_north=(float)(atan(delta_x/delta_y)*DEG);
 
 	printf("True North adjustment = %f\n",adjust_north);
@@ -764,7 +755,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 			sixs_tables.Inst=SIXS_INST_ETM;
 			break;
 		default:
-			ERROR("Unknown Instrument", "main");
+			EXIT_ERROR("Unknown Instrument", "main");
 	}
 	create_6S_tables(&sixs_tables, &input->meta);
 #ifdef SAVE_6S_RESULTS
@@ -783,8 +774,8 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	 img.l=il_ar*lut->ar_region_size.l+lut->ar_region_size.l/2.;
      for (is_ar=0;is_ar < lut->ar_size.s; is_ar++) {
         img.s=is_ar*lut->ar_region_size.s+lut->ar_region_size.s/2.; 
-	if (!FromSpace(space, &img, &geo))
-    	   ERROR("mapping from space (1)", "main");
+	if (!from_space(space, &img, &geo))
+    	   EXIT_ERROR("mapping from space (1)", "main");
 
         ar_gridcell.lat[il_ar*lut->ar_size.s+is_ar]=geo.lat * DEG;
         ar_gridcell.lon[il_ar*lut->ar_size.s+is_ar]=geo.lon * DEG;
@@ -855,7 +846,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	Allocate memory for atmos_coeff
 	***/
 	if (allocate_mem_atmos_coeff(nbpts,&atmos_coef))
-        ERROR("Allocating memory for atmos_coef", "main");
+        EXIT_ERROR("Allocating memory for atmos_coef", "main");
 
     printf("Compute Atmos Params with aot550 = 0.01\n"); fflush(stdout);
 	update_atmos_coefs(&atmos_coef,&ar_gridcell, &sixs_tables,line_ar, lut,input->nband, 1);
@@ -864,7 +855,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 
 /* allocate memory for cld_diags structure and clear sum and nb of obs */	
 	if (allocate_cld_diags(&cld_diags,CLDDIAGS_CELLHEIGHT_5KM, CLDDIAGS_CELLWIDTH_5KM, input->size.l, input->size.s)) {
-     		ERROR("couldn't allocate memory from cld_diags","main");
+     		EXIT_ERROR("couldn't allocate memory from cld_diags","main");
 	}
 
   for (il = 0; il < input->size.l; il++) {
@@ -877,13 +868,13 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
     /* Read each input band */
     for (ib = 0; ib < input->nband; ib++) {
       if (!GetInputLine(input, ib, il, line_in[0][ib]))
-        ERROR("reading input data for a line (b)", "main");
+        EXIT_ERROR("reading input data for a line (b)", "main");
     }
     if (!GetInputQALine(input, il, qa_line[0]))
-      ERROR("reading input data for qa_line (1)", "main");
+      EXIT_ERROR("reading input data for qa_line (1)", "main");
     if (param->thermal_band) {
      if (!GetInputLine(input_b6, 0, il, b6_line[0]))
-       ERROR("reading input data for b6_line (1)", "main");
+       EXIT_ERROR("reading input data for b6_line (1)", "main");
     }
 
     tmpint=(int)(scene_gmt/anc_ATEMP.timeres);
@@ -891,14 +882,11 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	tmpint=anc_ATEMP.nblayers-2;
     coef=(double)(scene_gmt-anc_ATEMP.time[tmpint])/anc_ATEMP.timeres;
 	img.is_fill=false;
-/*
-	img.l=il_ar*lut->ar_region_size.l+lut->ar_region_size.l/2.;
-*/
 	img.l=il;
     for (is=0;is < input->size.s; is++) {
 	img.s=is;
-		if (!FromSpace(space, &img, &geo))
-    	   ERROR("mapping from space (2)", "main");
+		if (!from_space(space, &img, &geo))
+    	   EXIT_ERROR("mapping from space (2)", "main");
         flat=geo.lat * DEG;
         flon=geo.lon * DEG;
 
@@ -906,11 +894,12 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
     	atemp_line[is]=(1.-coef)*tmpflt_arr[tmpint]+coef*tmpflt_arr[tmpint+1];
 	}
     /* Run Cld Screening Pass1 and compute stats */
-	if (param->thermal_band)
-		if (!cloud_detection_pass1(lut, input->size.s, il, line_in[0], qa_line[0], b6_line[0], atemp_line,&cld_diags))
-      		ERROR("running cloud detection pass 1", "main");
-
+    if (param->thermal_band)
+      if (!cloud_detection_pass1(lut, input->size.s, il, line_in[0],
+        qa_line[0], b6_line[0], atemp_line,&cld_diags))
+          EXIT_ERROR("running cloud detection pass 1", "main");
   } /* end for */
+
   if (param->thermal_band) {
 	for (il=0;il<cld_diags.nbrows;il++) {
     	tmpint=(int)(scene_gmt/anc_ATEMP.timeres);
@@ -925,8 +914,8 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 			img.s=is*cld_diags.cellwidth+cld_diags.cellwidth/2.;
 			if (img.s >= input->size.s)
 				img.s = input->size.s-1;
-			if (!FromSpace(space, &img, &geo))
-    	   		ERROR("mapping from space (3)", "main");
+			if (!from_space(space, &img, &geo))
+    	   		EXIT_ERROR("mapping from space (3)", "main");
         	flat=geo.lat * DEG;
         	flon=geo.lon * DEG;
 
@@ -975,10 +964,12 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 /***
 	Create dark target temporary file
 ***/
-	charptr=tempnam(".","temporary_dark_target");
-	if (charptr == NULL) ERROR("getting dark target temporary filename", "main");
-	strcpy(tmpfilename,charptr);
-	if ((fdtmp=fopen(tmpfilename,"w"))==NULL) ERROR("creating dark target temporary file", "main");
+	strcpy(tmpfilename, "temporary_dark_target_XXXXXX");
+    if ((tmpid = mkstemp (tmpfilename)) < 1)
+      EXIT_ERROR("creating filename for dark target temporary file", "main");
+    close(tmpid);
+	if ((fdtmp=fopen(tmpfilename,"w"))==NULL)
+      EXIT_ERROR("creating dark target temporary file", "main");
 
   /* Read input second time and create cloud and cloud shadow masks */
   ptr_rot_cld[0]=rot_cld[0];
@@ -1010,31 +1001,31 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 
       for (ib = 0; ib < input->nband; ib++) {
         if (!GetInputLine(input, ib, il, line_in[il_region][ib]))
-          ERROR("reading input data for a line (a)", "main");
+          EXIT_ERROR("reading input data for a line (a)", "main");
       }
       if (!GetInputQALine(input, il, qa_line[il_region]))
-        ERROR("reading input data for qa_line (2)", "main");
+        EXIT_ERROR("reading input data for qa_line (2)", "main");
 	  if (param->thermal_band) {
       	if (!GetInputLine(input_b6, 0, il, b6_line[il_region]))
-      	 ERROR("reading input data for b6_line (2)", "main");
+      	 EXIT_ERROR("reading input data for b6_line (2)", "main");
 
         /* Run Cld Screening Pass2 */
 	    if (!cloud_detection_pass2(lut, input->size.s, il, line_in[il_region], qa_line[il_region], b6_line[il_region], &cld_diags , ptr_rot_cld[1][il_region]))
-      	  ERROR("running cloud detection pass 2", "main");
+      	  EXIT_ERROR("running cloud detection pass 2", "main");
 	  } else {
 	    if (!cloud_detection_pass2(lut, input->size.s, il, line_in[il_region], qa_line[il_region], NULL, &cld_diags , ptr_rot_cld[1][il_region]))
-      	  ERROR("running cloud detection pass 2", "main");
+      	  EXIT_ERROR("running cloud detection pass 2", "main");
       }
 
     }
 	if (param->thermal_band) {
 		/* Cloud Mask Dilation : 5 pixels */
 		if (!dilate_cloud_mask(lut, input->size.s, ptr_rot_cld, 5))
-      		ERROR("running cloud mask dilation", "main");
+      		EXIT_ERROR("running cloud mask dilation", "main");
 
 		/* Cloud shadow */
-		if (!cast_cloud_shadow(lut, input->size.s, il_start, line_in, b6_line, &cld_diags,ptr_rot_cld,&ar_gridcell,space_def.pixel_size,adjust_north))
-      		ERROR("running cloud shadow detection", "main");
+		if (!cast_cloud_shadow(lut, input->size.s, il_start, line_in, b6_line, &cld_diags,ptr_rot_cld,&ar_gridcell,space_def.pixel_size[0],adjust_north))
+      		EXIT_ERROR("running cloud shadow detection", "main");
 
 		/* Dilate Cloud shadow */
 		dilate_shadow_mask(lut, input->size.s, ptr_rot_cld, 5);
@@ -1043,11 +1034,11 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	Save cloud and cloud shadow in temporary file
 ***/
 	if (il_ar > 0)
-		if (fwrite(ptr_rot_cld[0][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) ERROR("writing dark target to temporary file", "main");
-/*	if (fwrite(ptr_rot_cld[1][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) ERROR("writing dark target to temporary file", "main");
+		if (fwrite(ptr_rot_cld[0][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) EXIT_ERROR("writing dark target to temporary file", "main");
+/*	if (fwrite(ptr_rot_cld[1][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) EXIT_ERROR("writing dark target to temporary file", "main");
 */
 /**
-	if (fwrite(line_ar[il_ar][0],lut->ar_size.s*2,1,fdtmp2)!=1) ERROR("writing aot1 to temporary file", "main");
+	if (fwrite(line_ar[il_ar][0],lut->ar_size.s*2,1,fdtmp2)!=1) EXIT_ERROR("writing aot1 to temporary file", "main");
 **/
 	ptr_tmp_cld=ptr_rot_cld[0];
 	ptr_rot_cld[0]=ptr_rot_cld[1];
@@ -1058,16 +1049,16 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   }
 /** Last Block */
   dilate_shadow_mask(lut, input->size.s, ptr_rot_cld, 5);
-  if (fwrite(ptr_rot_cld[0][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) ERROR("writing dark target to temporary file", "main");
+  if (fwrite(ptr_rot_cld[0][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) EXIT_ERROR("writing dark target to temporary file", "main");
    fclose(fdtmp);
 
 
 /***
 	Open temporary file for read and write
 ***/
-	if ((fdtmp=fopen(tmpfilename,"r+"))==NULL) ERROR("opening dark target temporary file (r+)", "main");
+	if ((fdtmp=fopen(tmpfilename,"r+"))==NULL) EXIT_ERROR("opening dark target temporary file (r+)", "main");
 /*	
-	if ((fdtmp2=fopen("Temporary_AOT1_File.dat","w"))==NULL) ERROR("creating temporary aot1 file", "main");
+	if ((fdtmp2=fopen("Temporary_AOT1_File.dat","w"))==NULL) EXIT_ERROR("creating temporary aot1 file", "main");
 */
   /* Read input second time and compute the aerosol for each region */
 
@@ -1088,8 +1079,8 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
     il_end = il_start + lut->ar_region_size.l - 1;
     if (il_end >= input->size.l) il_end = input->size.l - 1;
 	 
-	if (fseek(fdtmp,(long)(il_ar*lut->ar_region_size.l*input->size.s),SEEK_SET)) ERROR("seeking in temporary file (r)", "main");
-	if (fread(ddv_line[0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) ERROR("reading dark target to temporary file", "main");
+	if (fseek(fdtmp,(long)(il_ar*lut->ar_region_size.l*input->size.s),SEEK_SET)) EXIT_ERROR("seeking in temporary file (r)", "main");
+	if (fread(ddv_line[0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) EXIT_ERROR("reading dark target to temporary file", "main");
 
     /* Read each input band for each line in region */
 
@@ -1098,7 +1089,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	 il++, il_region++) {
       for (ib = 0; ib < input->nband; ib++) {
         if (!GetInputLine(input, ib, il, line_in[il_region][ib]))
-          ERROR("reading input data for a line (a)", "main");
+          EXIT_ERROR("reading input data for a line (a)", "main");
       }
     }
 
@@ -1111,14 +1102,14 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 #endif
     if (!Ar(il_ar,lut, &input->size, line_in, ddv_line, line_ar[il_ar],
         line_ar_stats[il_ar], &ar_stats, &ar_gridcell, &sixs_tables))
-      ERROR("computing aerosol", "main");
+      EXIT_ERROR("computing aerosol", "main");
 /***
 	Save dark target map in temporary file
 ***/
-	if (fseek(fdtmp,il_ar*lut->ar_region_size.l*input->size.s,SEEK_SET)) ERROR("seeking in temporary file (w)", "main");
-	if (fwrite(ddv_line[0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) ERROR("writing dark target to temporary file", "main");
+	if (fseek(fdtmp,il_ar*lut->ar_region_size.l*input->size.s,SEEK_SET)) EXIT_ERROR("seeking in temporary file (w)", "main");
+	if (fwrite(ddv_line[0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) EXIT_ERROR("writing dark target to temporary file", "main");
 /**
-	if (fwrite(line_ar[il_ar][0],lut->ar_size.s*2,1,fdtmp2)!=1) ERROR("writing aot1 to temporary file", "main");
+	if (fwrite(line_ar[il_ar][0],lut->ar_size.s*2,1,fdtmp2)!=1) EXIT_ERROR("writing aot1 to temporary file", "main");
 **/
   }
   printf("\n");
@@ -1157,7 +1148,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 /***
 	Open temporary file for read
 ***/
-	if ((fdtmp=fopen(tmpfilename,"r"))==NULL) ERROR("opening dark target temporary file", "main");
+	if ((fdtmp=fopen(tmpfilename,"r"))==NULL) EXIT_ERROR("opening dark target temporary file", "main");
 
   for (il = 0; il < input->size.l; il++) {
 	if (!(il%100)) 
@@ -1169,20 +1160,20 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 
     for (ib = 0; ib < input->nband; ib++) {
       if (!GetInputLine(input, ib, il, line_in[0][ib]))
-        ERROR("reading input data for a line (b)", "main");
+        EXIT_ERROR("reading input data for a line (b)", "main");
     }
     
      if (!GetInputLine(input_b6, 0, il, b6_line[0]))
-       ERROR("reading input data for b6_line (1)", "main");
+       EXIT_ERROR("reading input data for b6_line (1)", "main");
 
     /* Compute the surface reflectance */
   	if (!Sr(lut, input->size.s, il, line_in[0], line_out, &sr_stats))
- 	  ERROR("computing surface reflectance for a line", "main");
+ 	  EXIT_ERROR("computing surface reflectance for a line", "main");
 
 /***
 	Read line from dark target temporary file
 ***/
-	if (fread(ddv_line[0],input->size.s,1,fdtmp)!=1) ERROR("reading line from dark target temporary file", "main");
+	if (fread(ddv_line[0],input->size.s,1,fdtmp)!=1) EXIT_ERROR("reading line from dark target temporary file", "main");
 
 	loc.l=il;
   	 i_aot=il/lut->ar_region_size.l;
@@ -1230,16 +1221,6 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
             line_out[lut->nband+LAND_WATER][is] = QA_ON;  /* water */
         if (ddv_line[0][is]&0x20)
             line_out[lut->nband+CLOUD][is] = QA_ON;  /* set internal cloud mask bit */
-#ifdef NOT_RESET_CLOUD_SHADOW_AND_ADJ_BITS
-/* NOTE: The cloud shadow and adjacent cloud bits are reset to off after this
-   code snippet.  So, there is no need to implement this section of code unless
-   the reset code is removed at a later date.  Ultimately the cloud, cloud
-   shadow, and adjacent cloud bits are overwritten in lndsrbm as well. */
-        if (ddv_line[0][is]&0x04)
-            line_out[lut->nband+ADJ_CLOUD][is] = QA_ON;  /* set internal adjacent cloud mask bit */
-        if (ddv_line[0][is]&0x40)
-            line_out[lut->nband+CLOUD_SHADOW][is] = QA_ON;  /* set internal cloud shadow mask bit */
-#endif
         if (ddv_line[0][is]&0x80)
             line_out[lut->nband+SNOW][is] = QA_ON;  /* set internal snow mask bit */
         /* try to redo the cloud mask Vermote May 29 2007 */
@@ -1249,7 +1230,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
         line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
 				
 		anom=line_out[0][is]-line_out[2][is]/2.;
-		t6=b6_line[0][is]/100.+273.;
+		t6=b6_line[0][is]*0.1;
 		t6s_seuil=280.+(1000.*0.01);
 		if (( ( anom > 300 ) && ( line_out[4][is] > 300) && ( t6 < t6s_seuil) )
            || ( (line_out[2][is] > 5000) && ( t6 < t6s_seuil)))
@@ -1268,79 +1249,82 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 	   	line_out[lut->nband+STD_DARK][is]=lut->in_fill;
 		}
     } /* for is */
-  /* Write each output band */
 
-  for (ib = 0; ib < output->nband_tot-3; ib++) {
+  /* Write each output band */
+  for (ib = 0; ib < output->nband_out; ib++) {
     if (ib >= lut->nband+FILL && ib <= lut->nband+ADJ_CLOUD) {
        /* fill, DDV, cloud, cloud shadow, snow, land/water, and adjacent
           cloud QA bands are all 8-bit products */
-      if (!PutOutputLineU8(output, ib, il, line_out[ib]))
-        ERROR("writing output data for a line", "main");
+      if (!PutOutputLine(output, ib, il, line_out[ib]))
+        EXIT_ERROR("writing output data for a line", "main");
     }
     else {
       if (!PutOutputLine(output, ib, il, line_out[ib]))
-        ERROR("writing output data for a line", "main");
+        EXIT_ERROR("writing output data for a line", "main");
     }
   }
   }  /* for il */
   printf("\n");
-	fclose(fdtmp);
-	unlink(tmpfilename); 
+  fclose(fdtmp);
+printf ("DEBUG: removing tmpfilename = %s\n", tmpfilename);
+  unlink(tmpfilename); 
 	
   /* Print the statistics, skip bands that don't exist */
-
   printf(" total pixels %ld\n", ((long)input->size.l * (long)input->size.s));
   printf(" aerosol coarse  nfill %ld  min  %d  max  %d\n", 
          ar_stats.nfill, ar_stats.ar_min, ar_stats.ar_max);
 
   for (ib = 0; ib < lut->nband; ib++) {
-    if (output->sds_sr[ib].name != NULL)
+    if (output->metadata.band[ib].name != NULL)
     printf(" sr %s  nfill %ld  nout_range %ld  min  %d  max  %d\n", 
-            output->sds_sr[ib].name, 
+            output->metadata.band[ib].name, 
 	    sr_stats.nfill[ib], sr_stats.nout_range[ib],
 	    sr_stats.sr_min[ib], sr_stats.sr_max[ib]);
   }
   
-  /* Write the output metadata */
-  
-  if (!PutMetadata(output, input->nband, &input->meta, &input_b6->meta, param,
-    lut, &bounds, &ul_corner, &lr_corner))
-    ERROR("writing the metadata", "main");
-
   /* Close input files */
+  if (!CloseInput(input)) EXIT_ERROR("closing input file", "main");
+  if (!CloseOutput(output)) EXIT_ERROR("closing input file", "main");
 
-  if (!CloseInput(input)) ERROR("closing input file", "main");
+  /* Write the ENVI header for reflectance files */
+  for (ib = 0; ib < output->nband_out; ib++) {
+    /* Create the ENVI header file this band */
+    if (create_envi_struct (&output->metadata.band[ib], &xml_metadata.global,
+      &envi_hdr) != SUCCESS)
+        EXIT_ERROR("Creating the ENVI header structure for this file.", "main");
 
-  if (!CloseOutput(output)) ERROR("closing input file", "main");
-
-  nsds=output->nband_tot-3;
-  for (isds = 0; isds < nsds; isds++) {
-    sds_names[isds] = output->sds_sr[isds].name;
-    sds_types[isds] = output->sds_sr[isds].type;
+    /* Write the ENVI header */
+    strcpy (envi_file, output->metadata.band[ib].file_name);
+    cptr = strchr (envi_file, '.');
+    strcpy (cptr, ".hdr");
+    if (write_envi_hdr (envi_file, &envi_hdr) != SUCCESS)
+        EXIT_ERROR("Writing the ENVI header file.", "main");
   }
-  if (!PutSpaceDefHDF(&space_def, output->file_name, nsds, 
-                      sds_names, sds_types, grid_name))
-    ERROR("putting space metadata in HDF file", "main");
+
+  /* Append the reflective and thermal bands to the XML file */
+  if (append_metadata (output->nband_out, output->metadata.band,
+    param->input_xml_file_name) != SUCCESS)
+    EXIT_ERROR("appending surfance reflectance and QA bands", "main");
+
+  /* Free the metadata structure */
+  free_metadata (&xml_metadata);
 
   /* Free memory */
-  
-	free_mem_atmos_coeff(&atmos_coef);
+  free_mem_atmos_coeff(&atmos_coef);
 
   if (!FreeInput(input)) 
-    ERROR("freeing input file stucture", "main");
+    EXIT_ERROR("freeing input file stucture", "main");
 
   if (!FreeInput(input_b6)) 
-    ERROR("freeing input_b6 file stucture", "main");
+    EXIT_ERROR("freeing input_b6 file stucture", "main");
 
   if (!FreeLut(lut)) 
-    ERROR("freeing lut file stucture", "main");
+    EXIT_ERROR("freeing lut file stucture", "main");
 
   if (!FreeOutput(output)) 
-    ERROR("freeing output file stucture", "main");
-  if (!FreeSpace(space))
-    ERROR("freeing space", "main");
+    EXIT_ERROR("freeing output file stucture", "main");
 
-
+  free(space);
   free(line_out[0]);
   free(line_ar[0][0]);
   free(line_ar[0]);
@@ -1378,13 +1362,11 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   if (dem_available)
      free(dem_array);
   if (!FreeParam(param)) 
-    ERROR("freeing parameter stucture", "main");
+    EXIT_ERROR("freeing parameter stucture", "main");
 
 
   /* All done */
-
   printf ("lndsr complete.\n");
-
   return (EXIT_SUCCESS);
 }
 
@@ -1518,11 +1500,11 @@ C      / First loop for time/
    Minf= (int) ((jday-15.)/30.5);
    if (jday < 15) 
     Minf=Minf-1;
-   Latinf=(int) (flat/10.);
+   Latinf=(int) (flat*0.1);
    if (flat < 0.) 
     Latinf=Latinf-1;
    t=((jday-15.)-(30.5*Minf))/30.5;
-   u=(flat-10.*Latinf)/10.;
+   u=(flat-10.*Latinf)*0.1;
    
    Minf=(Minf+12)%12;
    Msup=(Minf+13)%12;
@@ -1621,12 +1603,6 @@ int update_gridcell_atmos_coefs(int irow,int icol,atmos_t *atmos_coef,Ar_gridcel
 		muv=cos(ar_gridcell->view_zen[ipt]*RAD);
 		phi=ar_gridcell->rel_az[ipt];
 		ratio_spres=ar_gridcell->spres[ipt]/1013.;
-/* eric is trying something */
-/*                if ((irow == 53 )&&(icol == 83)) 
-		{
-		   printf("let's see what is going on\n"); 
-		   }
-		   */
 		if (bkgd_aerosol) {
 			atmos_coef->computed[ipt]=1;
 			aot550=0.01;
@@ -1635,10 +1611,6 @@ int update_gridcell_atmos_coefs(int irow,int icol,atmos_t *atmos_coef,Ar_gridcel
 				atmos_coef->computed[ipt]=1;
 				aot550=((float)line_ar[0][icol]/1000.)*pow((550./lamda[0]),-1.);
 			} else {
-/*
-				atmos_coef->computed[ipt]=0;
-*/
-                                
 				atmos_coef->computed[ipt]=1;
 				aot550=0.01;
 			}

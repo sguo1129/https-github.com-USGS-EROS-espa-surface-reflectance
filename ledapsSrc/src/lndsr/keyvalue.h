@@ -3,21 +3,6 @@
 
 #include "lndsr.h"
 
-/* Data provider type values */
-
-const Key_string_t Provider_string[PROVIDER_MAX] = {
-  {(int)PROVIDER_UMD,  "UMD"},
-  {(int)PROVIDER_EDC,  "EDC"},
-  {(int)PROVIDER_CCRS, "CCRS"},
-  {(int)PROVIDER_MRLC01, "MRLC01"},
-  {(int)PROVIDER_MRLC92, "MRLC92"},
-  {(int)PROVIDER_USDA,   "USDA"},
-  {(int)PROVIDER_EROS,   "USGS/EROS"},
-  {(int)PROVIDER_CI,     "CI"},
-  {(int)PROVIDER_Scott,  "Scott"}
-
-};
-
 /* Satellite type values */
 
 const Key_string_t Sat_string[SAT_MAX] = {
@@ -42,13 +27,6 @@ const Key_string_t Inst_string[INST_MAX] = {
 const Key_string_t Wrs_string[WRS_MAX] = {
   {(int)WRS_1, "1"},
   {(int)WRS_2, "2"},
-};
-
-/* Band gain settings (ETM+ only) values */
-
-const Key_string_t Gain_string[GAIN_MAX] = {
-  {(int)GAIN_HIGH, "HIGH"},
-  {(int)GAIN_LOW,  "LOW"},
 };
 
 /* Satellite type values */

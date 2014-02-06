@@ -15,9 +15,6 @@ typedef struct {
 } Sr_stats_t;
 
 
-bool Sr(Lut_t *lut, int nsamp, int il, int **line_in, int **line_out,
+bool Sr(Lut_t *lut, int nsamp, int il, int16 **line_in, int16 **line_out,
         Sr_stats_t *sr_stats);
-
-bool computeBounds(Geo_bounds_t *bounds, Geo_coord_t *ul_corner,
-    Geo_coord_t *lr_corner, Space_t *space, int nps, int nls);
 #endif

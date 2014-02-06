@@ -25,7 +25,7 @@ void csalbr(float *tau_ray,float *actual_S_r);
 int compute_aot(int band,float rho_toa,float rho_surf_est,float ts,float tv, float phi, float uoz, float uwv, float spres,sixs_tables_t *sixs_tables,float *aot);
 int update_gridcell_atmos_coefs(int irow,int icol,atmos_t *atmos_coef,Ar_gridcell_t *ar_gridcell, sixs_tables_t *sixs_tables,int **line_ar,Lut_t *lut,int nband, int bkgd_aerosol);
 
-bool Ar(int il_ar,Lut_t *lut, Img_coord_int_t *size_in, int ***line_in, 
+bool Ar(int il_ar,Lut_t *lut, Img_coord_int_t *size_in, int16 ***line_in, 
         char **ddv_line, int **line_ar, int **line_ar_stats,
         Ar_stats_t *ar_stats, Ar_gridcell_t *ar_gridcell,
         sixs_tables_t *sixs_tables) 
@@ -672,10 +672,10 @@ int Old_Fill_Ar_Gaps(Lut_t *lut, int ***line_ar, int ib)
   **/
   gaps_loc=(Img_coord_int_t *)malloc(lut->ar_size.l*lut->ar_size.s*sizeof(Img_coord_int_t));
   if (gaps_loc == NULL)
-   ERROR("failed to allocate memory for gaps_loc","Fill_Ar_Gaps");
+   EXIT_ERROR("failed to allocate memory for gaps_loc","Fill_Ar_Gaps");
   gaps_neighbors=(int *)malloc(lut->ar_size.l*lut->ar_size.s*sizeof(int));
   if (gaps_neighbors == NULL)
-   ERROR("failed to allocate memory for gaps_neighbors","Fill_Ar_Gaps");
+   EXIT_ERROR("failed to allocate memory for gaps_neighbors","Fill_Ar_Gaps");
 
   more_gaps=1;
   while (more_gaps) {
