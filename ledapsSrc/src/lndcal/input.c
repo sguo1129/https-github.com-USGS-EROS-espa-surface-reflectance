@@ -52,7 +52,6 @@
 
    2. 'OpenInput' must be called before any of the other routines.  
    3. 'FreeInput' should be used to free the 'input' data structure.
-   4. The only input file type supported is HDF.
 
 !END****************************************************************************
 */
@@ -105,11 +104,10 @@ Input_t *OpenInput(Espa_internal_meta_t *metadata)
   if (this->file_type == INPUT_TYPE_BINARY) {
     for (ib = 0; ib < this->nband; ib++) {
       this->fp_bin[ib] = fopen(this->file_name[ib], "r");
-      if (this->fp_bin[ib] == NULL) 
-        {
+      if (this->fp_bin[ib] == NULL) {
         error_string = "opening binary file";
         break;
-        }
+      }
       this->open[ib] = true;
     }
     if ( this->nband_th == 1 ) {
@@ -121,8 +119,6 @@ Input_t *OpenInput(Espa_internal_meta_t *metadata)
     }
   } else 
     error_string = "invalid file type";
-  if (error_string != NULL)
-    RETURN_ERROR(error_string, "OpenInput", NULL);
 
   if (error_string != NULL) {
     for (ib = 0; ib < this->nband; ib++) {
@@ -210,26 +206,16 @@ bool CloseInput(Input_t *this)
 !Description: 'CloseInput' ends SDS access and closes the input file.
  
 !Input Parameters:
- this           'input' data structure; the following fields are input:
-                   open, sds.id, sds_file_id
+ this           'input' data structure
 
 !Output Parameters:
  this           'input' data structure; the following fields are modified:
                    open
  (returns)      status:
                   'true' = okay
-		  'false' = error return
+                  'false' = error return
 
 !Team Unique Header:
-
- ! Design Notes:
-   1. An error status is returned when:
-       a. the file is not open for access
-       b. an error occurs when closing access to the SDS.
-   2. Error messages are handled with the 'RETURN_ERROR' macro.
-   3. 'OpenInput' must be called before this routine is called.
-   4. 'FreeInput' should be called to deallocate memory used by the 
-      'input' data structure.
 
 !END****************************************************************************
 */
@@ -272,18 +258,13 @@ bool FreeInput(Input_t *this)
 !Description: 'FreeInput' frees the 'input' data structure memory.
  
 !Input Parameters:
- this           'input' data structure; the following fields are input:
-                   sds.rank, sds.dim[*].name, sds.name, file_name
+ this           'input' data structure
 
 !Output Parameters:
  (returns)      status:
                   'true' = okay (always returned)
 
 !Team Unique Header:
-
- ! Design Notes:
-   1. 'OpenInput' and 'CloseInput' must be called before this routine is called.
-   2. An error status is never returned.
 
 !END****************************************************************************
 */
@@ -312,7 +293,6 @@ bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy)
   if (this == NULL) 
     RETURN_ERROR("invalid input structure", "InputMetaCopy", false);
 
-  copy->provider = this->provider;
   copy->sat = this->sat;
   copy->inst = this->inst;
   if (!DateCopy(&this->acq_date, &copy->acq_date)) 
@@ -381,10 +361,8 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     Espa_global_meta_t *gmeta = &metadata->global; /* pointer to global meta */
 
     /* Initialize the input fields.  Set file type to binary, since that is
-       the ESPA internal format for the input L1G/T products.  Set the provider
-       to USGS/EROS. */
+       the ESPA internal format for the input L1G/T products. */
     this->file_type = INPUT_TYPE_BINARY;
-    this->meta.provider = PROVIDER_EROS;
     this->meta.sat = SAT_NULL;
     this->meta.inst = INST_NULL;
     this->meta.acq_date.fill = true;
