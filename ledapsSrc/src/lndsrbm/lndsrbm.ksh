@@ -10,9 +10,14 @@
 # - need to be able to process Polar Stereographic projections
 # - utilize a geo_xy.ERROR file to flag and catch errors in the geo2xy and
 #   xy2geo processing
+#
+# Modified on 2/6/2014 by Gail Schmidt, USGS EROS
+# - modified to utilize the internal ESPA file format
+# - reworked some of the FORTRAN code and converted to C so that the raw
+#   binary products could be utilized in this application
 ###########################################################################
 lndsr_inp=$1
-echo "Processing metadata file: '$lndsr_inp'"
+echo "Processing lndsr parameter file: '$lndsr_inp'"
 
 # where is this executable?
 exe_dir=`echo $0 | sed -e "s|/[^/]*$||"`
@@ -32,18 +37,10 @@ then
 fi
 
 # find lndsr*.hdf file
-filein=`grep SR_FILE $lndsr_inp | awk '{print $3}'`
-if test ! -f "$filein"
+file_xml=`grep XML_FILE $lndsr_inp | awk '{print $3}'`
+if test ! -f "$file_xml"
 then
-  echo "FAIL  : can't find '$filein'"
-  exit
-fi
-
-# find lndth*.hdf file
-fileth=`grep TEMP_FILE $lndsr_inp | awk '{print $3}'`
-if test ! -f "$fileth"
-then
-  echo "FAIL  : can't find '$fileth'"
+  echo "FAIL  : can't find '$file_xml'"
   exit
 fi
 
@@ -57,15 +54,11 @@ fi
 
 echo "using ancillary data '$fileanc'"
 
-case=`basename $filein .hdf`
+case=`basename $file_xml .xml`
 case="$case.txt"
 
-# append thermal band to lndsr*.hdf file
-echo "appending thermal file $fileth to lndsr file $filein"
-$exe_dir/lndapp -sr $filein -th $fileth
-
-# work with metadata (ncdump will be in the local directory)
-$exe_dir/ncdump -h $filein > tmp.meta
+# work with XML metadata
+$exe_dir/dump_meta $file_xml > tmp.meta
 
 # compute lat,long of the center of the scene
 cat tmp.meta | grep Coordinate >tmp.updatecm
@@ -80,6 +73,7 @@ echo "Center long: '$lonc' Center lat: '$latc'"
 ygrib=`echo $latc | awk '{print int((90.-$1)*73/180.)}'` 
 xgrib=`echo $lonc | awk '{print int((180.+$1)*144/360.)}'` 
 echo "ygrib: '$ygrib' xgrib: '$xgrib'"
+
 $exe_dir/SDSreader3.0 -f $fileanc -w "$ygrib $xgrib 1 1" -v >tmp.dumpfileanc
 grep SDS tmp.dumpfileanc | grep air | awk '{print $8}' | tr -d "," | awk '{print ($1*0.01)+512.81}' >tmp.airtemp
 
@@ -100,7 +94,7 @@ echo "WARNING WE ASSUME THE DATE IS GMT IS IT?"
 fi
 echo "Scene time: '$scenetime'"
 cat tmp.airtemp
-tclear=`$exe_dir/comptemp $scenetime <tmp.airtemp`
+tclear=`$exe_dir/comptemp $scenetime tmp.airtemp`
 echo "tclear: '$tclear'"
 
 # remove the geo_xy.ERROR file if it exists.  it is used to flag errors with
@@ -119,7 +113,7 @@ crow=`grep  "YDim_Grid =" tmp.meta | tail -1 | awk '{print $3/2}'`
 echo "Center col/row: '$ccol' '$crow'"
 
 # compute lat,long of the center
-str=`$exe_dir/xy2geo $filein $ccol $crow`
+str=`$exe_dir/xy2geo $file_xml $ccol $crow`
 if test -f "$geoxy_ERROR_FILE"
 then
   echo "Error running xy2geo"
@@ -133,7 +127,7 @@ echo "Center lat/long: '$clat' '$clon'"
 # compute lat,lon of the point 100 pixels north from the center 
 cpcol=$ccol
 cprow=`echo $crow | awk '{print $1-100}'`
-str=`$exe_dir/xy2geo $filein $cpcol $cprow`
+str=`$exe_dir/xy2geo $file_xml $cpcol $cprow`
 if test -f "$geoxy_ERROR_FILE"
 then
   echo "Error running xy2geo"
@@ -146,7 +140,7 @@ cplon=`echo $str | awk '{print $7}'`
 # now move to the longitude of the center of the image
 cplon=$clon
 # and compute the deviation in pixel
-str=`$exe_dir/geo2xy $filein $cplon $cplat`
+str=`$exe_dir/geo2xy $file_xml $cplon $cplat`
 if test -f "$geoxy_ERROR_FILE"
 then
   echo "Error running geo2xy"
@@ -159,21 +153,11 @@ echo "cscol/csrow: '$cscol' '$csrow'"
 deltay=`echo $csrow $crow | awk '{print $2-$1}'`
 deltax=`echo $cscol $ccol | awk '{print $1-$2}'`
 echo "delta x/y: '$deltax' '$deltay'"
-adjnorth=`$exe_dir/compadjn $deltax $deltay`
-echo "Northern adjustment: '$adjnorth'"
-ts=`grep SolarZenith tmp.meta | awk '{print $3}' | sed -e "s/f//"`
-fs=`grep SolarAzimuth tmp.meta | awk '{print $3}' | sed -e "s/f//"`
-
-# get the pixel size
-pixsize=`grep PixelSize tmp.meta | awk '{print $3}' | sed -e "s/f//"`
-echo "Pixel size: '$pixsize'"
-
-# write values needed for updating the cloud mask
-echo $tclear $ts 0.0 $fs $adjnorth $pixsize
-echo $tclear $ts 0.0 $fs $adjnorth $pixsize >anc-$case
 
 # update the cloud mask
 echo "Updating cloud mask"
-$exe_dir/cmrbv1.0 $filein <anc-$case
+echo "$exe_dir/lndsrbm --center_temp $tclear --dx $deltax --dy $deltay --xml $file_xml"
+status=`$exe_dir/lndsrbm --center_temp $tclear --dx $deltax --dy $deltay --xml $file_xml`
+echo "$status"
 
-rm -f tmp.airtemp tmp.dumpfileanc tmp.meta tmp.updatecm anc-$case
+rm -f tmp.airtemp tmp.dumpfileanc tmp.meta tmp.updatecm

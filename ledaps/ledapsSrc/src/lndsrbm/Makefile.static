@@ -1,30 +1,32 @@
-FC      = gfortran
-FC_EXTRA   = -Wall -static -O2 -fno-range-check
 EXTRA   = -Wall -static -O2
 INCDIR  = -I. -I$(HDFINC) -I$(JPEGINC)
 EXLIB   = -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm
-EXE     = cmrbv1.0 compadjn comptemp xy2geo geo2xy SDSreader3.0
+EXE     = comptemp dump_meta xy2geo geo2xy SDSreader3.0 lndsrbm
 GEOLOC_DEPEND = LS_geoloc.o LS_geoloc_driver.c
+GEOLOC_INCDIR = -I. -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
+GEOLOC_EXLIB  = -L$(HDFEOS_GCTPLIB) -lGctp -L$(JPEGLIB) -ljpeg \
+   -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
+   -L$(XML2LIB) -lxml2 -L$(JBIGLIB) -ljbig -llzma -lz -lm
 
 all : $(EXE)
 
-cmrbv1.0 : cmrbv1.0.f
-	$(FC) $(FC_EXTRA) -o $@ $? $(INCDIR) $(EXLIB)
-
-compadjn : compadjn.f
-	$(FC) $(FC_EXTRA) -o $@ $?
-
-comptemp : comptemp.f
-	$(FC) $(FC_EXTRA) -o $@ $?
+comptemp : comptemp.c
+	$(CC) $(EXTRA) -o $@ $? $(GEOLOC_INCDIR) $(GEOLOC_EXLIB)
 
 LS_geoloc.o : LS_geoloc.c
 	$(CC) $(EXTRA) -o $@ -c $?
 
 xy2geo : $(GEOLOC_DEPEND)
-	$(CC) $(EXTRA) -DINV -o $@ $(GEOLOC_DEPEND) $(INCDIR) $(EXLIB)
+	$(CC) $(EXTRA) -DINV -o $@ $(GEOLOC_DEPEND) $(GEOLOC_INCDIR) $(GEOLOC_EXLIB)
 
 geo2xy : $(GEOLOC_DEPEND)
-	$(CC) $(EXTRA) -o $@ $(GEOLOC_DEPEND) $(INCDIR) $(EXLIB)
+	$(CC) $(EXTRA) -o $@ $(GEOLOC_DEPEND) $(GEOLOC_INCDIR) $(GEOLOC_EXLIB)
+
+lndsrbm : lndsrbm.c
+	$(CC) $(EXTRA) -o $@ $? $(GEOLOC_INCDIR) $(GEOLOC_EXLIB)
+
+dump_meta : dump_meta.c
+	$(CC) $(EXTRA) -o $@ $? $(GEOLOC_INCDIR) $(GEOLOC_EXLIB)
 
 SDSreader3.0 : SDSreader3.0.c
 	$(CC) $(EXTRA) -o $@ $? $(INCDIR) $(EXLIB)
@@ -37,11 +39,11 @@ clean :
 	rm -f $(EXE)
 
 install:
-	cp cmrbv1.0 $(BIN)
-	cp compadjn $(BIN)
 	cp comptemp $(BIN)
+	cp dump_meta $(BIN)
 	cp xy2geo $(BIN) 
 	cp geo2xy $(BIN)
 	cp SDSreader3.0 $(BIN)
+	cp lndsrbm $(BIN)
 	cp lndsrbm.ksh $(BIN)
 
