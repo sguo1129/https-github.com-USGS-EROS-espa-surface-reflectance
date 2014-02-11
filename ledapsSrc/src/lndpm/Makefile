@@ -26,7 +26,8 @@ clean:
 	rm -f *.o $(TARGET)
 
 install:
-	cp $(TARGET) $(BIN)
+	install -d $(BIN)
+	install -m 755 $(TARGET) $(BIN)
 
 #******************* End of make file *******************************
 
