@@ -1,11 +1,8 @@
 EXTRA   = -g -D_BSD_SOURCE -Wall -O2
 
-#INCDIR  = -I. -I$(JPEGINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFEOS_GCTPINC)
 INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
-#EXLIB	= -L$(HDFEOS_LIB) -lhdfeos -L$(HDFEOS_GCTPLIB) -lGctp \
-#          -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz
 EXLIB	= -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
   -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
   -L$(XML2LIB) -lxml2 -L$(HDFEOS_GCTPLIB) -lGctp -lz
@@ -33,7 +30,8 @@ clean:
 	rm -f *.o $(TARGET1)
 
 install:
-	cp $(TARGET1) $(BIN)
+	install -d $(BIN)
+	install -m 755 $(TARGET1) $(BIN)
 
 #
 # Rules

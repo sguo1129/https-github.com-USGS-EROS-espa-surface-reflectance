@@ -1,6 +1,5 @@
 EXTRA   = -D_BSD_SOURCE -Wall -static -O2
 
-#INCDIR  = -I. -I$(JPEGINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(TIFFINC) -I$(GEOTIFF_INC) -I$(HDFEOS_GCTPINC)
 INCDIR  = -I. -I$(JPEGINC) -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) \
           -I$(ESPAINC) -I$(XML2INC)
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
@@ -34,7 +33,8 @@ clean:
 	rm -f *.o $(TARGET1)
 
 install:
-	cp $(TARGET1) $(BIN)
+	install -d $(BIN)
+	install -m 755 $(TARGET1) $(BIN)
 
 #
 # Rules
