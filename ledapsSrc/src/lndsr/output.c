@@ -107,7 +107,7 @@ revision 2.0.0 1/27/2014
   int nband_tot;      /* number of total bands with QA, for processing */
   int nband_out;      /* number of total bands with QA, for writing/output */
   int nband_out_extra; /* number of extra QA bands for writing/output */
-  int rep_indx=0;     /* band index in XML file for the current product */
+  int rep_indx=-1;    /* band index in XML file for the current product */
   char production_date[MAX_DATE_LEN+1]; /* current date/time for production */
   time_t tp;          /* time structure */
   struct tm *tm;      /* time structure for UTC time */
@@ -151,6 +151,8 @@ revision 2.0.0 1/27/2014
       break;
     }
   }
+  if (rep_indx == -1)
+    RETURN_ERROR("finding toa_band1 band in the XML file", "OpenOutput", NULL);
 
   /* Initialize the internal metadata for the output product. The global
      metadata won't be updated, however the band metadata will be updated
