@@ -1,17 +1,17 @@
 
-MODLIST = lndpm lndcal lndsr lndapp lndsrbm 6sV-1.0B
+MODLIST = lndpm lndcal lndsr lndsrbm 6sV-1.0B
 
 all:
 	@for i in $(MODLIST); do \
-	(cd $$i; make) \
+	(cd $$i; make; cd ..) \
 	done
 
 install:
 	@for i in $(MODLIST); do \
-	(cd $$i; make install) \
+	(cd $$i; make install; cd ..) \
 	done
 
 clean:
 	@for i in $(MODLIST); do \
-	(cd $$i; make clean > /dev/null) \
+	(cd $$i; make clean; cd ..) \
 	done

@@ -39,7 +39,7 @@ clean :
 	rm -f $(EXE)
 
 install:
-    install -d $(BIN)
+	install -d $(BIN)
 	install -m 755 $(EXE) $(BIN)
 	install -m 755 lndsrbm.ksh $(BIN)
 

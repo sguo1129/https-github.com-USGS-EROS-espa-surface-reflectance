@@ -105,27 +105,27 @@ int main(int argc, char **argv)
             !strcmp (xml_metadata.band[ib].product, "toa_bt"))
             printf (":Band6 = %s\n", xml_metadata.band[ib].file_name);
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             printf (":CloudQA = %s\n", xml_metadata.band[ib].file_name);
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_shadow_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_shadow_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             printf (":CloudShadowQA = %s\n", xml_metadata.band[ib].file_name);
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_adjacent_cloud_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_adjacent_cloud_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             printf (":CloudAdjQA = %s\n", xml_metadata.band[ib].file_name);
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_snow_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_snow_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             printf (":SnowQA = %s\n", xml_metadata.band[ib].file_name);
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_land_water_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_land_water_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             printf (":LandWaterQA = %s\n", xml_metadata.band[ib].file_name);
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_fill_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_fill_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             printf (":FillQA = %s\n", xml_metadata.band[ib].file_name);
     }

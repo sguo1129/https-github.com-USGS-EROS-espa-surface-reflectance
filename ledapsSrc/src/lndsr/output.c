@@ -113,9 +113,9 @@ revision 2.0.0 1/27/2014
   struct tm *tm;      /* time structure for UTC time */
   Espa_band_meta_t *bmeta = NULL;  /* pointer to the band metadata array
                          within the output structure */
-  char *band_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity", "fill_QA", "DDV_QA",
-    "cloud_QA", "cloud_shadow_QA", "snow_QA", "land_water_QA",
-    "adjacent_cloud_QA", "nb_dark_pixels", "avg_dark_sr_b7", "std_dark_sr_b7"};
+  char *band_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity", "fill_qa", "ddv_qa",
+    "cloud_qa", "cloud_shadow_qa", "snow_qa", "land_water_qa",
+    "adjacent_cloud_qa", "nb_dark_pixels", "avg_dark_sr_b7", "std_dark_sr_b7"};
 
   /* Determine the number of output bands. Don't plan to write the last 3 QA
      bands (nb_dark_pixels, avg_dark_sr_b7, or std_dark_sr_b7) */
@@ -191,6 +191,7 @@ revision 2.0.0 1/27/2014
     strncpy (bmeta[ib].short_name, in_meta->band[rep_indx].short_name, 3);
     bmeta[ib].short_name[3] = '\0';
     strcpy (bmeta[ib].product, "sr_refl");
+    strcpy (bmeta[ib].source, "toa_refl");
     strcat (bmeta[ib].short_name, "SR");
     bmeta[ib].nlines = this->size.l;
     bmeta[ib].nsamps = this->size.s;
@@ -205,6 +206,7 @@ revision 2.0.0 1/27/2014
       bmeta[ib].data_type = ESPA_INT16;
       bmeta[ib].fill_value = lut->output_fill;
       bmeta[ib].saturate_value = lut->out_satu;
+      strcpy (bmeta[ib].category, "image");
       sprintf (bmeta[ib].name, "sr_band%d", input->meta.iband[ib]);
       bmeta[ib].scale_factor = lut->scale_factor;
       bmeta[ib].add_offset = lut->add_offset;
@@ -219,6 +221,7 @@ revision 2.0.0 1/27/2014
     {
       bmeta[ib].data_type = ESPA_INT16;
       bmeta[ib].fill_value = lut->output_fill;
+      strcpy (bmeta[ib].category, "image");
       sprintf (bmeta[ib].name, "sr_%s", band_name_extra[ib-nband]);
       bmeta[ib].scale_factor = lut->atmos_opacity_scale_factor;
       strcpy (bmeta[ib].long_name, band_name_extra[ib-nband]);
@@ -229,6 +232,7 @@ revision 2.0.0 1/27/2014
     else  /* QA bands */
     {
       bmeta[ib].data_type = ESPA_UINT8;
+      strcpy (bmeta[ib].category, "qa");
       sprintf (bmeta[ib].name, "sr_%s", band_name_extra[ib-nband]);
       strcpy (bmeta[ib].long_name, band_name_extra[ib-nband]);
       strcpy (bmeta[ib].data_units, "quality/feature classification");
@@ -361,7 +365,7 @@ bool PutOutputLine(Output_t *this, int iband, int iline, int16 *line)
 /* 
 !C******************************************************************************
 
-!Description: 'WriteOutput' writes a line of data to the output file.
+!Description: 'PutOutputLine' writes a line of data to the output file.
  
 !Input Parameters:
  this           'output' data structure
