@@ -64,25 +64,7 @@
 #include "myhdf.h"
 #include "const.h"
 
-#define SDS_PREFIX ("band")
-#define SDS_CSM ("cloud_snow_mask")
 #define INPUT_FILL (-9999)
-
-#define INPUT_SAT ("Satellite")
-#define INPUT_INST ("Instrument")
-#define INPUT_ACQ_DATE ("AcquisitionDate")
-#define INPUT_SUN_ZEN ("SolarZenith")
-#define INPUT_SUN_AZ ("SolarAzimuth")
-#define INPUT_WRS_SYS ("WRS_System")
-#define INPUT_WRS_PATH ("WRS_Path")
-#define INPUT_WRS_ROW ("WRS_Row")
-#define INPUT_NBAND ("NumberOfBands")
-#define INPUT_BANDS ("BandNumbers")
-
-#define N_LSAT_WRS1_ROWS  (251)
-#define N_LSAT_WRS1_PATHS (233)
-#define N_LSAT_WRS2_ROWS  (248)
-#define N_LSAT_WRS2_PATHS (233)
 
 /* Functions */
 Input_t *OpenInput(Espa_internal_meta_t *metadata, bool thermal)
@@ -164,11 +146,10 @@ bool CloseInput(Input_t *this)
 /* 
 !C******************************************************************************
 
-!Description: 'CloseInput' ends SDS access and closes the input file.
+!Description: 'CloseInput' closes the input file.
  
 !Input Parameters:
- this           'input' data structure; the following fields are input:
-                   open, sds.id, sds_file_id
+ this           'input' data structure
 
 !Output Parameters:
  this           'input' data structure; the following fields are modified:

@@ -204,11 +204,13 @@ revision 2.0.0 1/27/2014
     if (!thermal)
     {
       strcpy (bmeta[ib].product, "toa_refl");
+      strcpy (bmeta[ib].source, "level1");
       strcat (bmeta[ib].short_name, "REF");
     }
     else
     {
       strcpy (bmeta[ib].product, "toa_bt");
+      strcpy (bmeta[ib].source, "level1");
       strcat (bmeta[ib].short_name, "BT");
     }
     bmeta[ib].nlines = this->size.l;
@@ -224,6 +226,7 @@ revision 2.0.0 1/27/2014
       bmeta[ib].data_type = ESPA_INT16;
       bmeta[ib].fill_value = lut->out_fill;
       bmeta[ib].saturate_value = lut->out_satu;
+      strcpy (bmeta[ib].category, "image");
       if (!thermal)
       {
         sprintf (bmeta[ib].name, "toa_band%d", input->meta.iband[ib]);
@@ -302,6 +305,7 @@ revision 2.0.0 1/27/2014
       bmeta[ib].fill_value = lut->qa_fill;
       strcpy (bmeta[ib].long_name, "QA band");
       strcpy (bmeta[ib].data_units, "bitmap");
+      strcpy (bmeta[ib].category, "qa");
       bmeta[ib].valid_range[0] = 0;
       bmeta[ib].valid_range[1] = 255;
     }

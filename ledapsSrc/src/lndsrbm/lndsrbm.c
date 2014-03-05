@@ -440,25 +440,25 @@ int main (int argc, char **argv)
             !strcmp (xml_metadata.band[ib].product, "toa_bt"))
             band6_fp = open_raw_binary (xml_metadata.band[ib].file_name, "rb");
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             cloud_fp = open_raw_binary (xml_metadata.band[ib].file_name, "rb+");
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_shadow_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_cloud_shadow_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             cloud_shad_fp = open_raw_binary (xml_metadata.band[ib].file_name,
                 "rb+");
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_adjacent_cloud_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_adjacent_cloud_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             cloud_adja_fp = open_raw_binary (xml_metadata.band[ib].file_name,
                 "rb+");
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_snow_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_snow_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             snow_fp = open_raw_binary (xml_metadata.band[ib].file_name, "rb");
 
-        if (!strcmp (xml_metadata.band[ib].name, "sr_fill_QA") &&
+        if (!strcmp (xml_metadata.band[ib].name, "sr_fill_qa") &&
             !strcmp (xml_metadata.band[ib].product, "sr_refl"))
             fill_fp = open_raw_binary (xml_metadata.band[ib].file_name, "rb");
     }
