@@ -65,9 +65,12 @@ def logIt (msg, log_handler):
 #       determine if the proper ancillary data exists for a requested year
 #       and year/doy.
 #   Updated on 12/6/2012 by Gail Schmidt, USGS/EROS
-#   Modified the run_ledaps method to change to the metadata directory
+#   Modified the run_ledaps method to change to the XML directory
 #       before running the LEDAPS software, and then return to the current
 #       directory upon successful or failure exit.
+#   Updated on 3/7/2014 by Gail Schmidt, USGS/EROS
+#   Modified the run_ledaps script to work with the input XML file as
+#       part of the switch to utilize the ESPA internal raw binary file
 #
 # Usage: do_ledaps.py --help prints the help message
 ############################################################################
@@ -154,15 +157,15 @@ class Ledaps():
 
 
     ########################################################################
-    # Description: runLedaps will use the parameters passed for metafile,
-    # logfile, and usebin.  If metafile is None (i.e. not specified) then
+    # Description: runLedaps will use the parameters passed for xmlfile,
+    # logfile, and usebin.  If xmlfile is None (i.e. not specified) then
     # the command-line parameters will be parsed for this information.
-    # The LEDAPS applications are then executed on the specified metadata
-    # file.  If a log file was specified, then the output from each LEDAPS
-    # application will be logged to that file.
+    # The LEDAPS applications are then executed on the specified XML file.
+    # If a log file was specified, then the output from each LEDAPS application
+    # will be logged to that file.
     #
     # Inputs:
-    #   metafile - name of the Landsat metadata file to be processed
+    #   xmlfile - name of the Landsat XML file to be processed
     #   logfile - name of the logfile for logging information; if None then
     #       the output will be written to stdout
     #   usebin - this specifies if the LEDAPS exes reside in the $BIN
@@ -174,20 +177,20 @@ class Ledaps():
     #     SUCCESS - successful processing
     #
     # Notes:
-    #   1. The script obtains the path of the metadata file and changes
+    #   1. The script obtains the path of the XML file and changes
     #      directory to that path for running the LEDAPS code.  If the
-    #      metafile directory is not writable, then this script exits with
+    #      xmlfile directory is not writable, then this script exits with
     #      an error.
     #######################################################################
-    def runLedaps (self, metafile=None, logfile=None, usebin=None):
+    def runLedaps (self, xmlfile=None, logfile=None, usebin=None):
         # if no parameters were passed then get the info from the
         # command line
-        if metafile == None:
-            # get the command line argument for the metadata file
+        if xmlfile == None:
+            # get the command line argument for the XML file
             parser = OptionParser()
-            parser.add_option ("-f", "--metafile", type="string",
-                dest="metafile",
-                help="name of Landsat MTL file", metavar="FILE")
+            parser.add_option ("-f", "--xmlfile", type="string",
+                dest="xmlfile",
+                help="name of Landsat XML file", metavar="FILE")
             parser.add_option ("--usebin", dest="usebin", default=False,
                 action="store_true",
                 help="use BIN environment variable as the location of LEDAPS apps")
@@ -198,16 +201,16 @@ class Ledaps():
             # validate the command-line options
             usebin = options.usebin          # should $BIN directory be used
             logfile = options.logfile        # name of the log file
-            metafile = options.metafile      # name of the metadata file
-            if metafile == None:
-                parser.error ("missing metafile command-line argument");
+            xmlfile = options.xmlfile        # name of the XML file
+            if xmlfile == None:
+                parser.error ("missing xmlfile command-line argument");
                 return ERROR
         
         # open the log file if it exists; use line buffering for the output
         log_handler = None
         if logfile != None:
             log_handler = open (logfile, 'w', buffering=1)
-        msg = 'LEDAPS processing of Landsat metadata file: %s' % metafile
+        msg = 'LEDAPS processing of Landsat XML file: %s' % xmlfile
         logIt (msg, log_handler)
         
         # should we expect the lnd* applications to be in the PATH or in the
@@ -224,40 +227,38 @@ class Ledaps():
             msg = 'LEDAPS executables expected to be in the PATH'
             logIt (msg, log_handler)
         
-        # make sure the metadata file exists
-        if not os.path.isfile(metafile):
-            msg = "Error: metadata file does not exist or is not accessible: " + metafile
+        # make sure the XML file exists
+        if not os.path.isfile(xmlfile):
+            msg = "Error: XML file does not exist or is not accessible: " + xmlfile
             logIt (msg, log_handler)
             return ERROR
 
-        # parse the metadata filename, strip off the _MTL.txt or _MTL.met.
-        # use the base metadata filename and not the full path.
-        base_metafile = os.path.basename (metafile)
-        meta = re.sub('\.txt$', '', base_metafile)
-        meta = re.sub('\.met$', '', meta)
-        meta = re.sub('_MTL', '', meta)
-        msg = 'Processing meta basefile: %s' % meta
+        # parse the XML filename, strip off the .xml
+        # use the base XML filename and not the full path.
+        base_xmlfile = os.path.basename (xmlfile)
+        xml = re.sub('\.xml$', '', base_xmlfile)
+        msg = 'Processing XML basefile: %s' % xml
         logIt (msg, log_handler)
         
-        # get the path of the MTL file and change directory to that location
+        # get the path of the XML file and change directory to that location
         # for running this script.  save the current working directory for
         # return to upon error or when processing is complete.  Note: use
         # abspath to handle the case when the filepath is just the filename
         # and doesn't really include a file path (i.e. the current working
         # directory).
         mydir = os.getcwd()
-        metadir = os.path.dirname (os.path.abspath (metafile))
-        if not os.access(metadir, os.W_OK):
-            msg = 'Path of metadata file is not writable: %s.  LEDAPS needs write access to the metadata directory.' % metadir
+        xmldir = os.path.dirname (os.path.abspath (xmlfile))
+        if not os.access(xmldir, os.W_OK):
+            msg = 'Path of XML file is not writable: %s.  LEDAPS needs write access to the XML directory.' % xmldir
             logIt (msg, log_handler)
             return ERROR
-        msg = 'Changing directories for LEDAPS processing: %s' % metadir
+        msg = 'Changing directories for LEDAPS processing: %s' % xmldir
         logIt (msg, log_handler)
-        os.chdir (metadir)
+        os.chdir (xmldir)
 
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
-        cmdstr = "%slndpm %s" % (bin_dir, base_metafile)
+        cmdstr = "%slndpm %s" % (bin_dir, base_xmlfile)
 #        print 'DEBUG: lndpm command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
@@ -268,7 +269,7 @@ class Ledaps():
             os.chdir (mydir)
             return ERROR
         
-        cmdstr = "%slndcal lndcal.%s.txt" % (bin_dir, meta)
+        cmdstr = "%slndcal lndcal.%s.txt" % (bin_dir, xml)
 #        print 'DEBUG: lndcal command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
@@ -279,7 +280,7 @@ class Ledaps():
             os.chdir (mydir)
             return ERROR
         
-        cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, meta)
+        cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, xml)
 #        print 'DEBUG: lndsr command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
@@ -290,7 +291,7 @@ class Ledaps():
             os.chdir (mydir)
             return ERROR
         
-        cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, meta)
+        cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, xml)
 #        print 'DEBUG: lndsrbm command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)
