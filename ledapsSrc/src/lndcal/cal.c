@@ -65,11 +65,17 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
     ref = rad * ref_conv;
     line_out[is] = (int16)(ref * 10000.0) + 0.5;
 
-    /* Cap the output using the min/max values */
-    if (line_out[is] < lut->valid_range_ref[0])
-        line_out[is] = lut->valid_range_ref[0];
-    else if (line_out[is] > lut->valid_range_ref[1])
-        line_out[is] = lut->valid_range_ref[1];
+    /* Cap the output using the min/max values.  Then reset the toa reflectance
+       value so that it's correctly reported in the stats and the min/max
+       range matches that of the image data. */
+    if (line_out[is] < lut->valid_range_ref[0]) {
+      line_out[is] = lut->valid_range_ref[0];
+      ref = line_out[is] * 0.0001;
+    }
+    else if (line_out[is] > lut->valid_range_ref[1]) {
+      line_out[is] = lut->valid_range_ref[1];
+      ref = line_out[is] * 0.0001;
+    }
 
     if (cal_stats->first[iband]) {
       cal_stats->idn_min[iband] = val;
@@ -138,17 +144,23 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int16 *line_out,
     cal_stats->nvalid++;
  
     /* compute the brightness temperature in Kelvin and apply scaling of
-       100.0 (tied to lut->scale_factor_th). valid ranges are set up in lut.c
+       10.0 (tied to lut->scale_factor_th). valid ranges are set up in lut.c
        as well. */
     rad = (gain * (float)val) + bias;
     temp = lut->K2 / log(1.0 + (lut->K1/rad));
     line_out[is] = (int16)(temp * 10.0 + 0.5);
 
-    /* Cap the output using the min/max values */
-    if (line_out[is] < lut->valid_range_th[0])
+    /* Cap the output using the min/max values.  Then reset the temperature
+       value so that it's correctly reported in the stats and the min/max
+       range matches that of the image data. */
+    if (line_out[is] < lut->valid_range_th[0]) {
       line_out[is] = lut->valid_range_th[0];
-    else if (line_out[is] > lut->valid_range_th[1])
+      temp = line_out[is] * 0.1;
+    }
+    else if (line_out[is] > lut->valid_range_th[1]) {
       line_out[is] = lut->valid_range_th[1];
+      temp = line_out[is] * 0.1;
+    }
 
     if (cal_stats->first) {
       cal_stats->idn_min = val;
