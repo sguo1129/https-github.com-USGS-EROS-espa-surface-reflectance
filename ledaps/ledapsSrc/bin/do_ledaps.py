@@ -188,7 +188,7 @@ class Ledaps():
         if xmlfile == None:
             # get the command line argument for the XML file
             parser = OptionParser()
-            parser.add_option ("-f", "--xmlfile", type="string",
+            parser.add_option ("-f", "--xml", type="string",
                 dest="xmlfile",
                 help="name of Landsat XML file", metavar="FILE")
             parser.add_option ("--usebin", dest="usebin", default=False,
