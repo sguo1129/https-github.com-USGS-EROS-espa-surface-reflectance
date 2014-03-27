@@ -521,7 +521,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata, bool thermal)
                 this->file_name[0] = strdup (metadata->band[i].file_name);
             }
 
-            if (!strcmp (metadata->band[i].name, "toa_bt_qa") &&
+            if (!strcmp (metadata->band[i].name, "toa_band6_qa") &&
                 !strcmp (metadata->band[i].product, "toa_bt"))
             {
                 this->file_name_qa = strdup (metadata->band[i].file_name);
