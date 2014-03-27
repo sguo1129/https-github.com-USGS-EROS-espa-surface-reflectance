@@ -103,6 +103,8 @@ revision 1.0.0 9/12/2012
    thermal product and use lndth_qa for the band name vs. lndcal_qa
 revision 2.0.0 1/27/2014
  - modified to utilize the ESPA internal raw binary structure
+revision 2.0.1 3/25/2014
+ - modified to output _toa_band6_qa vs. _toa_bt_qa
 
 !END****************************************************************************
 */
@@ -281,7 +283,7 @@ revision 2.0.0 1/27/2014
       }
       else
       {
-        strcpy (bmeta[ib].name, "toa_bt_qa");
+        strcpy (bmeta[ib].name, "toa_band6_qa");
         if (allocate_bitmap_metadata (&bmeta[ib], 8) != SUCCESS)
           RETURN_ERROR("allocating 8 bits for the bitmap", "OpenOutput", NULL); 
         bmeta[ib].bitmap_description[0] =
