@@ -127,7 +127,10 @@ Outputs:
 
 History:
   2/6/2014  Gail Schmidt, USGS/EROS
-  Modified to use the ESPA internal file format
+    Modified to use the ESPA internal file format
+  4/25/2014  Gail Schmidt, USGS/EROS
+    Modified to handle the change in ESPA which supports additional datums
+    and uses a datum code instead of a sphere code.
 ******************************************************************************/
 int get_data(char *filename, char *projection, int *zonecode, int *sphercode,
   float *orientationangle, float *pixelsize, float *upperleftx,
@@ -188,7 +191,15 @@ int get_data(char *filename, char *projection, int *zonecode, int *sphercode,
   /* Pull the projection and key metadata information from the XML file. For
      the UL corner make sure to addjust the center of the pixel appropriately
      to produce coords for the UL of the pixel. */
-  *sphercode = gmeta->proj_info.sphere_code;
+  if (gmeta->proj_info.datum_type != ESPA_WGS84)
+  {
+    printf ("Error in datum type. Only ESPA_WGS84 is expected and supported "
+      "for the LPGS products.\n");
+    return (-5);
+  } 
+  else
+    *sphercode = 12;   /* WGS84 spheroid */
+
   if (gmeta->proj_info.proj_type == GCTP_UTM_PROJ)
   {
     strcpy (projection, "GCTP_UTM");
@@ -206,7 +217,7 @@ int get_data(char *filename, char *projection, int *zonecode, int *sphercode,
   else
   {
     printf ("Error in projection code. Only GCTP_UTM and GCTP_PS are currently "
-      "supported.\n");
+      "supported for the LPGS products.\n");
     return (-5);
   } 
 
