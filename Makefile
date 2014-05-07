@@ -22,6 +22,8 @@ F_OBJECTS = sub_deg2utm.o sub_utm2deg.o subaeroret.o newLUTldcm_subr.o LDCMSR-v1
 
 TARGET = LDCMSR-v1.0
 
+all: $(TARGET)
+
 $(TARGET): $(C_OBJECTS) $(F_OBJECTS)
 	$(FC) $(F_EXTRA) -o $(TARGET) $(F_OBJECTS) $(C_OBJECTS) $(INCDIR) $(LIBDIR) -lmfhdf -ldf -ljpeg -lz -ldl -lm
 
