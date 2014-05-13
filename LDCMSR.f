@@ -28,7 +28,8 @@
 	real, allocatable :: tp(:,:)
 	real, allocatable :: taero(:,:)
 	real, allocatable :: tresi(:,:)
-	real, allocatable :: tratiob1(:,:)
+	integer (2), allocatable :: tratiob1(:,:)
+	integer (2), allocatable :: tnit(:,:)
 	integer(2), allocatable :: wv(:,:)
 	BYTE, allocatable :: oz(:,:)
 	BYTE, allocatable :: cloud(:,:)
@@ -36,6 +37,8 @@
 	integer(2), allocatable :: ratiob1(:,:)
 	integer(2), allocatable :: ratiob2(:,:)
 	integer(2), allocatable :: ratiob7(:,:)
+	real*8 mall
+	integer nit
 	
 	character(100) filename(12),fname,filenameanc,filenamehdf
 	
@@ -150,7 +153,7 @@ c       data ldcmind /9,10,4,1,2,6,7,4,6/
        integer colp,rowp
        real dy,dx,ang
        integer nbval,nbclear
-       real anom,stemp,mclear
+       real*8 anom,stemp,mclear
        real fack,facl,cldh
        integer cldhmin,cldhmax,icldh
        integer mband5,mband5k,mband5l
@@ -168,7 +171,8 @@ c bit location of weight for cloudmask QA
        real aaot,sresi
        integer nbaot,step,hole
        real ros4,ros5
-       character*512 qa      
+       character*512 qa  
+       integer rstep,rstepc    
 
 !initialisation for look up table
        
@@ -271,7 +275,7 @@ C Read ozone and water vapor
 	pi=atan(1.)*4.
 	cpi=pi
 	read(5,*) ihdf
-	if (ihdf.eq.1) then
+	if (ihdf.ne.0) then
 	read(5,'(A100)') filenamehdf
 	read(5,'(A100)') filenameanc
 	read(5,*) xts,xfs
@@ -335,9 +339,9 @@ c	allocate(prband(nrp,ncp),STAT=als)
 c	allocate(pgband(nrp,ncp),STAT=als)
 c	allocate(pbband(nrp,ncp),STAT=als)
 c	allocate(opband(ncp,nrp),STAT=als)
-	allocate(sband(12,nr,nc),STAT=als)
+c	allocate(sband(12,nr,nc),STAT=als)
 c	allocate(tband(12,nr,nc),STAT=als)
-	allocate(oband(nc,nr),STAT=als)
+c	allocate(oband(nc,nr),STAT=als)
 c	allocate(aotband(nc,nr),STAT=als)
 ! Getting parameter for atmospheric correction	
 !        write(6,*) " aot550nm,pressure [Millibars] ,uoz [cm.atm],uwv [g/cm2]"
@@ -352,7 +356,7 @@ C update to get the parameter of the scene center
 	write(6,*) xts,xtv,xfi
        
 c open HDF subset
-        if  (ihdf.eq.1) then
+        if  (ihdf.ne.0) then
         ii=index(filenamehdf," ")-1
         fname=filenamehdf(1:ii)
         sd_id= sfstart(fname,DFACC_READ)
@@ -369,6 +373,8 @@ c open HDF subset
        nr=dim_sizes(2)
        endif 
        
+       
+       rstep=nc/50
        allocate(band(nc,nr),STAT=als)
        write(6,*) "allocate status ",als
        allocate(aerob1(nc,nr),STAT=als)
@@ -396,6 +402,7 @@ c       allocate(tycmg(nc,nr),STAT=als)
        allocate(taero(nc,nr),STAT=als)
        allocate(tresi(nc,nr),STAT=als)
        allocate(tratiob1(nc,nr),STAT=als)
+       allocate(tnit(nc,nr),STAT=als)
        allocate(cloud(nc,nr),STAT=als)
 c initialize cloud mask
       do i=1,nc
@@ -404,7 +411,7 @@ c initialize cloud mask
       enddo
       enddo
        
-       if (ihdf.eq.1) then     
+       if (ihdf.ne.0) then     
        start(1)=0
        start(2) = 0
        edges(1) = nc
@@ -487,7 +494,7 @@ c using scene center to compute atmospheric parameter
          endif
 !computing parameter for atmospheric correction	
 	if (ib.ne.8) then
-	   if (ihdf.eq.1) then
+	   if (ihdf.ne.0) then
 	   sds_index=sdsind(ib)
            sds_id =sfselect(sd_id, sds_index)
            write(6,*) "sds_id", sds_id
@@ -590,10 +597,12 @@ c compute lat,lon,rowcmg,colcmg,ozone,water vapor,pressure
 
          do i=1,nc
 c	 write(6,*) " Processing column ",i
-	 if ((i-int(i/10)*10).eq.0) then
+	 if ((i-int(i/rstep)*rstep).eq.0) then
 	 write(6,*) " collumn ",i
 	 endif
 	 do j=1,nr
+c	 goto 11
+	 if ((sband(12,i,j).eq.1)) goto 11
 	 if ((j.eq.1017).and.(i.eq.5657)) then
 	 write(6,*) "J'en tiens un"
 	 endif
@@ -703,7 +712,7 @@ c inverting aerosol
 	erelc(2)=ratiob2(jcmg,icmg)/1000.
 	erelc(7)=ratiob7(jcmg,icmg)/1000.
 	endif
-	tratiob1(i,j)=ratiob1(jcmg,icmg)/1000.
+	tratiob1(i,j)=ratiob1(jcmg,icmg)
 	troatm(1)=aerob1(i,j)/10000.
  	troatm(2)=aerob2(i,j)/10000.
 	troatm(4)=aerob4(i,j)/10000.
@@ -735,10 +744,11 @@ c       goto 11
      s       tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
-     s       wvtransa,wvtransb,wvtransc,oztransa,raot,residual)
+     s       wvtransa,wvtransb,wvtransc,oztransa,raot,residual,nit)
      
 c         write(6,*) "aero retrieved " ,i,j,raot,residual
 c	 endif
+         tnit(i,j)=nit
          corf=raot/xmus
          if (residual.lt.(0.01+0.005*corf)) then
 c test if band5 makes sense
@@ -788,6 +798,7 @@ c endif of else cirrus.
 	 endif
 c endif not water pixel	 
 	 endif
+c here to skip fill value	 
  11      continue	 
 	 enddo
 	 enddo
@@ -796,23 +807,38 @@ c compute the average temperature of the clear non water non filled data
            nbval=0
 	   nbclear=0  
 	   mclear=0.
+	   mall=0.
+	  
            do i=1,nc
 	   do j=1,nr
+	   if (sband(12,i,j).ne.1) then
+	   nbval=nbval+1
+	   mall=mall+(sband(10,i,j)/10.)
 	   if ((.not.btest(cloud(i,j),cir)).and.(sband(5,i,j).gt.300)) then
 	   anom=sband(2,i,j)-sband(4,i,j)/2.
 	   if (anom.lt.300) then
+	   if ((sband(10,i,j).lt.2500)) then
+	   write(6,*) "J'en tiens un autre ",i,j
+	   endif
 	   nbclear=nbclear+1
-	   mclear=mclear+sband(10,i,j)/10.
+	   mclear=mclear+(sband(10,i,j)/10.)
+	   endif
 	   endif
 	   endif
 	   enddo
 	   enddo
+	   
 	   if (nbclear.gt.0) then
 	   mclear=mclear/nbclear
 	   else
 	   mclear=275.0
 	   endif
-	   write(6,*) "average clear temperature  %clear", mclear,nbclear*100./(nr*nc)
+	   
+	   if (nbval.gt.0) then
+	   mall=mall/nbval
+	   endif
+	   
+	   write(6,*) "average clear temperature  %clear", mclear,nbclear*100./(nr*nc),mall,nbval
 	   
 	   
 
@@ -938,14 +964,15 @@ c expand the cloud shadow using residual
        enddo
 c update the cloud shadow       
        write(6,*) "updating cloud shadow"
-       do i=1,nr
-       do j=1,nc
+       do i=1,nc
+       do j=1,nr
        if (btest(cloud(i,j),cldt)) then
        cloud(i,j)=cloud(i,j)+(2**clds)
        cloud(i,j)=cloud(i,j)-(2**cldt)
        endif
        enddo
        enddo
+       
 c aerosol interpolation
 999    continue
        hole=1
@@ -998,15 +1025,16 @@ c       Write(6,*) "pass ",step," some hole remaining"
        enddo
            	 
 c perform the correction
-	  
+	  rstepc=rstep*5
           do ib=1,7
 	  do i=1,nc
-	 if ((i-int(i/1000)*1000).eq.0) then
+	 if ((i-int(i/rstepc)*rstepc).eq.0) then
 	 write(6,*) " atmospheric correction collumn ",i," band ",ib
 	 endif
 	  do j=1,nr
+c	  write(6,*) "i , j",i,j,tresi(i,j)
 	  if (sband(12,i,j).ne.1) then
-	  if ((tresi(i,j).gt.0.).and.(.not.btest(cloud(k,l),cir)).and.(.not.btest(cloud(k,l),cld))) then
+	  if ((tresi(i,j).gt.0.).and.(.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))) then
 	  rsurf=sband(ib,i,j)/10000.
 	  rotoa=(rsurf*bttatmg(ib)/(1.-bsatm(ib)*rsurf)+broatm(ib))*btgo(ib)
 	  if (ib.eq.1) then
@@ -1051,19 +1079,20 @@ c	  write(6,*) xts,xtv,xfi,raot550nm,iband,pres,uoz,uwv,tauray
      s       err_msg,retval)
           else
 c set up aerosol QA
+c          write(6,*) "SETTING UP aerosol qa BITS"
           if (raot550nm.lt.0.2) then
-	  cloud(i,j)=cloud(i,j)+16	
-	  else
-	  if   (raot550nm.lt.0.5) then
-	  cloud(i,j)=cloud(i,j)+32
-	  else
-	  cloud(i,j)=cloud(i,j)+48
+	    cloud(i,j)=cloud(i,j)+16	
+	    else
+	    if   (raot550nm.lt.0.5) then
+	          cloud(i,j)=cloud(i,j)+32
+	          else
+	          cloud(i,j)=cloud(i,j)+48
+	          endif
+	    endif
 	  endif
 	  endif
-	  	
+C endif of ib=1	  
 	  
-	  endif
-	  endif
 	  sband(ib,i,j)=int(roslamb*10000.)
 	  endif
 	  endif
@@ -1159,36 +1188,49 @@ c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
 cc       status=sfwdata(sds_id,start,stride,edges,twv)
 c	 write(6,*) "status sfwdata ",status
 cc       status = sfendacc(sds_id)
-cc       write(sds_name,'(A4)') "twvi"
-c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-cc       status=sfwdata(sds_id,start,stride,edges,twvi)
-c	 write(6,*) "status sfwdata ",status
-cc       status = sfendacc(sds_id)
-cc       write(sds_name,'(A4)') "tozi"
-c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-cc       status=sfwdata(sds_id,start,stride,edges,tozi)
-c	 write(6,*) "status sfwdata ",status
-cc       status = sfendacc(sds_id)
-cc       write(sds_name,'(A6)') "tpresi"
-c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-cc       status=sfwdata(sds_id,start,stride,edges,tp)
-c	 write(6,*) "status sfwdata ",status
-cc       status = sfendacc(sds_id)
-c         write(sds_name,'(A5)') "taero"
-c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-c         status=sfwdata(sds_id,start,stride,edges,taero)
-c	 write(6,*) "status sfwdata ",status
-c         status = sfendacc(sds_id)
-c         write(sds_name,'(A5)') "tresi"
-c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-c         status=sfwdata(sds_id,start,stride,edges,tresi)
-c	 write(6,*) "status sfwdata ",status
-c         status = sfendacc(sds_id)
-c           write(sds_name,'(A8)') "tratiob1"
-c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-c         status=sfwdata(sds_id,start,stride,edges,tratiob1)
-c	 write(6,*) "status sfwdata ",status
-c         status = sfendacc(sds_id)
+         if (ihdf.eq.2) then
+         write(sds_name,'(A4)') "twvi"
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+         status=sfwdata(sds_id,start,stride,edges,twvi)
+ 	 write(6,*) "status sfwdata ",status
+         status = sfendacc(sds_id)
+         write(sds_name,'(A4)') "tozi"
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+         status=sfwdata(sds_id,start,stride,edges,tozi)
+ 	 write(6,*) "status sfwdata ",status
+         status = sfendacc(sds_id)
+         write(sds_name,'(A6)') "tpresi"
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+         status=sfwdata(sds_id,start,stride,edges,tp)
+ 	 write(6,*) "status sfwdata ",status
+         status = sfendacc(sds_id)
+	 endif
+         if  (ihdf.ne.0) then
+	 write(sds_name,'(A5)') "taero"
+	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,taero)
+	write(6,*) "status sfwdata ",status
+	 status = sfendacc(sds_id)
+	 write(sds_name,'(A5)') "tresi"
+	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,tresi)
+	write(6,*) "status sfwdata ",status
+	 status = sfendacc(sds_id)
+	   write(sds_name,'(A8)') "tratiob1"
+	sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,tratiob1)
+	write(6,*) "status sfwdata ",status
+	 scalefactor=1000.
+	 offset=0.0
+	 status=sfsattr(sds_id, "scale_factor", DFNT_FLOAT32, 1, scalefactor)
+	 status=sfsattr(sds_id, "offset", DFNT_FLOAT32, 1, offset)
+	 status = sfendacc(sds_id)
+	 write(sds_name,'(A6)') "nbiter"
+	sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,tnit)
+	write(6,*) "status sfwdata ",status
+	 status = sfendacc(sds_id)
+	 endif
          write(sds_name,'(A5)') "CLOUD"
 	 sds_id=sfcreate(sd_id,sds_name,DFNT_UINT8,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,cloud)
