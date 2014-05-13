@@ -6,7 +6,7 @@
      s       tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
-     s       wvtransa,wvtransb,wvtransc,oztransa,raot,residual)
+     s       wvtransa,wvtransb,wvtransc,oztransa,raot,residual,nit)
         IMPLICIT NONE
 c driver for the atmopsheric correction program
 c read up the look up table and perform correction

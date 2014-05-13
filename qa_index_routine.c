@@ -17,7 +17,7 @@ static char QAMAP_1KM[2600] =
               "\t6      unused; \n"
               "\t       1 -- yes\n"
               "\t       0 -- no\n"
-             "\t4-5     aerosol;\n"
+              "\t4-5     aerosol;\n"
               "\t       00 -- climatology\n"
               "\t       01 -- low\n"
               "\t       10 -- average\n"
@@ -44,8 +44,8 @@ int set_qamap_(int32 *sds)
 
     if (SDsetattr(*sds, "QA index\0", 4, strlen(message), (void *)message))
     {
-       printf ("SDS %d: Error: Unable to write QA map indices for QA\n", *sds);
-       return (1);
+        printf ("SDS %d: Error: Unable to write QA map indices for QA\n", *sds);
+        return (1);
     }
 
     return (0);
