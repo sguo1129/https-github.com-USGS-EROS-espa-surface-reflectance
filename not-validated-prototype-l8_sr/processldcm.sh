@@ -2,17 +2,18 @@
 #build the input file for processing ldcm data
 rootdir=$1
 case=$2
-mtlfile=`ls $rootdir$case/*.txt`
+scene_dir=$rootdir/$case
+mtlfile=`ls $scene_dir/*.txt`
 inpfile=$case\.input
 echo 0 >$inpfile
-ls $rootdir$case/*_B?.TIF >>$inpfile
-ls $rootdir$case/*_B1?.TIF >>$inpfile
-ls $rootdir$case/*_BQA.TIF >>$inpfile
+ls $scene_dir/*_B?.TIF >>$inpfile
+ls $scene_dir/*_B1?.TIF >>$inpfile
+ls $scene_dir/*_BQA.TIF >>$inpfile
 yearday=`echo $case | cut -c 10-16`
 echo $yearday
 fileanc=`ls LANDSATANC/L8ANC$yearday.hdf_fused`
 echo $fileanc >>$inpfile
-mtlfile=`ls $rootdir$case/*.txt`
+
 rnl=`grep REFLECTIVE_LINES $mtlfile | awk '{print $3}'`
 rnc=`grep REFLECTIVE_SAMPLES $mtlfile | awk '{print $3}'`
 pnl=`grep  PANCHROMATIC_LINES $mtlfile | awk '{print $3}'`
