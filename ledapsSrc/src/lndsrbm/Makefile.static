@@ -5,7 +5,7 @@ GEOLOC_DEPEND = LS_geoloc.o LS_geoloc_driver.c
 GEOLOC_INCDIR = -I. -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
 GEOLOC_EXLIB  = -L$(HDFEOS_GCTPLIB) -lGctp -L$(JPEGLIB) -ljpeg \
    -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
-   -L$(XML2LIB) -lxml2 -L$(JBIGLIB) -ljbig -llzma -lz -lm
+   -L$(XML2LIB) -lxml2 -L$(JBIGLIB) -ljbig -L$(LZMALIB) -llzma -lz -lm
 
 EXE     = comptemp dump_meta xy2geo geo2xy SDSreader3.0 lndsrbm
 all : $(EXE)

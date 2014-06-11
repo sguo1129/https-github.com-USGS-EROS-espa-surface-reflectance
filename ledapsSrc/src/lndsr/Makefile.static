@@ -8,7 +8,8 @@ NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 #          -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz
 EXLIB	= -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
   -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
-  -L$(XML2LIB) -lxml2 -L$(JBIGLIB) -ljbig -llzma -L$(HDFEOS_GCTPLIB) -lGctp -lz
+  -L$(XML2LIB) -lxml2 -L$(JBIGLIB) -ljbig --L$(LZMALIB) llzma \
+  -L$(HDFEOS_GCTPLIB) -lGctp -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 

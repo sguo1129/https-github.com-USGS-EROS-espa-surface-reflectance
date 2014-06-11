@@ -6,7 +6,7 @@ NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 EXLIB	= -L$(HDFEOS_GCTPLIB) -lGctp -L$(JPEGLIB) -ljpeg \
           -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
           -L$(XML2LIB) -lxml2 \
-          -L$(JBIGLIB) -ljbig -llzma -lz
+          -L$(JBIGLIB) -ljbig -L$(LZMALIB) -llzma -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
