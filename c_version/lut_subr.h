@@ -41,16 +41,12 @@ int invaero
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float trotoa[16],                /* I: top of atmos reflectance table */
     float erelc[16],
     int iband1,                      /* I: band 1 index (0-based) */
@@ -91,16 +87,12 @@ int invaeroocean
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float trotoa[16],                /* I: top of atmos reflectance table */
     float erelc[16],
     int iband1,                      /* I: band 1 index (0-based) */
@@ -144,16 +136,12 @@ int atmcorocea2
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float angexp,
@@ -196,16 +184,12 @@ int atmcorlamb2
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
@@ -227,16 +211,12 @@ void raycorlamb2
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
@@ -278,16 +258,12 @@ int atmcorlamb
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb                   /* O: lambertian surface reflectance */
 );
@@ -334,16 +310,12 @@ void comptg
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
     float pres,                  /* I: surface pressure */
-    float ogtransa0[16],         /* I: other gases transmission coeff */
-    float ogtransa1[16],         /* I: other gases transmission coeff */
-    float ogtransb0[16],         /* I: other gases transmission coeff */
-    float ogtransb1[16],         /* I: other gases transmission coeff */
-    float ogtransc0[16],         /* I: other gases transmission coeff */
-    float ogtransc1[16],         /* I: other gases transmission coeff */
-    float wvtransa[16],          /* I: water vapor transmission coeff */
-    float wvtransb[16],          /* I: water vapor transmission coeff */
-    float wvtransc[16],          /* I: water vapor transmission coeff */
-    float oztransa[16],          /* I: ozone transmission coeff */
+    double ogtransa1[16],        /* I: other gases transmission coeff */
+    double ogtransb0[16],        /* I: other gases transmission coeff */
+    double ogtransb1[16],        /* I: other gases transmission coeff */
+    double wvtransa[16],         /* I: water vapor transmission coeff */
+    double wvtransb[16],         /* I: water vapor transmission coeff */
+    double oztransa[16],         /* I: ozone transmission coeff */
     float *tgoz,                 /* O: ozone transmission */
     float *tgwv,                 /* O: water vapor transmission */
     float *tgwvhalf,             /* O: water vapor transmission, half content */
@@ -407,40 +379,25 @@ int comproatm
 
 int readluts
 (
-    float tauray[16],                /* O: molecular optical thickness coeff */
-    float oztransa[16],              /* O: ozone transmission coeff */
-    float wvtransa[16],              /* O: water vapor transmission coeff */
-    float wvtransb[16],              /* O: water vapor transmission coeff */
-    float wvtransc[16],              /* O: water vapor transmission coeff */
-    float ogtransa0[16],             /* O: other gases transmission coeff */
-    float ogtransa1[16],             /* O: other gases transmission coeff */
-    float ogtransb0[16],             /* O: other gases transmission coeff */
-    float ogtransb1[16],             /* O: other gases transmission coeff */
-    float ogtransc0[16],             /* O: other gases transmission coeff */
-    float ogtransc1[16],             /* O: other gases transmission coeff */
-    float **tsmax,                   /* O: [20][22] */
-    float **tsmin,                   /* O: [20][22] */
-    float **ttv,                     /* O: [20][22] */
-    float tts[22],                   /* O: */
-    float **nbfic,                   /* O: [20][22] */
-    float **nbfi,                    /* O: [20][22] */
-    int32 indts[22],                 /* O: */
-    float ****rolutt,                /*** O: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** O: transmission table
-                                           [16][7][22][22] */
-    float ***sphalbt,                /*** O: spherical albedo table
-                                           [16][7][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    char sbandname[16][STR_SIZE],    /* I: "band" names for the molecular
-                                           optical thickness file */
-    char tauraynm[STR_SIZE],     /* I: molecular optical thickness filename */
-    char gscoefnm[STR_SIZE],     /* I: gaseous transmission coef filename */
-    char anglehdf[STR_SIZE],     /* I: angle HDF filename */
-    char intrefnm[STR_SIZE],     /* I: intrinsic reflectance filename */
-    char transmnm[STR_SIZE],     /* I: transmission filename */
-    char spheranm[STR_SIZE]      /* I: spherical albedo filename */
+    float **tsmax,              /* O: [20][22] */
+    float **tsmin,              /* O: [20][22] */
+    float **ttv,                /* O: [20][22] */
+    float tts[22],              /* O: */
+    float **nbfic,              /* O: [20][22] */
+    float **nbfi,               /* O: [20][22] */
+    int32 indts[22],            /* O: */
+    float ****rolutt,           /*** O: intrinsic reflectance table
+                                      [16][7][22][8000] */
+    float ****transt,           /*** O: transmission table
+                                      [16][7][22][22] */
+    float ***sphalbt,           /*** O: spherical albedo table
+                                      [16][7][22] */
+    float xtsstep,              /* I: solar zenith step value */
+    float xtsmin,               /* I: minimum solar zenith value */
+    char anglehdf[STR_SIZE],    /* I: angle HDF filename */
+    char intrefnm[STR_SIZE],    /* I: intrinsic reflectance filename */
+    char transmnm[STR_SIZE],    /* I: transmission filename */
+    char spheranm[STR_SIZE]     /* I: spherical albedo filename */
 );
 
 int subaeroret
@@ -477,19 +434,14 @@ int subaeroret
     int32 indts[22],
     float **ttv,                     /* I: [20][22] */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float *raot,
-    float *residual,                 /* O: model residual */
-    int *nit                         /* O: number of iterations */
+    float *residual                  /* O: model residual */
 );
 
 #endif

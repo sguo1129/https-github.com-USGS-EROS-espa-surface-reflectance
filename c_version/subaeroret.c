@@ -36,6 +36,13 @@ Date         Programmer       Reason
 ---------    ---------------  -------------------------------------
 6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
                               by Eric Vermote, NASA GSFC
+7/22/2014    Gail Schmidt     Number of iterations doesn't need to be returned
+                              from this routine since it isn't used
+7/22/2014    Gail Schmidt     Cleaned up unused ogtransa0, ogtransc0,
+                              ogtransc1, wvtransc arrays.  Made the rest of
+                              these transmission arrays doubles and hard-coded
+                              their static values in this code vs. reading
+                              from a static ASCII file.
 
 NOTES:
 ******************************************************************************/
@@ -73,24 +80,20 @@ int subaeroret
     int32 indts[22],
     float **ttv,                     /* I: [20][22] */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float *raot,
-    float *residual,                 /* O: model residual */
-    int *nit                         /* O: number of iterations */
+    float *residual                  /* O: model residual */
 )
 {
     char FUNC_NAME[] = "subaeroret";   /* function name */
     char errmsg[STR_SIZE];       /* error message */
     int iband;              /* looping variable for bands */
+    int nit;                /* number of iterations */
     int iter;               /* looping variable for iterations */
     int iaot;               /* aerosol optical thickness (AOT) index */
     int retval;             /* function return value */
@@ -126,15 +129,15 @@ int subaeroret
     flagn = false;
     th1 = 0.01;
     th3 = 0.01;
-    *nit = 0;
+    nit = 0;
 
     /* The ratio decreases as the AOT increases.  The exit conditions in this
        loop are when two values of AOT can be found that bracket the predicted
        ratio (pratio). */
     while ((iaot < 22) && (aratio1 > pratio) && (ros1 > th1) && (ros3 > th3) &&
-        ((aratio1 - 0.01) < aratio2) && (*nit < 30))
+        ((aratio1 - 0.01) < aratio2) && (nit < 30))
     {
-        (*nit)++;
+        nit++;
         ros1 = -1.0;
         ros3 = -1.0;
 
@@ -159,10 +162,9 @@ int subaeroret
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
                 sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-                uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-                ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
-                troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm,
-                &xrorayp);
+                uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                wvtransb, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
+                &ttatmg, &satm, &xrorayp);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -177,10 +179,9 @@ int subaeroret
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
                 sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-                uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-                ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
-                troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm,
-                &xrorayp);
+                uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                wvtransb, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
+                &ttatmg, &satm, &xrorayp);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -227,10 +228,9 @@ int subaeroret
     raot550nm = eaot;
     iband = iband3;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
-        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-        sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-        uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-        ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
+        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
         troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
     if (retval != SUCCESS)
     {
@@ -244,10 +244,9 @@ int subaeroret
     /* Atmospheric correction for band 1 */
     iband = iband1;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
-        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-        sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-        uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-        ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
+        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
         troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
     if (retval != SUCCESS)
     {
@@ -277,10 +276,9 @@ int subaeroret
     raot550nm = eaot;
     iband = iband3;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
-        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-        sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-        uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-        ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
+        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
         troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
     if (retval != SUCCESS)
     {
@@ -294,10 +292,9 @@ int subaeroret
     /* Atmospheric correction for band 1 */
     iband = iband1;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
-        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-        sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-        uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-        ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
+        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
         troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
     if (retval != SUCCESS)
     {
@@ -328,10 +325,9 @@ int subaeroret
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
                     xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa0, ogtransa1, ogtransb0,
-                    ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-                    wvtransc, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
-                    &ttatmg, &satm, &xrorayp);
+                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
+                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
+                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -346,10 +342,9 @@ int subaeroret
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
                     xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa0, ogtransa1, ogtransb0,
-                    ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-                    wvtransc, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
-                    &ttatmg, &satm, &xrorayp);
+                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
+                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
+                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -383,10 +378,9 @@ int subaeroret
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
                     xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa0, ogtransa1, ogtransb0,
-                    ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-                    wvtransc, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
-                    &ttatmg, &satm, &xrorayp);
+                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
+                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
+                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -401,10 +395,9 @@ int subaeroret
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
                     xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa0, ogtransa1, ogtransb0,
-                    ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-                    wvtransc, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
-                    &ttatmg, &satm, &xrorayp);
+                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
+                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
+                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -437,10 +430,9 @@ int subaeroret
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
                 sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-                uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-                ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
-                troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm,
-                &xrorayp);
+                uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                wvtransb, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
+                &ttatmg, &satm, &xrorayp);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "

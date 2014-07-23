@@ -21,6 +21,11 @@ Date         Programmer       Reason
                               is a cosmetic change, however, since the nature
                               of the equations means them being flip-flopped
                               really doesn't matter.
+7/22/2014    Gail Schmidt     Cleaned up unused ogtransa0, ogtransc0,
+                              ogtransc1, wvtransc arrays.  Made the rest of
+                              these transmission arrays doubles and hard-coded
+                              their static values in this code vs. reading
+                              from a static ASCII file.
 
 NOTES:
 *****************************************************************************/
@@ -79,16 +84,12 @@ int invaero
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float trotoa[16],                /* I: top of atmos reflectance table */
     float erelc[16],                 /* I: band ratio variable */
     int iband1,                      /* I: band 1 index (0-based) */
@@ -120,9 +121,8 @@ int invaero
         retval = atmcorlamb (xts, xtv, xfi, aot550nm[iaot], iband1, pres,
             tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
             sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0,
-            ogtransc1, wvtransa, wvtransb, wvtransc, oztransa, trotoa[iband1],
-            roslamb1);
+            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+            oztransa, trotoa[iband1], roslamb1);
         if (retval != SUCCESS)
         {
             sprintf (errmsg, "Performing lambertian atmospheric correction.");
@@ -133,8 +133,8 @@ int invaero
         retval = atmcorlamb (xts, xtv, xfi, aot550nm[iaot], iband2, pres,
             tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
             sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0,
-            ogtransc1, wvtransa, wvtransb, wvtransc, oztransa, trotoa[iband2],
+            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+            oztransa, trotoa[iband2],
             &roslamb2);
         if (retval != SUCCESS)
         {
@@ -177,10 +177,9 @@ int invaero
        computation */
     retval = atmcorlamb (xts, xtv, xfi, *raot550nm, iband1, pres,
         tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-        sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-        tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0,
-        ogtransc1, wvtransa, wvtransb, wvtransc, oztransa, trotoa[iband1],
-        roslamb1);
+        sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
+        trotoa[iband1], roslamb1);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Performing lambertian atmospheric correction.");
@@ -198,9 +197,8 @@ int invaero
             retval = atmcorlamb (xts, xtv, xfi, *raot550nm, iband, pres,
                 tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
                 xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-                uoz, uwv, tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-                ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
-                trotoa[iband], &roslamb);
+                uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                wvtransb, oztransa, trotoa[iband], &roslamb);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric "
@@ -277,16 +275,12 @@ int invaeroocean
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float trotoa[16],                /* I: top of atmos reflectance table */
     float erelc[16],                 /* I: band ratio variable */
     int iband1,                      /* I: band 1 index (0-based) */
@@ -328,9 +322,9 @@ int invaeroocean
         retval = atmcorocea2 (xts, xtv, xfi, aot550nm[iaot], 1, pres, tpres,
             aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
             sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0,
-            ogtransc1, wvtransa, wvtransb, wvtransc, oztransa, trotoa[1],
-            &roslamb2, *angexp, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+            oztransa, trotoa[1], &roslamb2, *angexp, &tgo, &roatm, &ttatmg,
+            &satm, &xrorayp);
         if (retval != SUCCESS)
         {
             sprintf (errmsg, "Performing atmospheric correction ocean type 2.");
@@ -375,9 +369,9 @@ int invaeroocean
         retval = atmcorocea2 (xts, xtv, xfi, aot550nm[iaot], 4, pres, tpres,
             aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
             sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0,
-            ogtransc1, wvtransa, wvtransb, wvtransc, oztransa, trotoa[4],
-            &roslamb2, *angexp, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+            oztransa, trotoa[4], &roslamb2, *angexp, &tgo, &roatm, &ttatmg,
+            &satm, &xrorayp);
         if (retval != SUCCESS)
         {
             sprintf (errmsg, "Performing atmospheric correction ocean type 2.");
@@ -430,10 +424,9 @@ int invaeroocean
             retval = atmcorocea2 (xts, xtv, xfi, *aot2, iband, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
                 sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-                tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0,
-                ogtransc1, wvtransa, wvtransb, wvtransc, oztransa,
-                trotoa[iband], &roslamb, *angexp, &tgo, &roatm, &ttatmg, &satm,
-                &xrorayp);
+                tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+                oztransa, trotoa[iband], &roslamb, *angexp, &tgo, &roatm,
+                &ttatmg, &satm, &xrorayp);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing atmospheric correction ocean "
@@ -515,16 +508,12 @@ int atmcorocea2
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float angexp,
@@ -599,9 +588,8 @@ int atmcorocea2
     /* Compute spherical albedo */
     compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, satm);
 
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa0, ogtransa1,
-        ogtransb0, ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-        wvtransc, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
+    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
+        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
 
     /* Compute rayleigh component (intrinsic reflectance, at p0) */
     xphi = xfi;
@@ -680,16 +668,12 @@ int atmcorlamb2
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
@@ -749,9 +733,8 @@ int atmcorlamb2
     /* Compute spherical albedo */
     compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, satm);
 
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa0, ogtransa1,
-        ogtransb0, ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-        wvtransc, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
+    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
+        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
 
     /* Compute rayleigh component (intrinsic reflectance, at p0) */
     xphi = xfi;
@@ -806,16 +789,12 @@ void raycorlamb2
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
@@ -851,9 +830,8 @@ void raycorlamb2
     /* Compute spherical albedo */
     local_csalbr (xtaur, satm);
 
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa0, ogtransa1,
-        ogtransb0, ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-        wvtransc, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
+    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
+        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
 
     /* Compute rayleigh component (intrinsic reflectance, at p0) */
     xtaur = tauray[iband];
@@ -929,16 +907,12 @@ int atmcorlamb
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
     float tauray[16],                /* I: molecular optical thickness coeff */
-    float ogtransa0[16],             /* I: other gases transmission coeff */
-    float ogtransa1[16],             /* I: other gases transmission coeff */
-    float ogtransb0[16],             /* I: other gases transmission coeff */
-    float ogtransb1[16],             /* I: other gases transmission coeff */
-    float ogtransc0[16],             /* I: other gases transmission coeff */
-    float ogtransc1[16],             /* I: other gases transmission coeff */
-    float wvtransa[16],              /* I: water vapor transmission coeff */
-    float wvtransb[16],              /* I: water vapor transmission coeff */
-    float wvtransc[16],              /* I: water vapor transmission coeff */
-    float oztransa[16],              /* I: ozone transmission coeff */
+    double ogtransa1[16],            /* I: other gases transmission coeff */
+    double ogtransb0[16],            /* I: other gases transmission coeff */
+    double ogtransb1[16],            /* I: other gases transmission coeff */
+    double wvtransa[16],             /* I: water vapor transmission coeff */
+    double wvtransb[16],             /* I: water vapor transmission coeff */
+    double oztransa[16],             /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb                   /* O: lambertian surface reflectance */
 )
@@ -995,9 +969,8 @@ int atmcorlamb
     /* Compute spherical albedo */
     compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, &satm);
 
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa0, ogtransa1,
-        ogtransb0, ogtransb1, ogtransc0, ogtransc1, wvtransa, wvtransb,
-        wvtransc, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
+    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
+        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
 
     /* Compute rayleigh component (intrinsic reflectance, at p0) */
     xphi = xfi;
@@ -1281,16 +1254,12 @@ void comptg
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
     float pres,                  /* I: surface pressure */
-    float ogtransa0[16],         /* I: other gases transmission coeff */
-    float ogtransa1[16],         /* I: other gases transmission coeff */
-    float ogtransb0[16],         /* I: other gases transmission coeff */
-    float ogtransb1[16],         /* I: other gases transmission coeff */
-    float ogtransc0[16],         /* I: other gases transmission coeff */
-    float ogtransc1[16],         /* I: other gases transmission coeff */
-    float wvtransa[16],          /* I: water vapor transmission coeff */
-    float wvtransb[16],          /* I: water vapor transmission coeff */
-    float wvtransc[16],          /* I: water vapor transmission coeff */
-    float oztransa[16],          /* I: ozone transmission coeff */
+    double ogtransa1[16],        /* I: other gases transmission coeff */
+    double ogtransb0[16],        /* I: other gases transmission coeff */
+    double ogtransb1[16],        /* I: other gases transmission coeff */
+    double wvtransa[16],         /* I: water vapor transmission coeff */
+    double wvtransb[16],         /* I: water vapor transmission coeff */
+    double oztransa[16],         /* I: ozone transmission coeff */
     float *tgoz,                 /* O: ozone transmission */
     float *tgwv,                 /* O: water vapor transmission */
     float *tgwvhalf,             /* O: water vapor transmission, half content */
@@ -2215,45 +2184,34 @@ Date         Programmer       Reason
 7/1/2014     Gail Schmidt     Passed in xtsstep and xtsmin since they are
                               defined in the main routine and then duplicated
                               here.
+7/22/2014    Gail Schmidt     Removed the read of the tauray file, since it's
+                              a small, static ASCII file.  Just made it a
+                              hard-coded array in the main function.  Ditto for
+                              the gaseous transmission coefficient file.
 
 NOTES:
 ******************************************************************************/
 int readluts
 (
-    float tauray[16],                /* O: molecular optical thickness coeff */
-    float oztransa[16],              /* O: ozone transmission coeff */
-    float wvtransa[16],              /* O: water vapor transmission coeff */
-    float wvtransb[16],              /* O: water vapor transmission coeff */
-    float wvtransc[16],              /* O: water vapor transmission coeff */
-    float ogtransa0[16],             /* O: other gases transmission coeff */
-    float ogtransa1[16],             /* O: other gases transmission coeff */
-    float ogtransb0[16],             /* O: other gases transmission coeff */
-    float ogtransb1[16],             /* O: other gases transmission coeff */
-    float ogtransc0[16],             /* O: other gases transmission coeff */
-    float ogtransc1[16],             /* O: other gases transmission coeff */
-    float **tsmax,                   /* O: [20][22] */
-    float **tsmin,                   /* O: [20][22] */
-    float **ttv,                     /* O: [20][22] */
-    float tts[22],                   /* O: */
-    float **nbfic,                   /* O: [20][22] */
-    float **nbfi,                    /* O: [20][22] */
-    int32 indts[22],                 /* O: */
-    float ****rolutt,                /*** O: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** O: transmission table
-                                           [16][7][22][22] */
-    float ***sphalbt,                /*** O: spherical albedo table
-                                           [16][7][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    char sbandname[16][STR_SIZE],    /* I: "band" names for the molecular
-                                           optical thickness file */
-    char tauraynm[STR_SIZE],     /* I: molecular optical thickness filename */
-    char gscoefnm[STR_SIZE],     /* I: gaseous transmission coef filename */
-    char anglehdf[STR_SIZE],     /* I: angle HDF filename */
-    char intrefnm[STR_SIZE],     /* I: intrinsic reflectance filename */
-    char transmnm[STR_SIZE],     /* I: transmission filename */
-    char spheranm[STR_SIZE]      /* I: spherical albedo filename */
+    float **tsmax,              /* O: [20][22] */
+    float **tsmin,              /* O: [20][22] */
+    float **ttv,                /* O: [20][22] */
+    float tts[22],              /* O: */
+    float **nbfic,              /* O: [20][22] */
+    float **nbfi,               /* O: [20][22] */
+    int32 indts[22],            /* O: */
+    float ****rolutt,           /*** O: intrinsic reflectance table
+                                      [16][7][22][8000] */
+    float ****transt,           /*** O: transmission table
+                                      [16][7][22][22] */
+    float ***sphalbt,           /*** O: spherical albedo table
+                                      [16][7][22] */
+    float xtsstep,              /* I: solar zenith step value */
+    float xtsmin,               /* I: minimum solar zenith value */
+    char anglehdf[STR_SIZE],    /* I: angle HDF filename */
+    char intrefnm[STR_SIZE],    /* I: intrinsic reflectance filename */
+    char transmnm[STR_SIZE],    /* I: transmission filename */
+    char spheranm[STR_SIZE]     /* I: spherical albedo filename */
 )
 {
     char FUNC_NAME[] = "readluts";   /* function name */
@@ -2268,7 +2226,6 @@ int readluts
     int status;             /* return status of the HDF function */
     int start[3];           /* starting point to read SDS data */
     int edges[3];           /* number of values to read in SDS data */
-    char bandid[STR_SIZE];  /* ID of band being processed in the file */
     char fname[STR_SIZE];   /* filename to be read */
     float *rolut = NULL;    /*** intrinsic reflectance read from HDF file
                                [8000*22*7] */
@@ -2279,119 +2236,7 @@ int readluts
     int sds_index;              /* index for the current SDS */
     FILE *fp = NULL;            /* file pointer for reading ascii files */
 
-    /* Read the gaseous transmission and other constants */
-    /* Molecular optical thickness -- (GAIL - these are hard-coded, so why
-       read from the table??) */
-    fp = fopen (tauraynm, "r");
-    if (fp == NULL)
-    {
-        sprintf (errmsg, "Opening molecular optical thickness file: %s",
-            tauraynm);
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    for (i = 0; i < 8; i++)
-    {
-        if (fscanf (fp, "%s %f", bandid, &tauray[i]) != 2)
-        {
-            sprintf (errmsg, "Reading floating point value from the molecular "
-                "optical thickness file: %s", tauraynm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        if (strcmp (bandid, sbandname[i]))
-        {
-            sprintf (errmsg, "Error on rayleigh o.d file. Check %s.", tauraynm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    /* Close gaseous transmission file */
-    fclose (fp);
-
-    /* Gaseous transmission coefficient -- (GAIL - these are hard-coded, so
-       why read from the table??) */
-    fp = fopen (gscoefnm, "r");
-    if (fp == NULL)
-    {
-        sprintf (errmsg, "Opening gaseous transmission coefficient file: %s",
-            gscoefnm);
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    for (i = 0; i < 8; i++)
-    {
-        if (fscanf (fp, "%f", &oztransa[i]) != 1)
-        {
-            sprintf (errmsg, "Reading ozone transmission (a) value from "
-                "gaseous transmission coefficient file: %s", gscoefnm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    for (i = 0; i < 8; i++)
-    {
-        if (fscanf (fp, "%f", &wvtransa[i]) != 1)
-        {
-            sprintf (errmsg, "Reading water vapor transmission (a) value from "
-                "gaseous transmission coefficient file: %s", gscoefnm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    for (i = 0; i < 8; i++)
-    {
-        if (fscanf (fp, "%f", &wvtransb[i]) != 1)
-        {
-            sprintf (errmsg, "Reading water vapor transmission (b) value from "
-                "gaseous transmission coefficient file: %s", gscoefnm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    for (i = 0; i < 8; i++)
-    {
-        if (fscanf (fp, "%f", &ogtransa1[i]) != 1)
-        {
-            sprintf (errmsg, "Reading other gases transmission (a1) value from "
-                "gaseous transmission coefficient file: %s", gscoefnm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    for (i = 0; i < 8; i++)
-    {
-        if (fscanf (fp, "%f", &ogtransb0[i]) != 1)
-        {
-            sprintf (errmsg, "Reading other gases transmission (b0) value from "
-                "gaseous transmission coefficient file: %s", gscoefnm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    for (i = 0; i < 8; i++)
-    {
-        if (fscanf (fp, "%f", &ogtransb1[i]) != 1)
-        {
-            sprintf (errmsg, "Reading other gases transmission (b1) value from "
-                "gaseous transmission coefficient file: %s", gscoefnm);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    /* Close other gases file */
-    fclose (fp);
-       
+    /* Initialize some variables */
     for (i = 0; i < 20; i++)
     {
         for (j = 0; j < 22; j++)

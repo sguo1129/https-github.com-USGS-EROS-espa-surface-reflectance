@@ -27,6 +27,13 @@ Date          Programmer       Reason
 7/21/2014     Gail Schmidt     Set all int16 output bands to use the same fill
                                value, which is a change for bands 10 and 11.
                                The fill value used is -9999 vs. -1000.
+7/22/2014     Gail Schmidt     Made the tauray array a hard-coded array vs.
+                               reading it from a static ASCII file.
+7/22/2014     Gail Schmidt     Cleaned up unused ogtransa0, ogtransc0,
+                               ogtransc1, wvtransc arrays.  Made the rest of
+                               these transmission arrays doubles and hard-coded
+                               their static values in this code vs. reading
+                               from a static ASCII file.
 
 NOTES:
 ******************************************************************************/
@@ -62,7 +69,6 @@ int main (int argc, char *argv[])
     float lat, lon;               /* pixel lat, long location */
 
     struct stat statbuf;      /* buffer for the file stat function */
-    int nit;                  /* number of iterations */
     uint16 **uband = NULL;    /* array of input image data for a current band */
     uint16 **qaband = NULL;   /* QA band for the input image */
     int16 **aerob1 = NULL;    /* atmospherically corrected band 1 data */
@@ -71,7 +77,7 @@ int main (int argc, char *argv[])
     int16 **aerob5 = NULL;    /* atmospherically corrected band 5 data */
     int16 **aerob7 = NULL;    /* atmospherically corrected band 7 data */
     int16 ***sband = NULL;    /* output surface reflectance and brightness
-                                 temp bands */
+                                 temp bands, qa band is separate as a uint16 */
     int16 **dem = NULL;       /* CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
     int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob2 = NULL;   /* mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
@@ -109,8 +115,6 @@ int main (int argc, char *argv[])
     int sds_index;              /* index for the current SDS */
 
     /* The following arguments are all names of the LUTs */
-    char tauraynm[STR_SIZE];    /* molecular optical thickness filename */
-    char gscoefnm[STR_SIZE];    /* gaseous transmission coef filename */
     char anglehdf[STR_SIZE];    /* angle HDF filename */
     char intrefnm[STR_SIZE];    /* intrinsic reflectance filename */
     char transmnm[STR_SIZE];    /* transmission filename */
@@ -118,23 +122,31 @@ int main (int argc, char *argv[])
     char cmgdemnm[STR_SIZE];    /* climate modeling grid DEM filename */
     char rationm[STR_SIZE];     /* ratio averages filename */
     char auxnm[STR_SIZE];     /* auxiliary filename for ozone and water vapor*/
-    char sbandname[16][STR_SIZE] =  /* "band" names for input files */
-       {"ldcmb1", "ldcmb2", "ldcmb3", "ldcmb4", "ldcmb5", "ldcmb6", "ldcmb7",
-        "ldcmb8", "", "", "", "", "", "", "", ""}; /* only 8 bands are used */
 
     /* Atmospheric correction variables */
     /* Look up table for atmospheric and geometric quantities */
-    float tauray[16];           /* molecular optical thickness coeff */
-    float oztransa[16];         /* ozone transmission coeff */
-    float wvtransa[16];         /* water vapor transmission coeff */
-    float wvtransb[16];         /* water vapor transmission coeff */
-    float wvtransc[16];         /* water vapor transmission coeff */
-    float ogtransa0[16];        /* other gases transmission coeff */
-    float ogtransa1[16];        /* other gases transmission coeff */
-    float ogtransb0[16];        /* other gases transmission coeff */
-    float ogtransb1[16];        /* other gases transmission coeff */
-    float ogtransc0[16];        /* other gases transmission coeff */
-    float ogtransc1[16];        /* other gases transmission coeff */
+    float tauray[16] =           /* molecular optical thickness coeff */
+        {0.23638, 0.16933, 0.09070, 0.04827, 0.01563, 0.00129, 0.00037,
+         0.07984, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+         /* only 8 bands are used */
+    double oztransa[16] =        /* ozone transmission coeff */
+        {-0.00255649, -0.0177861, -0.0969872, -0.0611428, 0.0001, 0.0001,
+          0.0001, -0.0834061};
+    double wvtransa[16] =        /* water vapor transmission coeff */
+        {2.29849e-27, 2.29849e-27, 0.00194772, 0.00404159, 0.000729136,
+         0.00067324, 0.0177533, 0.00279738};
+    double wvtransb[16] =        /* water vapor transmission coeff */
+        {0.999742, 0.999742, 0.775024, 0.774482, 0.893085, 0.939669, 0.65094,
+         0.759952};
+    double ogtransa1[16] =       /* other gases transmission coeff */
+        {4.91586e-20, 4.91586e-20, 4.91586e-20, 1.04801e-05, 1.35216e-05,
+         0.0205425, 0.0256526, 0.000214329};
+    double ogtransb0[16] =       /* other gases transmission coeff */
+        {0.000197019, 0.000197019, 0.000197019, 0.640215, -0.195998, 0.326577,
+         0.243961, 0.396322};
+    double ogtransb1[16] =       /* other gases transmission coeff */
+        {9.57011e-16, 9.57011e-16, 9.57011e-16, -0.348785, 0.275239, 0.0117192,
+         0.0616101, 0.04728};
 
     float ****rolutt = NULL;    /*** I: intrinsic reflectance table
                                         [16][7][22][8000] */
@@ -597,8 +609,6 @@ int main (int argc, char *argv[])
     }
 
     /* Set up the look-up table files and make sure they exist */
-    sprintf (tauraynm, "%s/LDCMLUT/tauray-ldcm.ASC", aux_path);
-    sprintf (gscoefnm, "%s/LDCMLUT/gascoef-ldcm.ASC", aux_path);
     sprintf (anglehdf, "%s/LDCMLUT/ANGLE_NEW.hdf", aux_path);
     sprintf (intrefnm, "%s/LDCMLUT/RES_LUT_V3.0-URBANCLEAN-V2.0.hdf", aux_path);
     sprintf (transmnm, "%s/LDCMLUT/TRANS_LUT_V3.0-URBANCLEAN-V2.0.ASCII",
@@ -608,22 +618,6 @@ int main (int argc, char *argv[])
     sprintf (cmgdemnm, "%s/CMGDEM.hdf", aux_path);
     sprintf (rationm, "%s/newratio_averagesSD.hdf", aux_path);
     sprintf (auxnm, "%s/LANDSATANC/%s", aux_path, aux_infile);
-
-    if (stat (tauraynm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find tauraynm data file: %s\n  Check "
-            "ANC_PATH environment variable.", tauraynm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    if (stat (gscoefnm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find gscoefnm data file: %s\n  Check "
-            "ANC_PATH environment variable.", gscoefnm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
 
     if (stat (anglehdf, &statbuf) == -1)
     {
@@ -689,11 +683,9 @@ int main (int argc, char *argv[])
     xtsstep = 4.0;
     xtvmin = 2.84090;
     xtvstep = 6.52107-2.84090;
-    retval = readluts (tauray, oztransa, wvtransa, wvtransb, wvtransc,
-        ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0, ogtransc1,
-        tsmax, tsmin, ttv, tts, nbfi, nbfic, indts, rolutt, transt, sphalbt,
-        xtsstep, xtsmin, sbandname, tauraynm, gscoefnm, anglehdf, intrefnm,
-        transmnm, spheranm);
+    retval = readluts (tsmax, tsmin, ttv, tts, nbfi, nbfic, indts, rolutt,
+        transt, sphalbt, xtsstep, xtsmin, anglehdf, intrefnm, transmnm,
+        spheranm);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Reading the LUTs");
@@ -1235,14 +1227,16 @@ int main (int argc, char *argv[])
         }
     }
 
-    sband = calloc (NBAND_TTL_OUT, sizeof (int16**));
+    /* Given that the QA band is its own separate array of uint16s, we need
+       one less band for the signed image data */
+    sband = calloc (NBAND_TTL_OUT-1, sizeof (int16**));
     if (sband == NULL)
     {
         sprintf (errmsg, "Error allocating memory for sband");
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
-    for (i = 0; i < NBAND_TTL_OUT; i++)
+    for (i = 0; i < NBAND_TTL_OUT-1; i++)
     {
         sband[i] = calloc (nlines, sizeof (int16*));
         if (sband[i] == NULL)
@@ -1350,7 +1344,7 @@ int main (int argc, char *argv[])
 
     /* Loop through all the bands (except the QA band) and perform atmospheric
        corrections */
-    printf ("Calibrating reflectance and thermal bands.\n");
+    printf ("Calibrating reflectance and thermal bands ...\n");
     for (ib = 0; ib <= NBAND_TTL_MAX-1; ib++)
     {
         /* Don't process the pan band */
@@ -1367,9 +1361,9 @@ int main (int argc, char *argv[])
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, ib, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
                 sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-                tauray, ogtransa0, ogtransa1, ogtransb0, ogtransb1, ogtransc0,
-                ogtransc1, wvtransa, wvtransb, wvtransc, oztransa, rotoa, 
-                &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+                tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+                oztransa, rotoa, &roslamb, &tgo, &roatm, &ttatmg, &satm,
+                &xrorayp);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -1504,6 +1498,11 @@ int main (int argc, char *argv[])
             }  /* end for j */
         }  /* end if ib */
     }  /* end for ib */
+
+    /* The input data has been read and calibrated. The memory can be freed. */
+    for (i = 0; i < nlines; i++)
+        free (uband[i]);
+    free (uband);
 
     /* Interpolate the auxiliary data for each pixel location */
     printf ("Interpolating the auxiliary data ...\n");
@@ -1667,9 +1666,8 @@ int main (int argc, char *argv[])
                 retval = subaeroret (iband1, iband3, xts, xtv, xfi, pres, uoz,
                     uwv, erelc, troatm, tpres, aot550nm, rolutt, transt,
                     xtsstep, xtsmin, xtvstep, xtvmin, sphalbt, tsmax, tsmin,
-                    nbfic, nbfi, tts, indts, ttv, tauray, ogtransa0, ogtransa1,
-                    ogtransb0, ogtransb1, ogtransc0, ogtransc1, wvtransa,
-                    wvtransb, wvtransc, oztransa, &raot, &residual, &nit);
+                    nbfic, nbfi, tts, indts, ttv, tauray, ogtransa1, ogtransb0,
+                    ogtransb1, wvtransa, wvtransb, oztransa, &raot, &residual);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing atmospheric correction.");
@@ -1686,10 +1684,10 @@ int main (int argc, char *argv[])
                     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                         tpres, aot550nm, rolutt, transt, xtsstep, xtsmin,
                         xtvstep, xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi,
-                        tts, indts, ttv, uoz, uwv, tauray, ogtransa0,
-                        ogtransa1, ogtransb0, ogtransb1, ogtransc0, ogtransc1,
-                        wvtransa, wvtransb, wvtransc, oztransa, rotoa, &roslamb,
-                        &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+                        tts, indts, ttv, uoz, uwv, tauray, ogtransa1,
+                        ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
+                        rotoa, &roslamb, &tgo, &roatm, &ttatmg, &satm,
+                        &xrorayp);
                     if (retval != SUCCESS)
                     {
                         sprintf (errmsg, "Performing lambertian atmospheric "
@@ -1705,10 +1703,10 @@ int main (int argc, char *argv[])
                     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                         tpres, aot550nm, rolutt, transt, xtsstep, xtsmin,
                         xtvstep, xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi,
-                        tts, indts, ttv, uoz, uwv, tauray, ogtransa0,
-                        ogtransa1, ogtransb0, ogtransb1, ogtransc0, ogtransc1,
-                        wvtransa, wvtransb, wvtransc, oztransa, rotoa, &roslamb,
-                        &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+                        tts, indts, ttv, uoz, uwv, tauray, ogtransa1,
+                        ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
+                        rotoa, &roslamb, &tgo, &roatm, &ttatmg, &satm,
+                        &xrorayp);
                     if (retval != SUCCESS)
                     {
                         sprintf (errmsg, "Performing lambertian atmospheric "
@@ -1741,6 +1739,32 @@ int main (int argc, char *argv[])
     /* update status */
     printf ("100%%\n");
     fflush (stdout);
+
+    /* Done with the ratiob* arrays */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        free (ratiob1[i]);
+        free (ratiob2[i]);
+        free (ratiob7[i]);
+    }
+    free (ratiob1);
+    free (ratiob2);
+    free (ratiob7);
+
+    /* Done with the aerob* arrays */
+    for (i = 0; i < nlines; i++)
+    {
+        free (aerob1[i]);
+        free (aerob2[i]);
+        free (aerob4[i]);
+        free (aerob5[i]);
+        free (aerob7[i]);
+    }
+    free (aerob1);
+    free (aerob2);
+    free (aerob4);
+    free (aerob5);
+    free (aerob7);
 
     /* Refine the cloud mask */
     /* Compute the average temperature of the clear, non-water, non-filled
@@ -1826,7 +1850,7 @@ int main (int argc, char *argv[])
                         }
                     }  /* for l */
                 }  /* for k */
-            }
+            }  /* if btest */
         }  /* for j */
     }  /* for i */
 
@@ -2102,10 +2126,9 @@ int main (int argc, char *argv[])
                             pres, tpres, aot550nm, rolutt, transt, xtsstep,
                             xtsmin, xtvstep, xtvmin, sphalbt, tsmax, tsmin,
                             nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
-                            ogtransa0, ogtransa1, ogtransb0, ogtransb1,
-                            ogtransc0, ogtransc1, wvtransa, wvtransb, wvtransc,
-                            oztransa, rotoa, &roslamb, &tgo, &roatm, &ttatmg,
-                            &satm, &xrorayp);
+                            ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                            wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
+                            &ttatmg, &satm, &xrorayp);
                         if (retval != SUCCESS)
                         {
                             sprintf (errmsg, "Performing lambertian "
@@ -2127,9 +2150,8 @@ int main (int argc, char *argv[])
                                     ib, pres, tpres, aot550nm, rolutt, transt,
                                     xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
                                     tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-                                    uoz, uwv, tauray, ogtransa0, ogtransa1,
-                                    ogtransb0, ogtransb1, ogtransc0, ogtransc1,
-                                    wvtransa, wvtransb, wvtransc, oztransa,
+                                    uoz, uwv, tauray, ogtransa1, ogtransb0,
+                                    ogtransb1, wvtransa, wvtransb, oztransa,
                                     rotoa, &roslamb, &tgo, &roatm, &ttatmg,
                                     &satm, &xrorayp);
                                 if (retval != SUCCESS)
@@ -2272,16 +2294,6 @@ int main (int argc, char *argv[])
         free (dem[i]);
     free (dem);
 
-    for (i = 0; i < RATIO_NBLAT; i++)
-    {
-        free (ratiob1[i]);
-        free (ratiob2[i]);
-        free (ratiob7[i]);
-    }
-    free (ratiob1);
-    free (ratiob2);
-    free (ratiob7);
-
     for (i = 0; i < CMG_NBLAT; i++)
     {
         free (wv[i]);
@@ -2327,16 +2339,10 @@ int main (int argc, char *argv[])
     free (nbfi);
     free (ttv);
 
-    /* Allocate space for band data */
+    /* Free space for band data */
     for (i = 0; i < nlines; i++)
     {
-        free (uband[i]);
         free (qaband[i]);
-        free (aerob1[i]);
-        free (aerob2[i]);
-        free (aerob4[i]);
-        free (aerob5[i]);
-        free (aerob7[i]);
         free (twvi[i]);
         free (tozi[i]);
         free (tp[i]);
@@ -2344,13 +2350,7 @@ int main (int argc, char *argv[])
         free (taero[i]);
         free (cloud[i]);
     }
-    free (uband);
     free (qaband);
-    free (aerob1);
-    free (aerob2);
-    free (aerob4);
-    free (aerob5);
-    free (aerob7);
     free (twvi);
     free (tozi);
     free (tp);
@@ -2358,7 +2358,7 @@ int main (int argc, char *argv[])
     free (taero);
     free (cloud);
 
-    for (i = 0; i < NBAND_TTL_OUT; i++)
+    for (i = 0; i < NBAND_TTL_OUT-1; i++)
     {
         for (j = 0; j < nlines; j++)
             free (sband[i][j]);
