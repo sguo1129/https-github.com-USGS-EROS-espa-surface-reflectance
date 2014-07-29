@@ -44,6 +44,7 @@ Date         Programmer       Reason
                               their static values in this code vs. reading
                               from a static ASCII file.
 
+
 NOTES:
 ******************************************************************************/
 int subaeroret
@@ -126,10 +127,13 @@ int subaeroret
     ros1 = 1.0;
     ros3 = 1.0;
     raot1 = 0.0001;
+    raot2 = 0.0;
     flagn = false;
     th1 = 0.01;
     th3 = 0.01;
     nit = 0;
+    pros1 = 0.0;
+    pros3 = 0.0;
 
     /* The ratio decreases as the AOT increases.  The exit conditions in this
        loop are when two values of AOT can be found that bracket the predicted

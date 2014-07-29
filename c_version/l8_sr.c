@@ -34,8 +34,12 @@ Date          Programmer       Reason
                                these transmission arrays doubles and hard-coded
                                their static values in this code vs. reading
                                from a static ASCII file.
+7/22/2014     Gail Schmidt     Changed the 2D arrays to 1D arrays for the
+                               image data to speed up processing.
 
 NOTES:
+1. SDstart and SDreaddata have minor memory leaks.  Ultimately both call
+   HAregister_atom which makes a malloc call and the memory is never freed.
 ******************************************************************************/
 int main (int argc, char *argv[])
 {
@@ -53,12 +57,15 @@ int main (int argc, char *argv[])
     int retval;              /* return status */
     int ib;                  /* looping variable for input bands */
     int sband_ib;            /* looping variable for output bands */
+    int curr_pix;            /* current pixel in the 1D arrays of
+                                nlines * nsamps */      
+    int win_pix;             /* current pixel in the line,sample window */
     Input_t *input = NULL;       /* input structure for the Landsat product */
     Output_t *sr_output = NULL;  /* output structure and metadata for the SR
                                     product */
     Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
     Espa_global_meta_t *gmeta = NULL;   /* pointer to global meta */
-    Envi_header_t envi_hdr;   /* output ENVI header information */
+    Envi_header_t envi_hdr;      /* output ENVI header information */
 
     /* Vars for forward/inverse mapping space */
     Geoloc_t *space = NULL;       /* structure for geolocation information */
@@ -69,14 +76,20 @@ int main (int argc, char *argv[])
     float lat, lon;               /* pixel lat, long location */
 
     struct stat statbuf;      /* buffer for the file stat function */
-    uint16 **uband = NULL;    /* array of input image data for a current band */
-    uint16 **qaband = NULL;   /* QA band for the input image */
-    int16 **aerob1 = NULL;    /* atmospherically corrected band 1 data */
-    int16 **aerob2 = NULL;    /* atmospherically corrected band 2 data */
-    int16 **aerob4 = NULL;    /* atmospherically corrected band 4 data */
-    int16 **aerob5 = NULL;    /* atmospherically corrected band 5 data */
-    int16 **aerob7 = NULL;    /* atmospherically corrected band 7 data */
-    int16 ***sband = NULL;    /* output surface reflectance and brightness
+    uint16 *uband = NULL;     /* array of input image data for a current band,
+                                 nlines x nsamps */
+    uint16 *qaband = NULL;    /* QA band for the input image, nlines x nsamps */
+    int16 *aerob1 = NULL;     /* atmospherically corrected band 1 data,
+                                 nlines x nsamps */
+    int16 *aerob2 = NULL;     /* atmospherically corrected band 2 data,
+                                 nlines x nsamps */
+    int16 *aerob4 = NULL;     /* atmospherically corrected band 4 data,
+                                 nlines x nsamps */
+    int16 *aerob5 = NULL;     /* atmospherically corrected band 5 data,
+                                 nlines x nsamps */
+    int16 *aerob7 = NULL;     /* atmospherically corrected band 7 data,
+                                 nlines x nsamps */
+    int16 **sband = NULL;     /* output surface reflectance and brightness
                                  temp bands, qa band is separate as a uint16 */
     int16 **dem = NULL;       /* CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
     int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
@@ -84,12 +97,15 @@ int main (int argc, char *argv[])
     int16 **ratiob7 = NULL;   /* mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
     uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
     uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
-    uint8 **cloud = NULL;     /* signed value to represent clouds */
-    float **twvi = NULL;      /* interpolated water vapor value */
-    float **tozi = NULL;      /* interpolated ozone value */
-    float **tp = NULL;        /* interpolated pressure value */
-    float **tresi = NULL;     /* residuals for each pixel */
-    float **taero = NULL;     /* aerosol values for each pixel */
+    uint8 *cloud = NULL;      /* bit-packed value that represent clouds,
+                                 nlines x nsamps */
+    float *twvi = NULL;       /* interpolated water vapor value,
+                                 nlines x nsamps */
+    float *tozi = NULL;       /* interpolated ozone value, nlines x nsamps */
+    float *tp = NULL;         /* interpolated pressure value, nlines x nsamps */
+    float *tresi = NULL;      /* residuals for each pixel, nlines x nsamps */
+    float *taero = NULL;      /* aerosol values for each pixel,
+                                 nlines x nsamps */
 
     int i, j, k, l;      /* looping variables */
     int lcmg, scmg;      /* line/sample index for the CMG */
@@ -1016,7 +1032,7 @@ int main (int argc, char *argv[])
     }
 
     /* Allocate space for band data */
-    uband = calloc (nlines, sizeof (uint16*));
+    uband = calloc (nlines*nsamps, sizeof (uint16));
     if (uband == NULL)
     {
         sprintf (errmsg, "Error allocating memory for uband");
@@ -1024,7 +1040,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    qaband = calloc (nlines, sizeof (uint16*));
+    qaband = calloc (nlines*nsamps, sizeof (uint16));
     if (qaband == NULL)
     {
         sprintf (errmsg, "Error allocating memory for qaband");
@@ -1032,7 +1048,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    aerob1 = calloc (nlines, sizeof (int16*));
+    aerob1 = calloc (nlines*nsamps, sizeof (int16));
     if (aerob1 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for aerob1");
@@ -1040,7 +1056,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    aerob2 = calloc (nlines, sizeof (int16*));
+    aerob2 = calloc (nlines*nsamps, sizeof (int16));
     if (aerob2 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for aerob2");
@@ -1048,7 +1064,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    aerob4 = calloc (nlines, sizeof (int16*));
+    aerob4 = calloc (nlines*nsamps, sizeof (int16));
     if (aerob4 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for aerob4");
@@ -1056,7 +1072,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    aerob5 = calloc (nlines, sizeof (int16*));
+    aerob5 = calloc (nlines*nsamps, sizeof (int16));
     if (aerob5 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for aerob5");
@@ -1064,7 +1080,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    aerob7 = calloc (nlines, sizeof (int16*));
+    aerob7 = calloc (nlines*nsamps, sizeof (int16));
     if (aerob7 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for aerob7");
@@ -1072,7 +1088,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    twvi = calloc (nlines, sizeof (float*));
+    twvi = calloc (nlines*nsamps, sizeof (float));
     if (twvi == NULL)
     {
         sprintf (errmsg, "Error allocating memory for twvi");
@@ -1080,7 +1096,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    tozi = calloc (nlines, sizeof (float*));
+    tozi = calloc (nlines*nsamps, sizeof (float));
     if (tozi == NULL)
     {
         sprintf (errmsg, "Error allocating memory for tozi");
@@ -1088,7 +1104,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    tp = calloc (nlines, sizeof (float*));
+    tp = calloc (nlines*nsamps, sizeof (float));
     if (tp == NULL)
     {
         sprintf (errmsg, "Error allocating memory for tp");
@@ -1096,7 +1112,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    tresi = calloc (nlines, sizeof (float*));
+    tresi = calloc (nlines*nsamps, sizeof (float));
     if (tresi == NULL)
     {
         sprintf (errmsg, "Error allocating memory for tresi");
@@ -1104,7 +1120,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    taero = calloc (nlines, sizeof (float*));
+    taero = calloc (nlines*nsamps, sizeof (float));
     if (taero == NULL)
     {
         sprintf (errmsg, "Error allocating memory for taero");
@@ -1112,7 +1128,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    cloud = calloc (nlines, sizeof (uint8*));
+    cloud = calloc (nlines*nsamps, sizeof (uint8));
     if (cloud == NULL)
     {
         sprintf (errmsg, "Error allocating memory for cloud");
@@ -1120,116 +1136,9 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    for (i = 0; i < nlines; i++)
-    {
-        uband[i] = calloc (nsamps, sizeof (uint16));
-        if (uband[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for uband");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        qaband[i] = calloc (nsamps, sizeof (uint16));
-        if (qaband[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for qaband");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        aerob1[i] = calloc (nsamps, sizeof (int16));
-        if (aerob1[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for aerob1");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        aerob2[i] = calloc (nsamps, sizeof (int16));
-        if (aerob2[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for aerob2");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        aerob4[i] = calloc (nsamps, sizeof (int16));
-        if (aerob4[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for aerob4");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        aerob5[i] = calloc (nsamps, sizeof (int16));
-        if (aerob5[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for aerob5");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        aerob7[i] = calloc (nsamps, sizeof (int16));
-        if (aerob7[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for aerob7");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        twvi[i] = calloc (nlines, sizeof (float));
-        if (twvi[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for twvi");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        tozi[i] = calloc (nlines, sizeof (float));
-        if (tozi[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for tozi");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        tp[i] = calloc (nlines, sizeof (float));
-        if (tp[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for tp");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        tresi[i] = calloc (nlines, sizeof (float));
-        if (tresi[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for tresi");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        taero[i] = calloc (nlines, sizeof (float));
-        if (taero[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for taero");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-
-        cloud[i] = calloc (nlines, sizeof (uint8));
-        if (cloud[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for cloud");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-    }
-
     /* Given that the QA band is its own separate array of uint16s, we need
        one less band for the signed image data */
-    sband = calloc (NBAND_TTL_OUT-1, sizeof (int16**));
+    sband = calloc (NBAND_TTL_OUT-1, sizeof (int16*));
     if (sband == NULL)
     {
         sprintf (errmsg, "Error allocating memory for sband");
@@ -1238,23 +1147,12 @@ int main (int argc, char *argv[])
     }
     for (i = 0; i < NBAND_TTL_OUT-1; i++)
     {
-        sband[i] = calloc (nlines, sizeof (int16*));
+        sband[i] = calloc (nlines*nsamps, sizeof (int16));
         if (sband[i] == NULL)
         {
             sprintf (errmsg, "Error allocating memory for sband");
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
-        }
-
-        for (j = 0; j < nlines; j++)
-        {
-            sband[i][j] = calloc (nsamps, sizeof (int16));
-            if (sband[i][j] == NULL)
-            {
-                sprintf (errmsg, "Error allocating memory for sband");
-                error_handler (true, FUNC_NAME, errmsg);
-                exit (ERROR);
-            }
         }
     }
 
@@ -1284,14 +1182,11 @@ int main (int argc, char *argv[])
     xfi = 0.0;
 
     /* Read the QA band */
-    for (i = 0; i < nlines; i++)
+    if (get_input_qa_lines (input, 0, 0, nlines, qaband) != SUCCESS)
     {
-        if (get_input_qa_lines (input, 0, i, 1, qaband[i]) != SUCCESS)
-        {
-            sprintf (errmsg, "Reading line %d for QA band", i);
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
+        sprintf (errmsg, "Reading QA band");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
     }
 
     /* Use scene center (and center of the pixel) to compute atmospheric
@@ -1393,115 +1288,101 @@ int main (int argc, char *argv[])
                 sband_ib = ib - 1;
             }
 
-            for (i = 0; i < nlines; i++)
+            if (get_input_refl_lines (input, iband, 0, nlines, uband) !=
+                SUCCESS)
             {
-                if (get_input_refl_lines (input, iband, i, 1, uband[i]) !=
-                    SUCCESS)
-                {
-                    sprintf (errmsg, "Reading line %d for band %d", i, ib+1);
-                    error_handler (true, FUNC_NAME, errmsg);
-                    exit (ERROR);
-                }
+                sprintf (errmsg, "Reading band %d", ib+1);
+                error_handler (true, FUNC_NAME, errmsg);
+                exit (ERROR);
+            }
 
-                for (j = 0; j < nsamps; j++)
-                {
-                    rotoa = (uband[i][j] * 2.0000E-05) - 0.1;
-                    sband[sband_ib][i][j] = (int) (rotoa * 10000.0 / xmus);
-                }
+            for (i = 0; i < nlines*nsamps; i++)
+            {
+                rotoa = (uband[i] * 2.0000E-05) - 0.1;
+                sband[sband_ib][i] = (int) (rotoa * 10000.0 / xmus);
             }
         }
 
         /* Perform atmospheric corrections for bands 1-7 */
         if (ib <= DN_BAND7)
         {
-            for (i = 0; i < nlines; i++)
+            for (i = 0; i < nlines*nsamps; i++)
             {
-                for (j = 0; j < nsamps; j++)
+                /* If this pixel is not fill -- GAIL -- should we use btest with bit 0 here?? */
+                if (qaband[i] != 1)
                 {
-                    /* If this pixel is not fill -- GAIL -- should we use btest with bit 0 here?? */
-                    if (qaband[i][j] != 1)
-                    {
-                        rotoa = sband[sband_ib][i][j] * 0.0001;  /* div 10000 */
-                        if (ib == DN_BAND1)
-                            aerob1[i][j] = sband[sband_ib][i][j];
-                        if (ib == DN_BAND2)
-                            aerob2[i][j] = sband[sband_ib][i][j];
-                        if (ib == DN_BAND4)
-                            aerob4[i][j] = sband[sband_ib][i][j];
-                        if (ib == DN_BAND5)
-                            aerob5[i][j] = sband[sband_ib][i][j];
-                        if (ib == DN_BAND7)
-                            aerob7[i][j] = sband[sband_ib][i][j];
+                    rotoa = sband[sband_ib][i] * 0.0001;  /* div 10000 */
+                    if (ib == DN_BAND1)
+                        aerob1[i] = sband[sband_ib][i];
+                    if (ib == DN_BAND2)
+                        aerob2[i] = sband[sband_ib][i];
+                    if (ib == DN_BAND4)
+                        aerob4[i] = sband[sband_ib][i];
+                    if (ib == DN_BAND5)
+                        aerob5[i] = sband[sband_ib][i];
+                    if (ib == DN_BAND7)
+                        aerob7[i] = sband[sband_ib][i];
 
-                        roslamb = rotoa / tgo;
- 	                    roslamb = roslamb - roatm;
- 	                    roslamb = roslamb / ttatmg;
- 	                    roslamb = roslamb / (1.0 + satm * roslamb);
-	                    sband[sband_ib][i][j] = (int) (roslamb * 10000.0);
-                    }
-                    else
-                        sband[sband_ib][i][j] = FILL_VALUE;
-                }  /* end for i */
-            }  /* end for j */
+                    roslamb = rotoa / tgo;
+                    roslamb = roslamb - roatm;
+                    roslamb = roslamb / ttatmg;
+                    roslamb = roslamb / (1.0 + satm * roslamb);
+                    sband[sband_ib][i] = (int) (roslamb * 10000.0);
+                }
+                else
+                    sband[sband_ib][i] = FILL_VALUE;
+            }  /* end for i */
         }  /* if ib */
 
         /* Read the current band and calibrate thermal bands */
         if (ib == DN_BAND10)
         {
-            for (i = 0; i < nlines; i++)
+            if (get_input_th_lines (input, 0, 0, nlines, uband) != SUCCESS)
             {
-                if (get_input_th_lines (input, 0, i, 1, uband[i]) != SUCCESS)
-                {
-                    sprintf (errmsg, "Reading line %d for band %d", i, ib+1);
-                    error_handler (true, FUNC_NAME, errmsg);
-                    exit (ERROR);
-                }
+                sprintf (errmsg, "Reading band %d", ib+1);
+                error_handler (true, FUNC_NAME, errmsg);
+                exit (ERROR);
+            }
 
-                for (j = 0; j < nsamps; j++)
+            for (i = 0; i < nlines*nsamps; i++)
+            {
+                /* If this pixel is not fill */
+                if (qaband[i] != 1)
                 {
-                    /* If this pixel is not fill */
-                    if (qaband[i][j] != 1)
-                    {
-                        tmpf = xcals * uband[i][j] + xcalo;
-                        tmpf = k2b10 / log (1.0 + k1b10 / tmpf);
-                        sband[SR_BAND10][i][j] = (int) (tmpf * 10.0);
-                    }
-                    else
-                        sband[SR_BAND10][i][j] = FILL_VALUE;
-                }  /* end for i */
-            }  /* end for j */
+                    tmpf = xcals * uband[i] + xcalo;
+                    tmpf = k2b10 / log (1.0 + k1b10 / tmpf);
+                    sband[SR_BAND10][i] = (int) (tmpf * 10.0);
+                }
+                else
+                    sband[SR_BAND10][i] = FILL_VALUE;
+            }
         }  /* end if ib */
 
         if (ib == DN_BAND11)
         {
-            for (i = 0; i < nlines; i++)
+            if (get_input_th_lines (input, 1, 0, nlines, uband) != SUCCESS)
             {
-                if (get_input_th_lines (input, 1, i, 1, uband[i]) != SUCCESS)
-                {
-                    sprintf (errmsg, "Reading line %d for band %d", i, ib+1);
-                    error_handler (true, FUNC_NAME, errmsg);
-                    exit (ERROR);
-                }
+                sprintf (errmsg, "Reading band %d", ib+1);
+                error_handler (true, FUNC_NAME, errmsg);
+                exit (ERROR);
+            }
 
-                for (j = 0; j < nsamps; j++)
+            for (i = 0; i < nlines*nsamps; i++)
+            {
+                /* If this pixel is not fill */
+                if (qaband[i] != 1)
                 {
-                    /* If this pixel is not fill */
-                    if (qaband[i][j] != 1)
-                    {
-                        tmpf = xcals * uband[i][j] + xcalo;
-                        tmpf = k2b11 / log (1.0 + k1b11 / tmpf);
-                        sband[SR_BAND11][i][j] = (int) (tmpf * 10.0);
-                    }
-                    else
-                        sband[SR_BAND11][i][j] = FILL_VALUE;
-                }  /* end for i */
-            }  /* end for j */
+                    tmpf = xcals * uband[i] + xcalo;
+                    tmpf = k2b11 / log (1.0 + k1b11 / tmpf);
+                    sband[SR_BAND11][i] = (int) (tmpf * 10.0);
+                }
+                else
+                    sband[SR_BAND11][i] = FILL_VALUE;
+            }
         }  /* end if ib */
     }  /* end for ib */
 
     /* The input data has been read and calibrated. The memory can be freed. */
-    for (i = 0; i < nlines; i++)
-        free (uband[i]);
     free (uband);
 
     /* Interpolate the auxiliary data for each pixel location */
@@ -1520,10 +1401,11 @@ int main (int argc, char *argv[])
             }
         }
 
-        for (j = 0; j < nsamps; j++)
+        curr_pix = i * nsamps;
+        for (j = 0; j < nsamps; j++, curr_pix++)
         {
             /* If this pixel is fill, then don't process */
-            if (qaband[i][j] == 1)
+            if (qaband[curr_pix] == 1)
                 continue;
 
             /* Get the lat/long for the current pixel, for the center of the
@@ -1560,11 +1442,11 @@ int main (int argc, char *argv[])
 
             u = (ycmg - lcmg);
             v = (xcmg - scmg);
-            twvi[i][j] = wv[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
-                         wv[lcmg][scmg+1] * (1.0 - u) * v +
-                         wv[lcmg+1][scmg] * u * (1.0 - v) +
-                         wv[lcmg+1][scmg+1] * u * v;
-            twvi[i][j] = twvi[i][j] * 0.01;   /* vs / 100 */
+            twvi[curr_pix] = wv[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                             wv[lcmg][scmg+1] * (1.0 - u) * v +
+                             wv[lcmg+1][scmg] * u * (1.0 - v) +
+                             wv[lcmg+1][scmg+1] * u * v;
+            twvi[curr_pix] = twvi[curr_pix] * 0.01;   /* vs / 100 */
 
             uoz11 = oz[lcmg][scmg];
             if (uoz11 == 0)
@@ -1582,19 +1464,19 @@ int main (int argc, char *argv[])
             if (uoz22 == 0)
                 uoz22 = 120;
 
-            tozi[i][j] = uoz11 * (1.0 - u) * (1.0 - v) +
-                         uoz12 * (1.0 - u) * v +
-                         uoz21 * u * (1.0 - v) +
-                         uoz22 * u * v;
-            tozi[i][j] = tozi[i][j] * 0.0025;   /* vs / 400 */
+            tozi[curr_pix] = uoz11 * (1.0 - u) * (1.0 - v) +
+                             uoz12 * (1.0 - u) * v +
+                             uoz21 * u * (1.0 - v) +
+                             uoz22 * u * v;
+            tozi[curr_pix] = tozi[curr_pix] * 0.0025;   /* vs / 400 */
 
             if (dem[lcmg][scmg] != -9999)
                 pres11 = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
             else
             {
                 pres11 = 1013.0;
-                cloud[i][j] = 128;    /* set water bit */
-                tresi[i][j] = -1.0;
+                cloud[curr_pix] = 128;    /* set water bit */
+                tresi[curr_pix] = -1.0;
             }
 
             if (dem[lcmg][scmg+1] != -9999)
@@ -1612,16 +1494,17 @@ int main (int argc, char *argv[])
             else
                 pres22 = 1013.0;
 
-            tp[i][j] = pres11 * (1.0 - u) * (1.0 - v) +
-                       pres12 * (1.0 - u) * v +
-                       pres21 * u * (1.0 - v) +
-                       pres22 * u * v;
+            tp[curr_pix] = pres11 * (1.0 - u) * (1.0 - v) +
+                           pres12 * (1.0 - u) * v +
+                           pres21 * u * (1.0 - v) +
+                           pres22 * u * v;
 
             /* Inverting aerosols */
             /* Filter cirrus pixels */
-            if (sband[SR_BAND9][i][j] > (100.0 / (tp[i][j] * ONE_DIV_1013)))
+            if (sband[SR_BAND9][curr_pix] >
+                (100.0 / (tp[curr_pix] * ONE_DIV_1013)))
             {  /* Set cirrus bit */
-                cloud[i][j]++;
+                cloud[curr_pix]++;
             }
             else
             {  /* Inverting aerosol */
@@ -1643,20 +1526,22 @@ int main (int argc, char *argv[])
                     erelc[DN_BAND7] = ratiob7[lcmg][scmg] * 0.001;/* vs /1000 */
                 }
 
-                troatm[0] = aerob1[i][j] * 0.0001;  /* vs / 10000 */
-                troatm[1] = aerob2[i][j] * 0.0001;  /* vs / 10000 */
-                troatm[3] = aerob4[i][j] * 0.0001;  /* vs / 10000 */
-                troatm[6] = aerob7[i][j] * 0.0001;  /* vs / 10000 */
+                troatm[0] = aerob1[curr_pix] * 0.0001;  /* vs / 10000 */
+                troatm[1] = aerob2[curr_pix] * 0.0001;  /* vs / 10000 */
+                troatm[3] = aerob4[curr_pix] * 0.0001;  /* vs / 10000 */
+                troatm[6] = aerob7[curr_pix] * 0.0001;  /* vs / 10000 */
 
                 /* If this is water ... */
-                if (btest (cloud[i][j], WAT_QA))
+                if (btest (cloud[curr_pix], WAT_QA))
                 {
                     /* Check the NDVI */
-                    if (((sband[SR_BAND5][i][j] - sband[SR_BAND4][i][j]) /
-                         (sband[SR_BAND5][i][j] + sband[SR_BAND4][i][j])) < 0.1)
+                    if (((sband[SR_BAND5][curr_pix] -
+                          sband[SR_BAND4][curr_pix]) /
+                         (sband[SR_BAND5][curr_pix] +
+                          sband[SR_BAND4][curr_pix])) < 0.1)
                     {  /* skip the rest of the processing */
-                        taero[i][j] = 0.0;
-                        tresi[i][j] = -0.01;
+                        taero[curr_pix] = 0.0;
+                        tresi[curr_pix] = -0.01;
                         continue;
                     }
                 }
@@ -1679,7 +1564,7 @@ int main (int argc, char *argv[])
                 if (residual < (0.01 + 0.005 * corf))
                 {  /* test if band 5 makes sense */
                     iband = DN_BAND5;
-                    rotoa = aerob5[i][j] * 0.0001;  /* vs / 10000 */
+                    rotoa = aerob5[curr_pix] * 0.0001;  /* vs / 10000 */
                     raot550nm = raot;
                     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                         tpres, aot550nm, rolutt, transt, xtsstep, xtsmin,
@@ -1698,7 +1583,7 @@ int main (int argc, char *argv[])
                     ros5 = roslamb;
 
                     iband = DN_BAND4;
-                    rotoa = aerob4[i][j] * 0.0001;  /* vs / 10000 */
+                    rotoa = aerob4[curr_pix] * 0.0001;  /* vs / 10000 */
                     raot550nm = raot;
                     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                         tpres, aot550nm, rolutt, transt, xtsstep, xtsmin,
@@ -1718,19 +1603,19 @@ int main (int argc, char *argv[])
 
                     if ((ros5 > 0.1) && ((ros5 - ros4) / (ros5 + ros4) > 0))
                     {
-                        taero[i][j] = raot;
-                        tresi[i][j] = residual;
+                        taero[curr_pix] = raot;
+                        tresi[curr_pix] = residual;
                     }
                     else
                     {
-                        taero[i][j] = 0.0;
-                        tresi[i][j] = -0.01;
+                        taero[curr_pix] = 0.0;
+                        tresi[curr_pix] = -0.01;
                     }
                 }
                 else
                 {
-                    taero[i][j] = 0.0;
-                    tresi[i][j] = -0.01;
+                    taero[curr_pix] = 0.0;
+                    tresi[curr_pix] = -0.01;
                 }
             }  /* end if cirrus */
         }  /* end for i */
@@ -1752,14 +1637,6 @@ int main (int argc, char *argv[])
     free (ratiob7);
 
     /* Done with the aerob* arrays */
-    for (i = 0; i < nlines; i++)
-    {
-        free (aerob1[i]);
-        free (aerob2[i]);
-        free (aerob4[i]);
-        free (aerob5[i]);
-        free (aerob7[i]);
-    }
     free (aerob1);
     free (aerob2);
     free (aerob4);
@@ -1774,29 +1651,25 @@ int main (int argc, char *argv[])
     nbclear = 0;
     mclear = 0.0;
     mall = 0.0;
-    for (i = 0; i < nlines; i++)
+    for (i = 0; i < nlines*nsamps; i++)
     {
-        for (j = 0; j < nsamps; j++)
+        /* If this pixel is fill, then don't process */
+        if (qaband[i] != 1)
         {
-            /* If this pixel is fill, then don't process */
-            if (qaband[i][j] != 1)
+            nbval++;
+            mall += sband[SR_BAND10][i] * 0.1;  /* vs / 10 */
+            if ((!btest (cloud[i], CIR_QA)) &&
+                (sband[SR_BAND5][i] > 300))
             {
-                nbval++;
-                mall += sband[SR_BAND10][i][j] * 0.1;  /* vs / 10 */
-                if ((!btest (cloud[i][j], CIR_QA)) &&
-                    (sband[SR_BAND5][i][j] > 300))
+                anom = sband[SR_BAND2][i] - sband[SR_BAND4][i] * 0.5; /* vs /2*/
+                if (anom < 300)
                 {
-                    anom = sband[SR_BAND2][i][j] -
-                           sband[SR_BAND4][i][j] * 0.5;  /* vs / 2 */
-                    if (anom < 300)
-                    {
-                        nbclear++;
-                        mclear += sband[SR_BAND10][i][j] * 0.1;  /* vs / 10 */
-                    }
+                    nbclear++;
+                    mclear += sband[SR_BAND10][i] * 0.1;  /* vs / 10 */
                 }
             }
-        }  /* end for i */
-    }  /* end for j */
+        }
+    }  /* end for i */
 
     if (nbclear > 0)
         mclear = mclear / nbclear;
@@ -1810,17 +1683,14 @@ int main (int argc, char *argv[])
         nbclear * 100.0 / (nlines * nsamps), mall, nbval);
 
     /* Determine the cloud mask */
-    for (i = 0; i < nlines; i++)
+    for (i = 0; i < nlines*nsamps; i++)
     {
-        for (j = 0; j < nsamps; j++)
+        if (tresi[i] < 0.0)
         {
-            if (tresi[i][j] < 0.0)
-            {
-                if (((sband[SR_BAND2][i][j] - sband[SR_BAND4][i][j] * 0.5) >
-                    500) && ((sband[SR_BAND10][i][j] * 0.1) < (mclear - 2.0)))
-                {  /* Snow or cloud for now */
-                    cloud[i][j] += 2;
-                }
+            if (((sband[SR_BAND2][i] - sband[SR_BAND4][i] * 0.5) > 500) &&
+                ((sband[SR_BAND10][i] * 0.1) < (mclear - 2.0)))
+            {  /* Snow or cloud for now */
+                cloud[i] += 2;
             }
         }
     }
@@ -1829,24 +1699,31 @@ int main (int argc, char *argv[])
     printf ("Setting up the adjacent to something bit ...\n");
     for (i = 0; i < nlines; i++)
     {
-        for (j = 0; j < nsamps; j++)
+        curr_pix = i * nsamps;
+        for (j = 0; j < nsamps; j++, curr_pix++)
         {
-            if (btest (cloud[i][j], CLD_QA) || (btest (cloud[i][j], CIR_QA)))
+            if (btest (cloud[curr_pix], CLD_QA) ||
+                btest (cloud[curr_pix], CIR_QA))
             {
                 /* Check the 5x5 window around the current pixel */
                 for (k = i-5; k <= i+5; k++)
                 {
-                    for (l = j-5; l <= j+5; l++)
+                    /* Make sure the line is valid */
+                    if (k < 0 || k >= nlines)
+                        continue;
+
+                    win_pix = k * nsamps + j-5;
+                    for (l = j-5; l <= j+5; l++, win_pix++)
                     {
-                        if ((k >= 0) && (k < nlines) &&
-                            (l >= 0) && (l < nsamps))
-                        {
-                            if ((!btest (cloud[k][l], CLD_QA)) &&
-                                (!btest (cloud[k][l], CIR_QA)) &&
-                                (!btest (cloud[k][l], CLDA_QA)))
-                            {  /* Set the adjacent cloud bit */
-                                cloud[k][l] += 4;
-                            }
+                        /* Make sure the sample is valid */
+                        if (l < 0 || l >= nsamps)
+                            continue;
+
+                        if (!btest (cloud[win_pix], CLD_QA) &&
+                            !btest (cloud[win_pix], CIR_QA) &&
+                            !btest (cloud[win_pix], CLDA_QA))
+                        {  /* Set the adjacent cloud bit */
+                            cloud[win_pix] += 4;
                         }
                     }  /* for l */
                 }  /* for k */
@@ -1854,6 +1731,7 @@ int main (int argc, char *argv[])
         }  /* for j */
     }  /* for i */
 
+#ifdef NOT_USED
     /* Compute adjustment to true North */
     /* Use scene center */
     img.l = (int) (nlines * 0.5);
@@ -1902,6 +1780,10 @@ int main (int argc, char *argv[])
     dx = colp - col;
     ang = atan (dx / dy) * RAD2DEG;
     printf ("Adjustment to true North: %f\n", ang);
+#endif
+
+    /* Free the spatial mapping pointer */
+    free (space);
 
     /* Compute the cloud shadow */
     printf ("Determining cloud shadow ...\n");
@@ -1909,11 +1791,13 @@ int main (int argc, char *argv[])
     fack = sinf (xfs * DEG2RAD) * tanf (xts * DEG2RAD) / pixsize;  /* samps */
     for (i = 0; i < nlines; i++)
     {
-        for (j = 0; j < nsamps; j++)
+        curr_pix = i * nsamps;
+        for (j = 0; j < nsamps; j++, curr_pix++)
         {
-            if (btest (cloud[i][j], CLD_QA) || btest (cloud[i][j], CIR_QA))
+            if (btest (cloud[curr_pix], CLD_QA) ||
+                btest (cloud[curr_pix], CIR_QA))
             {
-                tcloud = sband[SR_BAND10][i][j] * 0.1;  /* vs / 10 */
+                tcloud = sband[SR_BAND10][curr_pix] * 0.1;  /* vs / 10 */
                 cldh = (mclear - tcloud) * 1000.0 / cfac;
                 if (cldh < 0.0)
                     cldh = 0.0;
@@ -1927,29 +1811,31 @@ int main (int argc, char *argv[])
                 for (icldh = cldhmin * 0.1; icldh <= cldhmax * 0.1; icldh++)
                 {
                     cldh = icldh * 10.0;
-                    k = j - fack * cldh;
-                    l = i + facl * cldh;
-                    if ((l >= 0) && (l < nlines) && (k >= 0) && (k < nsamps))
+                    k = i + facl * cldh;  /* lines */
+                    l = j - fack * cldh;  /* samps */
+                    /* Make sure the line and sample is valid */
+                    if (k < 0 || k >= nlines || l < 0 || l >= nsamps)
+                        continue;
+
+                    win_pix = k * nsamps + l;
+                    if ((sband[SR_BAND6][win_pix] < 800) &&
+                        ((sband[SR_BAND3][win_pix] -
+                          sband[SR_BAND4][win_pix]) < 100))
                     {
-                        if ((sband[SR_BAND6][l][k] < 800) &&
-                            ((sband[SR_BAND3][l][k] - sband[SR_BAND4][l][k]) <
-                            100))
+                        if (btest (cloud[win_pix], CLD_QA) ||
+                            btest (cloud[win_pix], CIR_QA) ||
+                            btest (cloud[win_pix], CLDS_QA))
                         {
-                            if (btest (cloud[l][k], CLD_QA) ||
-                                btest (cloud[l][k], CIR_QA) ||
-                                btest (cloud[l][k], CLDS_QA))
+                            continue;
+                        }
+                        else
+                        { /* store the value of band6 as well as the
+                             l and k value */
+                            if (sband[SR_BAND6][win_pix] < mband5)
                             {
-                                continue;
-                            }
-                            else
-                            { /* store the value of band6 as well as the
-                                 l and k value */
-                                if (sband[SR_BAND6][l][k] < mband5)
-                                {
-                                     mband5 = sband[SR_BAND6][l][k];
-                                     mband5k = k;
-                                     mband5l = l;
-                                }
+                                 mband5 = sband[SR_BAND6][win_pix];
+                                 mband5k = k;
+                                 mband5l = l;
                             }
                         }
                     }
@@ -1957,41 +1843,47 @@ int main (int argc, char *argv[])
 
                 /* Set the cloud shadow bit */
                 if (mband5 < 9999)
-                    cloud[mband5l][mband5k] += 8;
+                    cloud[mband5k*nsamps + mband5l] += 8;
             }  /* end if btest */
         }  /* end for j */
     }  /* end for i */
-	 
+
     /* Expand the cloud shadow using the residual */
     printf ("Expanding cloud shadow ...\n");
     for (i = 0; i < nlines; i++)
     {
-        for (j = 0; j < nsamps; j++)
+        curr_pix = i * nsamps;
+        for (j = 0; j < nsamps; j++, curr_pix++)
         {
             /* If this is a cloud shadow pixel */
-            if (btest (cloud[i][j], CLDS_QA))
+            if (btest (cloud[curr_pix], CLDS_QA))
             {
                 /* Check the 6x6 window around the current pixel */
                 for (k = i-6; k <= i+6; k++)
                 {
-                    for (l = j-6; l <= j+6; l++)
+                    /* Make sure the line is valid */
+                    if (k < 0 || k >= nlines)
+                        continue;
+
+                    win_pix = k * nsamps + j-6;
+                    for (l = j-6; l <= j+6; l++, win_pix++)
                     {
-                        if ((k >= 0) && (k < nlines) &&
-                            (l >= 0) && (l < nsamps))
+                        /* Make sure the sample is valid */
+                        if (l < 0 || l >= nsamps)
+                            continue;
+
+                        if (btest (cloud[win_pix], CLD_QA) ||
+                            btest (cloud[win_pix], CLDS_QA))
+                            continue;
+                        else
                         {
-                            if (btest (cloud[k][l], CLD_QA) ||
-                                btest (cloud[k][l], CLDS_QA))
+                            if (btest (cloud[win_pix], CLDT_QA))
                                 continue;
                             else
                             {
-                                if (btest (cloud[k][l], CLDT_QA))
-                                    continue;
-                                else
-                                {
-                                    /* Set the temporary bit */
-                                    if (tresi[k][l] < 0)
-                                        cloud[k][l] += 16;
-                                }
+                                /* Set the temporary bit */
+                                if (tresi[win_pix] < 0)
+                                    cloud[win_pix] += 16;
                             }
                         }
                     }  /* end for l */
@@ -2002,18 +1894,15 @@ int main (int argc, char *argv[])
 
     /* Update the cloud shadow */
     printf ("Updating cloud shadow ...\n");
-    for (i = 0; i < nlines; i++)
+    for (i = 0; i < nlines*nsamps; i++)
     {
-        for (j = 0; j < nsamps; j++)
+        /* If the temporary bit was set in the above loop */
+        if (btest (cloud[i], CLDT_QA))
         {
-            /* If the temporary bit was set in the above loop */
-            if (btest (cloud[i][j], CLDT_QA))
-            {
-                /* Remove the temporary bit and set the cloud shadow bit */
-                cloud[i][j] += 8;
-                cloud[i][j] -= 16;
-            }
-        }  /* end for j */
+            /* Remove the temporary bit and set the cloud shadow bit */
+            cloud[i] += 8;
+            cloud[i] -= 16;
+        }
     }  /* end for i */
 
     /* Aerosol interpolation */
@@ -2034,17 +1923,22 @@ int main (int argc, char *argv[])
                 /* Check the window around the current pixel */
                 for (k = i; k <= i+step-1; k++)
                 {
-                    for (l = j; l <= j+step-1; l++)
+                    /* Make sure the line is valid */
+                    if (k < 0 || k >= nlines)
+                        continue;
+
+                    win_pix = k * nsamps + j;
+                    for (l = j; l <= j+step-1; l++, win_pix++)
                     {
-                        if ((k >= 0) && (k < nlines) &&
-                            (l >= 0) && (l < nsamps))
+                        /* Make sure the sample is valid */
+                        if (l < 0 || l >= nsamps)
+                            continue;
+
+                        if ((tresi[win_pix] > 0) && (cloud[win_pix] == 0))
                         {
-                            if ((tresi[k][l] > 0) && (cloud[k][l] == 0))
-                            {
-                                nbaot++;
-                                aaot += taero[k][l] / tresi[k][l];
-                                sresi += 1.0 / tresi[k][l];
-                            }
+                            nbaot++;
+                            aaot += taero[win_pix] / tresi[win_pix];
+                            sresi += 1.0 / tresi[win_pix];
                         }
                     }
                 }
@@ -2057,22 +1951,27 @@ int main (int argc, char *argv[])
                     /* Check the window around the current pixel */
                     for (k = i; k <= i+step-1; k++)
                     {
-                        for (l = j; l <= j+step-1; l++)
+                        /* Make sure the line is valid */
+                        if (k < 0 || k >= nlines)
+                            continue;
+
+                        win_pix = k * nsamps + j;
+                        for (l = j; l <= j+step-1; l++, win_pix++)
                         {
-                            if ((k >= 0) && (k < nlines) &&
-                                (l >= 0) && (l < nsamps))
+                            /* Make sure the sample is valid */
+                            if (l < 0 || l >= nsamps)
+                                continue;
+
+                            if ((tresi[win_pix] < 0) &&
+                                (!btest (cloud[win_pix], CIR_QA)) &&
+                                (!btest (cloud[win_pix], CLD_QA)) &&
+                                (!btest (cloud[win_pix], WAT_QA)))
                             {
-                                if ((tresi[k][l] < 0) &&
-                                    (!btest (cloud[k][l], CIR_QA)) &&
-                                    (!btest (cloud[k][l], CLD_QA)) &&
-                                    (!btest (cloud[k][l], WAT_QA)))
-                                {
-                                    taero[k][l] = aaot;
-                                    tresi[k][l] = 1.0;
+                                taero[win_pix] = aaot;
+                                tresi[win_pix] = 1.0;
                                 }
-                            }
-                        }
-                    }
+                        }  /* for l */
+                    }  /* for k */
                 }
                 else
                 {  /* this is a hole */
@@ -2084,114 +1983,97 @@ int main (int argc, char *argv[])
         /* Modify the step value */
         step *= 2;
     }  /* end while */
-           	 
+
     /* Perform the atmospheric correction */
     printf ("Performing atmospheric correction ...\n");
     /* 0 .. DN_BAND7 is the same as 0 .. SR_BAND7 here, since the pan band
        isn't spanned */
     for (ib = 0; ib <= DN_BAND7; ib++)
     {
-        printf ("  Band %d: ", ib+1);
-        tmp_percent = 0;
-        for (i = 0; i < nlines; i++)
+        printf ("  Band %d\n", ib+1);
+        for (i = 0; i < nlines * nsamps; i++)
         {
-            /* update status? */
-            if (100 * i / nlines > tmp_percent)
+            /* If this pixel is fill, then don't process */
+            if (qaband[i] != 1)
             {
-                tmp_percent = 100 * i / nlines;
-                if (tmp_percent % 10 == 0)
+                if (tresi[i] > 0.0 &&
+                    !btest (cloud[i], CIR_QA) &&
+                    !btest (cloud[i], CLD_QA))
                 {
-                    printf ("%d%% ", tmp_percent);
-                    fflush (stdout);
-                }
-            }
-
-            for (j = 0; j < nsamps; j++)
-            {
-                /* If this pixel is fill, then don't process */
-                if (qaband[i][j] != 1)
-                {
-                    if ((tresi[i][j] > 0.0) &&
-                        (!btest (cloud[i][j], CIR_QA)) &&
-                        (!btest (cloud[i][j], CLD_QA)))
+                    rsurf = sband[ib][i] * 0.0001;  /* vs / 10000 */
+                    rotoa = (rsurf * bttatmg[ib] / (1.0 - bsatm[ib] * rsurf)
+                        + broatm[ib]) * btgo[ib];
+                    raot550nm = taero[i];
+                    pres = tp[i];
+                    uwv = twvi[i];
+                    uoz = tozi[i];
+                    retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, ib,
+                        pres, tpres, aot550nm, rolutt, transt, xtsstep,
+                        xtsmin, xtvstep, xtvmin, sphalbt, tsmax, tsmin,
+                        nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+                        ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                        wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
+                        &ttatmg, &satm, &xrorayp);
+                    if (retval != SUCCESS)
                     {
-                        rsurf = sband[ib][i][j] * 0.0001;  /* vs / 10000 */
-                        rotoa = (rsurf * bttatmg[ib] / (1.0 - bsatm[ib] * rsurf)
-                            + broatm[ib]) * btgo[ib];
-                        raot550nm = taero[i][j];
-                        pres = tp[i][j];
-                        uwv = twvi[i][j];
-                        uoz = tozi[i][j];
-                        retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, ib,
-                            pres, tpres, aot550nm, rolutt, transt, xtsstep,
-                            xtsmin, xtvstep, xtvmin, sphalbt, tsmax, tsmin,
-                            nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
-                            ogtransa1, ogtransb0, ogtransb1, wvtransa,
-                            wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
-                            &ttatmg, &satm, &xrorayp);
-                        if (retval != SUCCESS)
-                        {
-                            sprintf (errmsg, "Performing lambertian "
-                                "atmospheric correction type 2.");
-                            error_handler (true, FUNC_NAME, errmsg);
-                            exit (ERROR);
-                        }
+                        sprintf (errmsg, "Performing lambertian "
+                            "atmospheric correction type 2.");
+                        error_handler (true, FUNC_NAME, errmsg);
+                        exit (ERROR);
+                    }
 
-                        if (ib == 0)
+                    /* Handle the aerosol computation in the cloud mask if
+                       this is the cirrus band */
+                    if (ib == 0)
+                    {
+                        if (roslamb < -0.005)
                         {
-                            if (roslamb < -0.005)
+                            taero[i] = 0.05;
+                            raot550nm = 0.05;
+                            pres = tp[i];
+                            uwv = twvi[i];
+                            uoz = tozi[i];
+                            retval = atmcorlamb2 (xts, xtv, xfi, raot550nm,
+                                ib, pres, tpres, aot550nm, rolutt, transt,
+                                xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+                                tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+                                uoz, uwv, tauray, ogtransa1, ogtransb0,
+                                ogtransb1, wvtransa, wvtransb, oztransa,
+                                rotoa, &roslamb, &tgo, &roatm, &ttatmg,
+                                &satm, &xrorayp);
+                            if (retval != SUCCESS)
                             {
-                                taero[i][j] = 0.05;
-                                raot550nm = 0.05;
-                                pres = tp[i][j];
-                                uwv = twvi[i][j];
-                                uoz = tozi[i][j];
-                                retval = atmcorlamb2 (xts, xtv, xfi, raot550nm,
-                                    ib, pres, tpres, aot550nm, rolutt, transt,
-                                    xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-                                    tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-                                    uoz, uwv, tauray, ogtransa1, ogtransb0,
-                                    ogtransb1, wvtransa, wvtransb, oztransa,
-                                    rotoa, &roslamb, &tgo, &roatm, &ttatmg,
-                                    &satm, &xrorayp);
-                                if (retval != SUCCESS)
-                                {
-                                    sprintf (errmsg, "Performing lambertian "
-                                        "atmospheric correction type 2.");
-                                    error_handler (true, FUNC_NAME, errmsg);
-                                    exit (ERROR);
-                                }
+                                sprintf (errmsg, "Performing lambertian "
+                                    "atmospheric correction type 2.");
+                                error_handler (true, FUNC_NAME, errmsg);
+                                exit (ERROR);
+                            }
+                        }
+                        else
+                        {  /* Set up aerosol QA bits */
+                            if (raot550nm < 0.2)
+                            {  /* Set the first aerosol bit */
+                                cloud[i] += 16;
                             }
                             else
-                            {  /* Set up aerosol QA bits */
-                                if (raot550nm < 0.2)
-                                {  /* Set the first aerosol bit */
-                                    cloud[i][j] += 16;
+                            {
+                                if (raot550nm < 0.5)
+                                {  /* Set the second aerosol bit */
+                                    cloud[i] += 32;
                                 }
                                 else
-                                {
-                                    if (raot550nm < 0.5)
-                                    {  /* Set the second aerosol bit */
-                                        cloud[i][j] += 32;
-                                    }
-                                    else
-                                    {  /* Set both aerosol bits */
-                                        cloud[i][j] += 48;
-                                    }
+                                {  /* Set both aerosol bits */
+                                    cloud[i] += 48;
                                 }
-                            }  /* end if/else roslamb */
-                        }  /* end if ib */
+                            }
+                        }  /* end if/else roslamb */
+                    }  /* end if ib */
 
-                        /* Save the surface reflectance value */
-                        sband[ib][i][j] = (int) (roslamb * 10000.0);
-                    }  /* end if */
-                }  /* end if qaband */
-            }  /* end for j */
+                    /* Save the surface reflectance value */
+                    sband[ib][i] = (int) (roslamb * 10000.0);
+                }  /* end if */
+            }  /* end if qaband */
         }  /* end for i */
-
-        /* update status */
-        printf ("100%%\n");
-        fflush (stdout);
     }  /* end for ib */
 
     /* Write the data to the output file */
@@ -2205,37 +2087,27 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    /* Loop through the output bands */
-    for (ib = 0; ib < NBAND_TTL_OUT; ib++)
+    /* Loop through the reflectance and thermal output bands */
+    for (ib = 0; ib < NBAND_TTL_OUT-1; ib++)
     {
-        /* Determine the number of bytes to be written per pixel */
-        if (ib == SR_CLOUD)
+        printf ("  Band %d\n", ib+1);
+        if (put_output_lines (sr_output, sband[ib], ib, 0, nlines,
+            sizeof (int16)) != SUCCESS)
         {
-            for (i = 0; i < nlines; i++)
-            {
-                if (put_output_lines (sr_output, cloud[i], ib, i, 1,
-                    sizeof (uint8)) != SUCCESS)
-                {
-                    sprintf (errmsg, "Writing output data for line %d", i);
-                    error_handler (true, FUNC_NAME, errmsg);
-                    exit (ERROR);
-                }
-            }
+            sprintf (errmsg, "Writing output data for band %d", ib);
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
         }
-        else
-        {
-            for (i = 0; i < nlines; i++)
-            {
-                if (put_output_lines (sr_output, sband[ib][i], ib, i, 1,
-                    sizeof (int16)) != SUCCESS)
-                {
-                    sprintf (errmsg, "Writing output data for line %d", i);
-                    error_handler (true, FUNC_NAME, errmsg);
-                    exit (ERROR);
-                }
-            }
-        }
+    }
 
+    /* Write the cloud mask band */
+    printf ("  Band %d\n", SR_CLOUD+1);
+    if (put_output_lines (sr_output, cloud, SR_CLOUD, 0, nlines,
+        sizeof (uint8)) != SUCCESS)
+    {
+        sprintf (errmsg, "Writing cloud mask output data");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
     }
 
     /* Write the ENVI header for spectral indices files */
@@ -2339,17 +2211,7 @@ int main (int argc, char *argv[])
     free (nbfi);
     free (ttv);
 
-    /* Free space for band data */
-    for (i = 0; i < nlines; i++)
-    {
-        free (qaband[i]);
-        free (twvi[i]);
-        free (tozi[i]);
-        free (tp[i]);
-        free (tresi[i]);
-        free (taero[i]);
-        free (cloud[i]);
-    }
+    /* Free memory for band data */
     free (qaband);
     free (twvi);
     free (tozi);
@@ -2359,15 +2221,8 @@ int main (int argc, char *argv[])
     free (cloud);
 
     for (i = 0; i < NBAND_TTL_OUT-1; i++)
-    {
-        for (j = 0; j < nlines; j++)
-            free (sband[i][j]);
         free (sband[i]);
-    }
     free (sband);
-
-    /* Free the spatial mapping pointer */
-    free (space);
 
     /* Indicate successful completion of processing */
     printf ("Surface reflectance processing complete!\n");

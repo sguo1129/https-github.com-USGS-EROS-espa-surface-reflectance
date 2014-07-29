@@ -5,8 +5,8 @@
 # Set up compile options
 CC = gcc
 RM = rm -f
-EXTRA = -Wall -O2
-//EXTRA = -Wall -g
+//EXTRA = -Wall -O2
+EXTRA = -Wall -g
 
 # Define the include files
 INC = common.h date.h input.h output.h lut_subr.h l8_sr.h

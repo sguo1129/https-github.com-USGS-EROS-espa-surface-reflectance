@@ -321,6 +321,7 @@ int free_output
 {
     char FUNC_NAME[] = "free_output";   /* function name */
     char errmsg[STR_SIZE];    /* error message */
+    int b;                    /* looping variable for the bits */
   
     if (this->open) 
     {
@@ -331,8 +332,15 @@ int free_output
   
     if (this != NULL)
     {
+        /* Free the bitmap data for the cloud band */
+        if (this->metadata.band[SR_CLOUD].nbits > 0)
+        {
+            for (b = 0; b < this->metadata.band[SR_CLOUD].nbits; b++)
+                free (this->metadata.band[SR_CLOUD].bitmap_description[b]);
+            free (this->metadata.band[SR_CLOUD].bitmap_description);
+        }
+
         /* Free the band data */
-        free (this->metadata.band[SR_CLOUD].bitmap_description);
         free (this->metadata.band);
 
         /* Free the data structure */
