@@ -24,6 +24,10 @@
   Modified on 2/3/2014 by Gail Schmidt, USGS EROS, v2.0.0
   Modified application to use the ESPA internal raw binary file format.
   tempnam is deprecated, so switched to mkstemp.
+
+  Modified on 8/5/2014 by Gail Schmidt, USGS/EROS
+  Obtain the location of the ESPA schema file from an environment variable
+  vs. the ESPA http site.
 **************************************************************************/
 
 #include <stdio.h>
@@ -141,8 +145,10 @@ int main (int argc, const char **argv) {
   char **rot_cld[3],**ptr_rot_cld[3],**ptr_tmp_cld;
   char **rot_cld_block_buf = NULL;
   char *rot_cld_buf = NULL;
+  char msgbuf[1024];
   char envi_file[STR_SIZE]; /* name of the output ENVI header file */
-  char *cptr=NULL;          /* pointer to the file extension */
+  char *cptr = NULL;        /* pointer to the file extension */
+  char *schema = NULL;      /* ESPA schema file */
   bool refl_is_fill;
 
   Sr_stats_t sr_stats;
@@ -196,6 +202,7 @@ int main (int argc, const char **argv) {
   Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
   Espa_global_meta_t *gmeta = NULL;   /* pointer to global meta */
   Envi_header_t envi_hdr;             /* output ENVI header information */
+  struct stat statbuf;                /* buffer for the file stat function */
   
   /* Vermote additional variable declaration for the cloud mask May 29 2007 */
   int anom;
@@ -211,10 +218,29 @@ int main (int argc, const char **argv) {
   param = GetParam(argc, argv);
   if (param == NULL) EXIT_ERROR("getting runtime parameters", "main");
 
+  /* Get the ESPA schema environment variable which specifies the location
+     of the XML schema to be used */
+  schema = getenv ("ESPA_SCHEMA");
+  if (schema == NULL)
+  {  /* ESPA schema environment variable wasn't defined. Try the version in
+        /usr/local... */
+      schema = LOCAL_ESPA_SCHEMA;
+      if (stat (schema, &statbuf) == -1)
+      {  /* /usr/local ESPA schema file doesn't exist.  Try the version on
+            the ESPA http site... */
+          schema = ESPA_SCHEMA;
+      }
+  }
+
   /* Validate the input metadata file */
-  if (validate_xml_file (param->input_xml_file_name, ESPA_SCHEMA) != SUCCESS)
+  printf ("Validating schema with %s ...\n", schema);
+  if (validate_xml_file (param->input_xml_file_name, schema) != SUCCESS)
   {  /* Error messages already written */
-    EXIT_ERROR("validating XML file", "main");
+      sprintf (msgbuf, "Possible schema file not found.  ESPA_SCHEMA "
+          "environment variable isn't defined.  The first default schema "
+          "location of %s doesn't exist.  And the second default location of "
+          "%s was used as the last default.", LOCAL_ESPA_SCHEMA, ESPA_SCHEMA);
+      EXIT_ERROR(msgbuf, "main");
   }
 
   /* Initialize the metadata structure */

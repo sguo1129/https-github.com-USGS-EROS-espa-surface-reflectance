@@ -23,6 +23,7 @@ NOTES:
 *****************************************************************************/
 #include <getopt.h>
 #include <math.h>
+#include <sys/stat.h>
 #include "error_handler.h"
 #include "espa_metadata.h"
 #include "parse_metadata.h"
@@ -213,6 +214,8 @@ Date         Programmer       Reason
                               Modified to address the fact that TOA band 6
                               (temperature) data is now in Kelvin vs. degrees
                               Celsius
+8/5/2014     Gail Schmidt     Obtain the location of the ESPA schema file from
+                              an environment variable vs. the ESPA http site
 
 NOTES:
 *****************************************************************************/
@@ -220,7 +223,8 @@ int main (int argc, char **argv)
 {
     char errmsg[STR_SIZE];           /* error message */
     char FUNC_NAME[] = "lndsrbm";    /* function name */
-    char *xml_infile=NULL;   /* input XML filename */
+    char *xml_infile = NULL; /* input XML filename */
+    char *schema = NULL;     /* ESPA schema file */
     float center_temp;       /* scene center temp (Kelvin) */
     float tclear;            /* clear temperature (Celcius) */
     float t6;                /* band 6 temperature (Celcius) */
@@ -276,6 +280,7 @@ int main (int argc, char **argv)
     Espa_global_meta_t *gmeta = NULL;   /* pointer to global metadata */
     Espa_band_meta_t *bmeta = NULL;     /* pointer to the band metadata array
                                            within the output structure */
+    struct stat statbuf;         /* buffer for the file stat function */
 
     /* Read the command-line arguments */
     if (get_args (argc, argv, &center_temp, &north_adj, &xml_infile) != SUCCESS)
@@ -284,9 +289,29 @@ int main (int argc, char **argv)
     }
     printf ("north_adj: %f\n", north_adj);
 
+    /* Get the ESPA schema environment variable which specifies the location
+       of the XML schema to be used */
+    schema = getenv ("ESPA_SCHEMA");
+    if (schema == NULL)
+    {  /* ESPA schema environment variable wasn't defined. Try the version in
+          /usr/local... */
+        schema = LOCAL_ESPA_SCHEMA;
+        if (stat (schema, &statbuf) == -1)
+        {  /* /usr/local ESPA schema file doesn't exist.  Try the version on
+              the ESPA http site... */
+            schema = ESPA_SCHEMA;
+        }
+    }
+  
     /* Validate the input metadata file */
-    if (validate_xml_file (xml_infile, ESPA_SCHEMA) != SUCCESS)
+    printf ("Validating schema with %s ...\n", schema);
+    if (validate_xml_file (xml_infile, schema) != SUCCESS)
     {  /* Error messages already written */
+        sprintf (errmsg, "Possible schema file not found.  ESPA_SCHEMA "
+            "environment variable isn't defined.  The first default schema "
+            "location of %s doesn't exist.  And the second default location of "
+            "%s was used as the last default.", LOCAL_ESPA_SCHEMA, ESPA_SCHEMA);
+        error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
 

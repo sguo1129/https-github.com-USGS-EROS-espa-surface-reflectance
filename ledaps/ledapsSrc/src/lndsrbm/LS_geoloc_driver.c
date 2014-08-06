@@ -1,6 +1,7 @@
 #include <stdio.h> 
 #include <stdlib.h> 
 #include <ctype.h>
+#include <sys/stat.h>
 #include "espa_metadata.h"
 #include "parse_metadata.h"
 
@@ -131,18 +132,23 @@ History:
   4/25/2014  Gail Schmidt, USGS/EROS
     Modified to handle the change in ESPA which supports additional datums
     and uses a datum code instead of a sphere code.
+  8/5/2014  Gail Schmidt, USGS/EROS
+    Obtain the location of the ESPA schema file from an environment variable
+    vs. the ESPA http site
 ******************************************************************************/
 int get_data(char *filename, char *projection, int *zonecode, int *sphercode,
   float *orientationangle, float *pixelsize, float *upperleftx,
   float *upperlefty, int *rows, int *cols, double *projparms)
 {
-  int i;              /* looping variable */
-  int ib;             /* band looping variable */
-  int rep_indx=-1;    /* band index in XML file for the current product */
+  char *schema = NULL; /* ESPA schema file */
+  int i;               /* looping variable */
+  int ib;              /* band looping variable */
+  int rep_indx=-1;     /* band index in XML file for the current product */
   Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
   Espa_global_meta_t *gmeta = NULL;   /* pointer to global metadata */
   Espa_band_meta_t *bmeta = NULL;     /* pointer to the band metadata array
                                          within the output structure */
+  struct stat statbuf; /* buffer for the file stat function */
 
   /* Initialize the outputs */
   *zonecode = *sphercode = *rows = *cols = -1;
@@ -150,11 +156,29 @@ int get_data(char *filename, char *projection, int *zonecode, int *sphercode,
   for (i = 0; i < 13; i++)
     projparms[i] = 0.0;
 
+  /* Get the ESPA schema environment variable which specifies the location
+     of the XML schema to be used */
+  schema = getenv ("ESPA_SCHEMA");
+  if (schema == NULL)
+  {  /* ESPA schema environment variable wasn't defined. Try the version in
+        /usr/local... */
+      schema = LOCAL_ESPA_SCHEMA;
+      if (stat (schema, &statbuf) == -1)
+      {  /* /usr/local ESPA schema file doesn't exist.  Try the version on
+            the ESPA http site... */
+          schema = ESPA_SCHEMA;
+      }
+  }
+
   /* Validate the input metadata file */
-  if (validate_xml_file (filename, ESPA_SCHEMA) != SUCCESS)
+  printf ("Validating schema with %s ...\n", schema);
+  if (validate_xml_file (filename, schema) != SUCCESS)
   {  /* Error messages already written */
-    printf("Error validating XML file: %s", filename);
-    return (-2);
+      printf ("Possible schema file not found.  ESPA_SCHEMA "
+          "environment variable isn't defined.  The first default schema "
+          "location of %s doesn't exist.  And the second default location of "
+          "%s was used as the last default.", LOCAL_ESPA_SCHEMA, ESPA_SCHEMA);
+      return (-2);
   }
 
   /* Initialize the metadata structure */
