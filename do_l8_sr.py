@@ -106,7 +106,7 @@ if __name__ == '__main__':
             print output
 
         if args.gen_sr:
-            gen_sr_cmd = ['./LDCMSR-v1.1', '<', sceneid + '.input', '>',
+            gen_sr_cmd = ['./LDCMSR-v1.3', '<', sceneid + '.input', '>',
                           sceneid + '.log']
 
             output = ''
