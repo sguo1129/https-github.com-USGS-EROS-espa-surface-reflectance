@@ -41,6 +41,10 @@
  * revision 2.0.0 1/21/2014  Gail Schmidt, USGS
  * - modified application to use the ESPA internal raw binary file format
  * - removed any recalibration-related or DN map related code
+ *
+ * revision 2.0.1 8/5/2014  Gail Schmidt, USGS/EROS
+ * - obtain the location of the ESPA schema file from an environment variable
+ *   vs. the ESPA http site
  */
 
 int main (int argc, const char **argv) {
@@ -63,6 +67,7 @@ int main (int argc, const char **argv) {
   int i,odometer_flag=0;
   char msgbuf[1024];
   char envi_file[STR_SIZE]; /* name of the output ENVI header file */
+  char *schema = NULL;      /* ESPA schema file */
   char *cptr=NULL;          /* pointer to the file extension */
   size_t input_psize;
   int qa_band = QA_BAND_NUM;
@@ -72,6 +77,7 @@ int main (int argc, const char **argv) {
   int mss_flag=0;
   Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
   Envi_header_t envi_hdr;   /* output ENVI header information */
+  struct stat statbuf;      /* buffer for the file stat function */
 
   printf ("\nRunning lndcal ...\n");
   for (i=1; i<argc; i++)if ( !strcmp(argv[i],"-o") )odometer_flag=1;
@@ -81,10 +87,29 @@ int main (int argc, const char **argv) {
   if (param == (Param_t *)NULL) EXIT_ERROR("getting runtime parameters",
     "main");
 
+  /* Get the ESPA schema environment variable which specifies the location
+     of the XML schema to be used */
+  schema = getenv ("ESPA_SCHEMA");
+  if (schema == NULL)
+  {  /* ESPA schema environment variable wasn't defined. Try the version in
+        /usr/local... */
+      schema = LOCAL_ESPA_SCHEMA;
+      if (stat (schema, &statbuf) == -1)
+      {  /* /usr/local ESPA schema file doesn't exist.  Try the version on
+            the ESPA http site... */
+          schema = ESPA_SCHEMA;
+      }
+  }
+
   /* Validate the input metadata file */
-  if (validate_xml_file (param->input_xml_file_name, ESPA_SCHEMA) != SUCCESS)
+  printf ("Validating schema with %s ...\n", schema);
+  if (validate_xml_file (param->input_xml_file_name, schema) != SUCCESS)
   {  /* Error messages already written */
-    EXIT_ERROR("validating XML file", "main");
+      sprintf (msgbuf, "Possible schema file not found.  ESPA_SCHEMA "
+          "environment variable isn't defined.  The first default schema "
+          "location of %s doesn't exist.  And the second default location of "
+          "%s was used as the last default.", LOCAL_ESPA_SCHEMA, ESPA_SCHEMA);
+      EXIT_ERROR(msgbuf, "main");
   }
 
   /* Initialize the metadata structure */
