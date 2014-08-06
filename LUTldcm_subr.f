@@ -1,19 +1,19 @@
        subroutine invaero(xts,xtv,xfi,aot550nm,rolutt,
      s         pres,tpres,  
      s            transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa,erelc,ib1,ib2,raot550nm,roslamb1,residual)
+     s	     trotoa,erelc,ib1,ib2,raot550nm,roslamb1,residual,snext)
      
        real xts,xtv,xfi
        real aot550nm(22),raot550nm
        integer ib
        real rolutt(16,7,22,8000),nbfi(22,20),tsmax(22,20),tsmin(22,20)
-       real transt(16,7,22,22),sphalbt(16,7,22)
+       real transt(16,7,22,22),sphalbt(16,7,22),normext(16,7,22)
        real ttv(22,20),nbfic(22,20)
        real tts(22)
        real uoz,uwv
@@ -24,7 +24,7 @@
        real ogtransb0(16),ogtransb1(16)
        real ogtransc0(16),ogtransc1(16)
        real tauray(16)
-       real roslamb,roatm,rotoa
+       real roslamb,roatm,rotoa,next,snext
        real fac,pi
        real trotoa(16),erelc(16)
        integer indts(22)
@@ -37,26 +37,26 @@ c	ib2=3
      s       pres,tpres,aot550nm,
      s       rolutt,
      s            transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa(ib1),roslamb1)
+     s	     trotoa(ib1),roslamb1,next)
 C
        
        call atmcorlamb(xts,xtv,xfi,aot550nm(iaot),ib2,
      s          pres,tpres,aot550nm,
      s           rolutt,
      s            transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa(ib2),roslamb2)
+     s	     trotoa(ib2),roslamb2,next)
        
        deltasr=roslamb2*erelc(ib1)-roslamb1*erelc(ib2)
        if ((deltasr.ge.0.).and.(iaot.le.21)) then
@@ -83,13 +83,13 @@ C  aot before proceeding with residual computation
        call atmcorlamb(xts,xtv,xfi,raot550nm,ib1,pres,tpres,
      s       aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa(ib1),roslamb1) 
+     s	     trotoa(ib1),roslamb1,next) 
 
 C   Added residual calculation to invaero (05-JUL-05)
   40   residual=0.0
@@ -99,15 +99,16 @@ C   Added residual calculation to invaero (05-JUL-05)
        call atmcorlamb(xts,xtv,xfi,raot550nm,ib,pres,tpres,
      s       aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa(ib),roslamb)       
+     s	     trotoa(ib),roslamb,next)       
 c May,30,2006 fix the computation of residual to have it in quadratic means versus
-c absolute value average     
+c absolute value average  
+        if (ib.eq.ib3) snext=next   
        residual=residual+(roslamb*erelc(ib1)-roslamb1*erelc(ib))
      s  *(roslamb*erelc(ib1)-roslamb1*erelc(ib))
        nband=nband+1
@@ -121,7 +122,7 @@ c absolute value average
        subroutine invaeroocean(xts,xtv,xfi,aot550nm,rolutt,
      s         pres,tpres,  
      s            transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
@@ -163,13 +164,13 @@ c absolute value average
      s       pres,tpres,aot550nm,
      s       rolutt,
      s            transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa(2),roslamb2,angexp,tgo,roatm,ttatmg,satm,xrorayp,
+     s	     trotoa(2),roslamb2,angexp,tgo,roatm,ttatmg,satm,xrorayp,next,
      s       err_msg,retval)
      
 C do retrieval in band 5
@@ -198,13 +199,13 @@ C
      s       pres,tpres,aot550nm,
      s       rolutt,
      s            transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa(5),roslamb2,angexp,tgo,roatm,ttatmg,satm,xrorayp,
+     s	     trotoa(5),roslamb2,angexp,tgo,roatm,ttatmg,satm,xrorayp,next,
      s       err_msg,retval)
 C do retrieval in band 2
 C
@@ -238,13 +239,13 @@ C       write(6,*) "angexp ",angexp
         call atmcorocea2(xts,xtv,xfi,aot2,ib,pres,tpres,
      s       aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     trotoa(ib),roslamb,angexp,tgo,roatm,ttatmg,satm,xrorayp,
+     s	     trotoa(ib),roslamb,angexp,tgo,roatm,ttatmg,satm,xrorayp,next,
      s       err_msg,retval)   
        if (erelc(ib).gt.0.0) then
        residual=residual+sqrt((roslamb*erelc(ib1)-roslamb1*erelc(ib))
@@ -264,13 +265,13 @@ C       write(6,*) "angexp ",angexp
        subroutine atmcorocea2(xts,xtv,xfi,aot2,ib,pres,tpres,
      s       aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     rotoa,roslamb,angexp,tgo,roatm,ttatmg,satm,xrorayp,
+     s	     rotoa,roslamb,angexp,tgo,roatm,ttatmg,satm,xrorayp,next,
      s       err_msg,retval)
      
        parameter (fac = 0.017453293)
@@ -291,7 +292,7 @@ C       write(6,*) "angexp ",angexp
        real roslamb,roatm,rotoa
 C       real fac,pi
        integer indts(22)
-       real tgo,ttatmg,satm
+       real tgo,ttatmg,satm,next
        real tpres(7),pres
        real aot5,aot2
        real wave(16)
@@ -337,7 +338,7 @@ C Compute total transmission (product downward by  upward)
        ttatm=xtts*xttv
     
 C Compute SPHERICAL ALBEDO
-       call compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,
+       call compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,normext,
      s                      satm)
      
        call comptg(ib,xts,xtv,uoz,uwv,pres,
@@ -378,13 +379,13 @@ C  New, 07-JUL-05 from atmcorlamb2:
        subroutine atmcorlamb2(xts,xtv,xfi,raot550nm,ib,pres,tpres,
      s       aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,
+     s	     rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
      s       err_msg,retval)
 C
 C  07-JUL-05: this routine returns variables for calculating roslamb.
@@ -394,7 +395,7 @@ C
        real aot550nm(22),raot550nm
        integer ib
        real rolutt(16,7,22,8000),nbfi(22,20),tsmax(22,20),tsmin(22,20)
-       real transt(16,7,22,22),sphalbt(16,7,22)
+       real transt(16,7,22,22),sphalbt(16,7,22),normext(16,7,22)
        real ttv(22,20),nbfic(22,20)
        real tts(22)
        real uoz,uwv
@@ -404,7 +405,7 @@ C
        real ogtransb0(16),ogtransb1(16)
        real ogtransc0(16),ogtransc1(16)
        real tauray(16)
-       real roslamb,roatm,rotoa
+       real roslamb,roatm,rotoa,next
 C       real fac,pi
        integer indts(22)
        real tgo,ttatmg,satm
@@ -444,8 +445,8 @@ C Compute total transmission (product downward by  upward)
        ttatm=xtts*xttv
     
 C Compute SPHERICAL ALBEDO
-       call compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,
-     s                      satm)
+       call compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,normext,
+     s                      satm,next)
      
        call comptg(ib,xts,xtv,uoz,uwv,pres,
      s ogtransa0,ogtransa1,ogtransb0,ogtransb1,
@@ -563,20 +564,20 @@ C
        subroutine atmcorlamb(xts,xtv,xfi,raot550nm,ib,pres,tpres,
      s       aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,
+     s       sphalbt,normext,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s       uoz,uwv,tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s	     rotoa,roslamb)
+     s	     rotoa,roslamb,next)
      
        parameter (fac = 0.017453293)
        real xts,xtv,xfi
        real aot550nm(22),raot550nm
        integer ib
        real rolutt(16,7,22,8000),nbfi(22,20),tsmax(22,20),tsmin(22,20)
-       real transt(16,7,22,22),sphalbt(16,7,22)
+       real transt(16,7,22,22),sphalbt(16,7,22),normext(16,7,22)
        real ttv(22,20),nbfic(22,20)
        real tts(22)
        real uoz,uwv
@@ -586,7 +587,7 @@ C
        real ogtransb0(16),ogtransb1(16)
        real ogtransc0(16),ogtransc1(16)
        real tauray(16)
-       real roslamb,roatm,rotoa
+       real roslamb,roatm,rotoa,next
 C       real fac,pi
        integer indts(22)
        real tpres(7),pres
@@ -612,8 +613,8 @@ C Compute total transmission (product downward by  upward)
        ttatm=xtts*xttv
     
 C Compute SPHERICAL ALBEDO
-       call compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,
-     s                      satm)
+       call compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,normext,
+     s                      satm,next)
      
        call comptg(ib,xts,xtv,uoz,uwv,pres,
      s ogtransa0,ogtransa1,ogtransb0,ogtransb1,
@@ -806,13 +807,13 @@ c p is the pressure in atmosphere
 	end
 
 
-       subroutine compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,
-     s                      satm)
-       real aot550nm(22),raot550nm,sphalbt(16,7,22)
+       subroutine compsalb(raot550nm,ib,pres,tpres,aot550nm,sphalbt,normext,
+     s                      satm,next)
+       real aot550nm(22),raot550nm,sphalbt(16,7,22),normext(16,7,22)
        real xtiaot1,xtiaot2
        integer iaot1,iaot2
        integer ip1,ip2,ip
-       real satm1,satm2
+       real satm1,satm2,satm,next1,next2,next
        real tpres(7)
        real pres,dpres
        real deltaaot
@@ -852,6 +853,21 @@ c p is the pressure in atmosphere
        
        dpres=(pres-tpres(ip1))/(tpres(ip2)-tpres(ip1))
        satm=satm1+(satm2-satm1)*dpres
+       
+       xtiaot1=normext(ib,ip1,iaot1)
+       xtiaot2=normext(ib,ip1,iaot2)
+       deltaaot=(raot550nm-aot550nm(iaot1))
+       deltaaot=deltaaot/(aot550nm(iaot2)-aot550nm(iaot1))
+       next1=xtiaot1+(xtiaot2-xtiaot1)*deltaaot
+       
+       xtiaot1=normext(ib,ip2,iaot1)
+       xtiaot2=normext(ib,ip2,iaot2)
+       deltaaot=(raot550nm-aot550nm(iaot1))
+       deltaaot=deltaaot/(aot550nm(iaot2)-aot550nm(iaot1))
+       next2=xtiaot1+(xtiaot2-xtiaot1)*deltaaot
+       
+       dpres=(pres-tpres(ip1))/(tpres(ip2)-tpres(ip1))
+       next=next1+(next2-next1)*dpres
        
        return
        end
@@ -1635,7 +1651,7 @@ c     S  ,rop2
      s                      wvtransb,wvtransc,ogtransa0,ogtransa1,
      s                      ogtransb0,ogtransb1,ogtransc0,ogtransc1,
      s		            tsmax,tsmin,ttv,tts,nbfi,nbfic,indts,
-     s                      rolutt,transt,sphalbt,sbandname,err_msg,
+     s                      rolutt,transt,sphalbt,normext,sbandname,err_msg,
      s                      retval,tauraynm,gscoefnm,anglehdf,intrefnm,
      s                      transmnm, spheranm)
 C Arguments....     
@@ -1654,7 +1670,7 @@ C Arguments....
        real tts(22)
        integer indts(22)
        real transt(16,7,22,22)
-       real sphalbt(16,7,22)
+       real sphalbt(16,7,22),normext(16,7,22)
        character*6 sbandname(16)
        character*80 err_msg
        integer retval
@@ -1680,15 +1696,18 @@ C local variables....
 c Read the gaseous transmission and other constants  
 C molecular optical thickness
 C       open(1,file="tauray-modis.ASC")
+c       write(6,*) "TAURAYNM ",tauraynm
        open(1,file=tauraynm)
        do i=1,8
        read(1,101) bandid,tauray(i)
+c       write(6,*) bandid,tauray(i)
+       
        if (bandid.ne.sbandname(i)) then
        write(err_msg,*) "Error on rayleigh o.d file,"//
 C     s     " check tauray-modis.ASC"
      s     " check ", tauraynm//char(0)
        retval=1
- 101   Format(A6,F10.5)       
+ 101   Format(A6,1X,F10.5)       
        return
        endif
        enddo
@@ -1917,7 +1936,7 @@ C This next read contains information about the pressure level of the data
 C  ignore for now
        read(1,*)
        do iaot=1,22
-       read(1,*) xx,sphalbt(iband,ipres,iaot),yy
+       read(1,*) xx,sphalbt(iband,ipres,iaot),normext(iband,ipres,iaot)
        enddo
        enddo
 C       close(1)

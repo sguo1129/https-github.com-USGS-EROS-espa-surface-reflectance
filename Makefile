@@ -19,9 +19,9 @@ F_EXTRA   = -Wall -O2 -ffixed-line-length-132
 
 C_OBJECTS = qa_index_routine.o
 
-F_OBJECTS = sub_deg2utm.o sub_utm2deg.o subaeroret.o newLUTldcm_subr.o LDCMSR.o
+F_OBJECTS = sub_deg2utm.o sub_utm2deg.o subaeroret.o LUTldcm_subr.o LDCMSR.o
 
-TARGET = LDCMSR-v1.1
+TARGET = LDCMSR-v1.3
 
 all: $(TARGET)
 
