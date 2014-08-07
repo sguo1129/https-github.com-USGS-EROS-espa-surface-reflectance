@@ -27,9 +27,6 @@ Date         Programmer       Reason
 2/3/2014     Gail Schmidt     Reflective, thermal input and surface reflectance
                               output files are no longer needed as parameters
                               in the lndsr*.txt file, since inputs and outputs
-8/5/2014     Gail Schmidt     Obtain the location of the ESPA schema file from
-                              an environment variable vs. the ESPA http site
-                              are handled in the XML file.
 
 NOTES:
   1. The XML metadata format written via this library follows the ESPA internal
@@ -62,12 +59,10 @@ int main (int argc, char *argv[])
     char *anc_path = NULL;         /* path for LEDAPS ancillary data */
     char *token_ptr = NULL;        /* pointer used for obtaining scene name */
     char *file_ptr = NULL;         /* pointer used for obtaining file name */
-    char *schema = NULL;           /* ESPA schema file */
     int year, month, day;          /* year, month, day of acquisition date */
     bool anc_missing = false;      /* is the ancillary data missing? */
     FILE *out = NULL;              /* pointer to the output parameter file */
     Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
-    struct stat statbuf;           /* buffer for the file stat function */
 
     /* Open the log file */
     printf ("\nRunning lndpm ...\n");
@@ -87,29 +82,9 @@ int main (int argc, char *argv[])
     }
     strcpy (input_xml, argv[1]);
 
-    /* Get the ESPA schema environment variable which specifies the location
-       of the XML schema to be used */
-    schema = getenv ("ESPA_SCHEMA");
-    if (schema == NULL)
-    {  /* ESPA schema environment variable wasn't defined. Try the version in
-          /usr/local... */
-        schema = LOCAL_ESPA_SCHEMA;
-        if (stat (schema, &statbuf) == -1)
-        {  /* /usr/local ESPA schema file doesn't exist.  Try the version on
-              the ESPA http site... */
-            schema = ESPA_SCHEMA;
-        }
-    }
-
     /* Validate the input metadata file */
-    printf ("Validating schema with %s ...\n", schema);
-    if (validate_xml_file (input_xml, schema) != SUCCESS)
+    if (validate_xml_file (input_xml) != SUCCESS)
     {  /* Error messages already written */
-        sprintf (errmsg, "Possible schema file not found.  ESPA_SCHEMA "
-            "environment variable isn't defined.  The first default schema "
-            "location of %s doesn't exist.  And the second default location of "
-            "%s was used as the last default.", LOCAL_ESPA_SCHEMA, ESPA_SCHEMA);
-        error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
 
