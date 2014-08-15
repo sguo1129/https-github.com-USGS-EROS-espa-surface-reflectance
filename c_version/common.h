@@ -15,6 +15,11 @@ typedef char byte;
 #define ONE_DIV_1013 0.000987166
 #define ONE_DIV_8500 0.000117647
 
+/* Number of bands corrected to surface reflectance (bands 1-7).  The
+   atmospheric correction variables store information for 8 bands, so we will
+   go with that for the array size. */
+#define NSR_BANDS 8
+
 /* L8 L1G/T products have 8 reflectance bands (bands 1-7, and 9),
    2 thermal bands (band 10 and 11), 1 pan band (band 8), and 1 QA band
    (band 12) */
