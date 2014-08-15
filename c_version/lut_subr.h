@@ -11,147 +11,6 @@
 #include "error_handler.h"
 
 /* Prototypes */
-int invaero
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float trotoa[16],                /* I: top of atmos reflectance table */
-    float erelc[16],
-    int iband1,                      /* I: band 1 index (0-based) */
-    int iband2,                      /* I: band 2 index (0-based) */
-    float *raot550nm,                /* O: nearest value of AOT */
-    float *roslamb1,                 /* O: lambertian surface reflectance of
-                                           band 1 */
-    float *residual                  /* O: model residual */
-);
-
-int invaeroocean
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float trotoa[16],                /* I: top of atmos reflectance table */
-    float erelc[16],
-    int iband1,                      /* I: band 1 index (0-based) */
-    int iband2,                      /* I: band 2 index (0-based) */
-    float *aot2,
-    float *roslamb1,                 /* O: lambertian surface reflectance of
-                                           band 1 */
-    float *residual,                 /* O: model residual */
-    float *angexp                    /* O: Angstrom exponent */
-);
-
-int atmcorocea2
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float aot2,
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float rotoa,                     /* I: top of atmosphere reflectance */
-    float *roslamb,                  /* O: lambertian surface reflectance */
-    float angexp,
-    float *tgo,                      /* O: other gaseous transmittance */
-    float *roatm,                    /* O: atmospheric reflectance */
-    float *ttatmg,
-    float *satm,                     /* O: spherical albedo */
-    float *xrorayp                   /* O: molecular reflectance */
-);
-
 int atmcorlamb2
 (
     float xts,                       /* I: solar zenith angle (deg) */
@@ -163,33 +22,36 @@ int atmcorlamb2
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
+    float ****rolutt,                /* I: intrinsic reflectance table
+                                           [NSR_BANDS][7][22][8000] */
+    float ****transt,                /* I: transmission table
+                                           [NSR_BANDS][7][22][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
     float xtvstep,                   /* I: observation step value */
     float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
+    float ***sphalbt,                /* I: spherical albedo table
+                                           [NSR_BANDS][7][22] */
+    float **tsmax,                   /* I: maximum scattering angle table
+                                           [20][22] */
+    float **tsmin,                   /* I: minimum scattering angle table
+                                           [20][22] */
+    float **nbfic,                   /* I: communitive number of azimuth angles
+                                           [20][22] */
+    float **nbfi,                    /* I: number of azimuth angles [20][22] */
+    float tts[22],                   /* I: sun angle table */
     int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
+    float **ttv,                     /* I: view angle table [20][22] */
     float uoz,                       /* I: total column ozone */
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
+    float tauray[NSR_BANDS],         /* I: molecular optical thickness coeff */
+    double ogtransa1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb0[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double wvtransa[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double wvtransb[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double oztransa[NSR_BANDS],      /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
@@ -197,91 +59,6 @@ int atmcorlamb2
     float *ttatmg,
     float *satm,                     /* O: spherical albedo */
     float *xrorayp                   /* O: molecular reflectance */
-);
-
-void raycorlamb2
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float rotoa,                     /* I: top of atmosphere reflectance */
-    float *roslamb,                  /* O: lambertian surface reflectance */
-    float *tgo,                      /* O: other gaseous transmittance */
-    float *roatm,                    /* O: atmospheric reflectance */
-    float *ttatmg,
-    float *satm,                     /* O: spherical albedo */
-    float *xrorayp                   /* O: molecular reflectance */
-);
-
-int atmcorlamb
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float raot550nm,
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float rotoa,                     /* I: top of atmosphere reflectance */
-    float *roslamb                   /* O: lambertian surface reflectance */
-);
-
-void local_csalbr
-(
-    float xtau,       /* I: molecular optical depth */
-    float *xalb       /* O: atmospheric (Rayleigh) spherical albedo */
-);
-
-float fintexp3
-(
-    float xtau       /* I: molecular optical depth */
-);
-
-float fintexp1
-(
-    float xtau       /* I: molecular optical depth */
 );
 
 void local_chand
@@ -294,13 +71,6 @@ void local_chand
     float *xrray   /* O: molecular reflectance, 0.0 to 1.0 */
 );
 
-void comptransray
-(
-    float xtaur,   /* I: rayleigh optical depth for surface pressure */
-    float xmus,    /* I: cosine of solar zenith angle */
-    float *ttray   /* O: */
-);
-
 void comptg
 (
     int iband,                   /* I: band index (0-based) */
@@ -310,12 +80,12 @@ void comptg
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
     float pres,                  /* I: surface pressure */
-    double ogtransa1[16],        /* I: other gases transmission coeff */
-    double ogtransb0[16],        /* I: other gases transmission coeff */
-    double ogtransb1[16],        /* I: other gases transmission coeff */
-    double wvtransa[16],         /* I: water vapor transmission coeff */
-    double wvtransb[16],         /* I: water vapor transmission coeff */
-    double oztransa[16],         /* I: ozone transmission coeff */
+    double ogtransa1[NSR_BANDS], /* I: other gases transmission coeff */
+    double ogtransb0[NSR_BANDS], /* I: other gases transmission coeff */
+    double ogtransb1[NSR_BANDS], /* I: other gases transmission coeff */
+    double wvtransa[NSR_BANDS],  /* I: water vapor transmission coeff */
+    double wvtransb[NSR_BANDS],  /* I: water vapor transmission coeff */
+    double oztransa[NSR_BANDS],  /* I: ozone transmission coeff */
     float *tgoz,                 /* O: ozone transmission */
     float *tgwv,                 /* O: water vapor transmission */
     float *tgwvhalf,             /* O: water vapor transmission, half content */
@@ -329,8 +99,8 @@ void compsalb
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
+    float ***sphalbt,                /* I: spherical albedo table
+                                           [NSR_BANDS][7][22] */
     float *satm                      /* O: spherical albedo */
 );
 
@@ -342,8 +112,8 @@ int comptrans
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
+    float ****transt,                /* I: transmission table
+                                           [NSR_BANDS][7][22][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
     float tts[22],
@@ -361,15 +131,18 @@ int comproatm
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
+    float ****rolutt,                /* I: intrinsic reflectance table
+                                           [NSR_BANDS][7][22][8000] */
+    float **tsmax,                   /* I: maximum scattering angle table
+                                           [20][22] */
+    float **tsmin,                   /* I: minimum scattering angle table
+                                           [20][22] */
+    float **nbfic,                   /* I: communitive number of azimuth angles
+                                           [20][22] */
+    float **nbfi,                    /* I: number of azimuth angles [20][22] */
+    float tts[22],                   /* I: sun angle table */
     int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
+    float **ttv,                     /* I: view angle table [20][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
     float xtvstep,                   /* I: observation step value */
@@ -379,19 +152,20 @@ int comproatm
 
 int readluts
 (
-    float **tsmax,              /* O: [20][22] */
-    float **tsmin,              /* O: [20][22] */
-    float **ttv,                /* O: [20][22] */
-    float tts[22],              /* O: */
-    float **nbfic,              /* O: [20][22] */
-    float **nbfi,               /* O: [20][22] */
+    float **tsmax,              /* O: maximum scattering angle table [20][22] */
+    float **tsmin,              /* O: minimum scattering angle table [20][22] */
+    float **ttv,                /* O: view angle table [20][22] */
+    float tts[22],              /* O: sun angle table */
+    float **nbfic,              /* O: communitive number of azimuth angles
+                                      [20][22] */
+    float **nbfi,               /* O: number of azimuth angles [20][22] */
     int32 indts[22],            /* O: */
-    float ****rolutt,           /*** O: intrinsic reflectance table
-                                      [16][7][22][8000] */
-    float ****transt,           /*** O: transmission table
-                                      [16][7][22][22] */
-    float ***sphalbt,           /*** O: spherical albedo table
-                                      [16][7][22] */
+    float ****rolutt,           /* O: intrinsic reflectance table
+                                      [NSR_BANDS][7][22][8000] */
+    float ****transt,           /* O: transmission table
+                                      [NSR_BANDS][7][22][22] */
+    float ***sphalbt,           /* O: spherical albedo table
+                                      [NSR_BANDS][7][22] */
     float xtsstep,              /* I: solar zenith step value */
     float xtsmin,               /* I: minimum solar zenith value */
     char anglehdf[STR_SIZE],    /* I: angle HDF filename */
@@ -412,35 +186,38 @@ int subaeroret
     float uoz,                       /* I: total column ozone */
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
-    float erelc[16],
-    float troatm[16],
+    float erelc[NSR_BANDS],          /* I: band ratio variable */
+    float troatm[NSR_BANDS],         /* I: atmospheric reflectance table */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
+    float ****rolutt,                /* I: intrinsic reflectance table
+                                           [NSR_BANDS][7][22][8000] */
+    float ****transt,                /* I: transmission table
+                                           [NSR_BANDS][7][22][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
     float xtvstep,                   /* I: observation step value */
     float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
+    float ***sphalbt,                /* I: spherical albedo table
+                                           [NSR_BANDS][7][22] */
+    float **tsmax,                   /* I: maximum scattering angle table
+                                           [20][22] */
+    float **tsmin,                   /* I: minimum scattering angle table
+                                           [20][22] */
+    float **nbfic,                   /* I: communitive number of azimuth angles
+                                           [20][22] */
+    float **nbfi,                    /* I: number of azimuth anglesi [20][22] */
+    float tts[22],                   /* I: sun angle table */
     int32 indts[22],
     float **ttv,                     /* I: [20][22] */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float *raot,
+    float tauray[NSR_BANDS],         /* I: molecular optical thickness coeff */
+    double ogtransa1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb0[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double wvtransa[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double wvtransb[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double oztransa[NSR_BANDS],      /* I: ozone transmission coeff */
+    float *raot,                     /* O: AOT reflectance */
     float *residual                  /* O: model residual */
 );
 

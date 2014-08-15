@@ -26,594 +26,21 @@ Date         Programmer       Reason
                               these transmission arrays doubles and hard-coded
                               their static values in this code vs. reading
                               from a static ASCII file.
+7/29/2014    Gail Schmidt     Defined a static NSR_BANDS variable for the
+                              variables that refer to the surface reflectance
+                              band-related bands (ogtrans, wvtrans, tauray,
+                              erelc, etc.)  These previously were of size 16,
+                              to support MODIS bands.
+8/7/2014     Gail Schmidt     Removed the unused functions (invaero,
+                              invaeroocean, atmcorocea2, raycorlamb2,
+                              atmcorlamb, local_csalbr, fintexp3, fintexp1,
+                              comptransray).
 
 NOTES:
 *****************************************************************************/
 #include "lut_subr.h"
 #include "hdf.h"
 #include "mfhdf.h"
-
-
-/******************************************************************************
-MODULE:  invaero
-
-PURPOSE:  ????
-
-RETURN VALUE:
-Type = int
-Value          Description
------          -----------
-ERROR          Error occurred ???
-SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-******************************************************************************/
-int invaero
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float trotoa[16],                /* I: top of atmos reflectance table */
-    float erelc[16],                 /* I: band ratio variable */
-    int iband1,                      /* I: band 1 index (0-based) */
-    int iband2,                      /* I: band 2 index (0-based) */
-    float *raot550nm,                /* O: nearest value of AOT */
-    float *roslamb1,                 /* O: lambertian surface reflectance of
-                                           band 1 */
-    float *residual                  /* O: model residual */
-)
-{
-    char FUNC_NAME[] = "invaero";   /* function name */
-    char errmsg[STR_SIZE];  /* error message */
-    int iband;              /* looping variable for bands */
-    int nband;              /* number of bands processed */
-    int iaot;               /* aerosol optical thickness (AOT) index */
-    int retval;             /* function return value */
-    float roslamb;          /* lambertian surface reflectance */
-    float roslamb2;         /* lambertian surface reflectance of band 2 */
-    float deltasr;
-    float deltasrp;
-    float slope;
-
-    iaot = 0;
-    deltasr = 0.0;
-    deltasrp = 0.0;
-
-    for (;;)
-    {
-        retval = atmcorlamb (xts, xtv, xfi, aot550nm[iaot], iband1, pres,
-            tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-            sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
-            oztransa, trotoa[iband1], roslamb1);
-        if (retval != SUCCESS)
-        {
-            sprintf (errmsg, "Performing lambertian atmospheric correction.");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        retval = atmcorlamb (xts, xtv, xfi, aot550nm[iaot], iband2, pres,
-            tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-            sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
-            oztransa, trotoa[iband2],
-            &roslamb2);
-        if (retval != SUCCESS)
-        {
-            sprintf (errmsg, "Performing lambertian atmospheric correction.");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        deltasr = roslamb2 * erelc[iband1] - (*roslamb1) * erelc[iband2];
-        if ((deltasr >= 0.0) && (iaot <= 20))
-        {  /* keep iterating through the loop */
-            iaot++;
-            deltasrp = deltasr;
-        }
-        else
-        {  /* we have met the conditions to stop the iterations */
-            break;
-        }
-    }
-
-    /* Compute the slope of the AOT if this isn't the first iteration.  Then
-       use that slope and the delta to compute the AOT. */
-    if (iaot != 0)
-    {
-        slope = (aot550nm[iaot] - aot550nm[iaot-1]) / (deltasr - deltasrp);
-        *raot550nm = aot550nm[iaot-1] - deltasrp * slope;
-        if (*raot550nm < 0.01)
-            *raot550nm = 0.01;
-    }
-    else
-    {
-        *raot550nm = 0.01;
-    }
-
-    /* Sanity check on upper limit of raot550nm */
-    if (*raot550nm > 5.0)
-        *raot550nm = 4.99;
-
-    /* Need to recompute roslamb1 with new AOT before proceeding with residual
-       computation */
-    retval = atmcorlamb (xts, xtv, xfi, *raot550nm, iband1, pres,
-        tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-        sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
-        ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
-        trotoa[iband1], roslamb1);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Performing lambertian atmospheric correction.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    /* Compute the model residual */
-    *residual = 0.0;
-    nband = 0;
-    for (iband = 0; iband < 16; iband++)   /* GAIL -- do we really want to loop through 16 bands?? */
-    {
-        if (erelc[iband] > 0.0)
-        {
-            retval = atmcorlamb (xts, xtv, xfi, *raot550nm, iband, pres,
-                tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
-                xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-                uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
-                wvtransb, oztransa, trotoa[iband], &roslamb);
-            if (retval != SUCCESS)
-            {
-                sprintf (errmsg, "Performing lambertian atmospheric "
-                    "correction.");
-                error_handler (true, FUNC_NAME, errmsg);
-                return (ERROR);
-            }
-
-            /* Compute the residual using the quadratic means versus the
-               absolute value average */
-            *residual += (roslamb * erelc[iband1] - 
-                (*roslamb1) * erelc[iband]) * (roslamb * erelc[iband1] -
-                (*roslamb1) * erelc[iband]);
-            nband++;
-        }
-    }
-    *residual = sqrt (*residual) / (nband - 1);
-
-    /* Successful completion */
-    return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  invaeroocean
-
-PURPOSE:  ????
-
-RETURN VALUE:
-Type = int
-Value          Description
------          -----------
-ERROR          Error occurred ???
-SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-  1. The Angstrom exponent is a parameter that is being widely used in
-     atmospheric sciences to analyze the optical properties of aerosol
-     particles.
-******************************************************************************/
-int invaeroocean
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float trotoa[16],                /* I: top of atmos reflectance table */
-    float erelc[16],                 /* I: band ratio variable */
-    int iband1,                      /* I: band 1 index (0-based) */
-    int iband2,                      /* I: band 2 index (0-based) */
-    float *aot2,
-    float *roslamb1,                 /* O: lambertian surface reflectance of
-                                           band 1 */
-    float *residual,                 /* O: model residual */
-    float *angexp                    /* O: Angstrom exponent */
-)
-
-{
-    char FUNC_NAME[] = "invaeroocean";   /* function name */
-    char errmsg[STR_SIZE];  /* error message */
-    int iband;              /* looping variable for bands */
-    int iaot;               /* aerosol optical thickness (AOT) index */
-    int nband;              /* number of bands processed */
-    int retval;             /* function return value */
-    float roatm;            /* atmospheric reflectance */
-    float roslamb;          /* lambertian surface reflectance of band 1 */
-    float roslamb2;         /* lambertian surface reflectance of band 2 */
-    float deltasr;
-    float deltasrp;
-    float slope;
-    float xrorayp;          /* molecular reflectance */
-    float raot550nm;        /* nearest value of AOT */
-    float aot5;             /* aerosol optical thickness (AOT) */
-    float tgo;              /* other gaseous transmittance */
-    float ttatmg;
-    float satm;             /* spherical albedo */
-
-    /* Band 2 retrieval */
-    iaot = 0;
-    deltasr = 0.0;
-    deltasrp = 0.0;
-    *angexp = 0.0;
-    for (;;)
-    {
-        retval = atmcorocea2 (xts, xtv, xfi, aot550nm[iaot], 1, pres, tpres,
-            aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-            sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
-            oztransa, trotoa[1], &roslamb2, *angexp, &tgo, &roatm, &ttatmg,
-            &satm, &xrorayp);
-        if (retval != SUCCESS)
-        {
-            sprintf (errmsg, "Performing atmospheric correction ocean type 2.");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-     
-        deltasr = roslamb2;
-        if ((deltasr >= 0.0) && (iaot <= 20))
-        {  /* keep iterating through the loop */
-            iaot++;
-            deltasrp = deltasr;
-        }
-        else
-        {  /* we have met the conditions to stop the iterations */
-            break;
-        }
-    }
-
-    /* Compute the slope of the AOT if this isn't the first iteration.  Then
-       use that slope and the delta to compute the AOT. */
-    if (iaot != 0)
-    {
-        slope = (aot550nm[iaot] - aot550nm[iaot-1]) / (deltasr - deltasrp);
-        raot550nm = aot550nm[iaot-1] - deltasrp * slope;
-        if (raot550nm < 0.01)
-            raot550nm = 0.01;
-    }
-    else
-    {
-        raot550nm = 0.01;
-    }
-    *aot2 = raot550nm;
-
-    /* Band 5 retrieval */
-    iaot = 0;
-    deltasr = 0.0;
-    deltasrp = 0.0;
-    *angexp = 0.0;
-    for (;;)
-    {
-        retval = atmcorocea2 (xts, xtv, xfi, aot550nm[iaot], 4, pres, tpres,
-            aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-            sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
-            oztransa, trotoa[4], &roslamb2, *angexp, &tgo, &roatm, &ttatmg,
-            &satm, &xrorayp);
-        if (retval != SUCCESS)
-        {
-            sprintf (errmsg, "Performing atmospheric correction ocean type 2.");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-     
-        deltasr = roslamb2;
-        if ((deltasr >= 0.0) && (iaot <= 20))
-        {  /* keep iterating through the loop */
-            iaot++;
-            deltasrp = deltasr;
-        }
-        else
-        {  /* we have met the conditions to stop the iterations */
-            break;
-        }
-    }
-
-    /* Compute the slope of the AOT if this isn't the first iteration.  Then
-       use that slope and the delta to compute the AOT. */
-    if (iaot != 0)
-    {
-        slope = (aot550nm[iaot] - aot550nm[iaot-1]) / (deltasr - deltasrp);
-        raot550nm = aot550nm[iaot-1] - deltasrp * slope;
-        if (raot550nm < 0.01)
-            raot550nm = 0.01;
-    }
-    else
-    {
-        raot550nm = 0.01;
-    }
-    aot5 = raot550nm;
-
-    *angexp = log ((*aot2) / aot5) / log (870.0 / 1020.0);
-
-    /* Threshold on angexp for Urban clean model */
-    if (*angexp < -2.0)
-        *angexp = -2.0;
-    if (*angexp > 1.0)
-        *angexp = 1.0;
-       
-    /* Compute the model residual */
-    *residual = 0.0;
-    nband = 0;
-    for (iband = 0; iband < 16; iband++)   /* GAIL -- do we really want to loop through 16 bands?? */
-    {
-        if (erelc[iband] > -1.0)
-        {
-            retval = atmcorocea2 (xts, xtv, xfi, *aot2, iband, pres, tpres,
-                aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-                sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-                tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
-                oztransa, trotoa[iband], &roslamb, *angexp, &tgo, &roatm,
-                &ttatmg, &satm, &xrorayp);
-            if (retval != SUCCESS)
-            {
-                sprintf (errmsg, "Performing atmospheric correction ocean "
-                    "type 2.");
-                error_handler (true, FUNC_NAME, errmsg);
-                return (ERROR);
-            }
-
-            /* Compute the residual using the quadratic means versus the
-               absolute value average */
-            if (erelc[iband] > 0.0)
-            {
-                *residual += sqrt ((roslamb * erelc[iband1] -
-                    (*roslamb1) * erelc[iband]) * (roslamb * erelc[iband1] -
-                    (*roslamb1) * erelc[iband]));
-            }
-            else
-                *residual += sqrt (roslamb * roslamb);
-            nband++;
-        }
-    }
-    *residual /= (nband - 1);
-
-    /* Successful completion */
-    return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  atmcorocea2
-
-PURPOSE:  ????
-
-RETURN VALUE:
-Type = int
-Value          Description
------          -----------
-ERROR          Error occurred ???
-SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-    1. Standard sea level pressure is 1013 millibars.
-******************************************************************************/
-int atmcorocea2
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float aot2,
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float rotoa,                     /* I: top of atmosphere reflectance */
-    float *roslamb,                  /* O: lambertian surface reflectance */
-    float angexp,
-    float *tgo,                      /* O: other gaseous transmittance */
-    float *roatm,                    /* O: atmospheric reflectance */
-    float *ttatmg,
-    float *satm,                     /* O: spherical albedo */
-    float *xrorayp                   /* O: molecular reflectance */
-)
-{
-    char FUNC_NAME[] = "atmcorocea2";   /* function name */
-    char errmsg[STR_SIZE];  /* error message */
-    int retval;             /* function return value */
-    float raot550nm;        /* nearest value of AOT */
-    float xttv;    /* upward transmittance */
-    float xtts;    /* downward transmittance */
-    float ttatm;   /* total transmission of the atmosphere */
-    float tgog;    /* other gases transmission */
-    float tgoz;    /* ozone transmission */
-    float tgwv;    /* water vapor transmission */
-    float tgwvhalf;  /* water vapor transmission, half content */
-    float xphi;    /* azimuthal difference between sun and observation (deg) */
-    float xmus;    /* cosine of solar zenith angle */
-    float xmuv;    /* cosine of observation zenith angle */
-    float xtaur;   /* rayleigh optical depth for surface pressure */
-    float wave[] = {670.0, 870.0, 480.0, 550.0, 1020.0, 1670.0, 2130.0,
-        412.0, 443.0, 490.0, 530.0, 545.0, 663.0, 670.0, 740.0, 865.0};
-
-    if ((iband != 6) && (iband != 5))
-        raot550nm = aot2 * exp (log (wave[iband] / 870.0) * angexp);
-    else
-       raot550nm = 0.01;
-
-    /* Reject raot550nm values above aot550nm[21], which is 5.000
-       (just for ocean) */
-    if (raot550nm > aot550nm[21])
-        raot550nm = aot550nm[21];
-    if (raot550nm < aot550nm[0])
-        raot550nm = aot550nm[0];
-    
-    retval = comproatm (xts, xtv, xfi, raot550nm, iband, pres, tpres,
-        aot550nm, rolutt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, xtsstep,
-        xtsmin, xtvstep, xtvmin, roatm);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing atmospheric reflectance.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    retval = comptrans (xts, raot550nm, iband, pres, tpres, aot550nm, transt,
-        xtsstep, xtsmin, tts, &xtts);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing transmission.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    retval = comptrans (xtv, raot550nm, iband, pres, tpres, aot550nm, transt,
-        xtvstep, xtvmin, tts, &xttv);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing transmission.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    /* Compute total transmission (product downward by upward) */
-    ttatm = xtts * xttv;
-    
-    /* Compute spherical albedo */
-    compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, satm);
-
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
-        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
-
-    /* Compute rayleigh component (intrinsic reflectance, at p0) */
-    xphi = xfi;
-    xmus = cos (xts * DEG2RAD);
-    xmuv = cos (xtv * DEG2RAD);
-
-    /* Compute rayleigh component (intrinsic reflectance, at p=pres).
-       Pressure in the atmosphere is pres / 1013. */
-    xtaur = tauray[iband] * pres * ONE_DIV_1013;  /* vs / 1013.0 */
-    local_chand (xphi, xmuv, xmus, xtaur, xrorayp);
-
-    /* Perform atmospheric correction */
-    *roslamb = rotoa / tgog / tgoz;
-    *roslamb = (*roslamb) - ((*roatm) - (*xrorayp)) * tgwvhalf - (*xrorayp);
-    *roslamb = (*roslamb) / (ttatm / tgwv);
-    *roslamb = (*roslamb) / (1.0 + (*satm) * (*roslamb));
-    *tgo = tgog * tgoz;
-    *roatm = ((*roatm) - (*xrorayp)) * tgwvhalf + (*xrorayp);
-    *ttatmg = ttatm * tgwv;
-
-    /* Successful completion */
-    return (SUCCESS);
-}
-
 
 /******************************************************************************
 MODULE:  atmcorlamb2
@@ -624,7 +51,7 @@ RETURN VALUE:
 Type = int
 Value          Description
 -----          -----------
-ERROR          Error occurred ???
+ERROR          Error occurred with atmospheric correction
 SUCCESS        Successful completion
 
 HISTORY:
@@ -647,33 +74,36 @@ int atmcorlamb2
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
+    float ****rolutt,                /* I: intrinsic reflectance table
+                                           [NSR_BANDS][7][22][8000] */
+    float ****transt,                /* I: transmission table
+                                           [NSR_BANDS][7][22][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
     float xtvstep,                   /* I: observation step value */
     float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
+    float ***sphalbt,                /* I: spherical albedo table
+                                           [NSR_BANDS][7][22] */
+    float **tsmax,                   /* I: maximum scattering angle table
+                                           [20][22] */
+    float **tsmin,                   /* I: minimum scattering angle table
+                                           [20][22] */
+    float **nbfic,                   /* I: communitive number of azimuth angles
+                                           [20][22] */
+    float **nbfi,                    /* I: number of azimuth angles [20][22] */
+    float tts[22],                   /* I: sun angle table */
     int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
+    float **ttv,                     /* I: view angle table [20][22] */
     float uoz,                       /* I: total column ozone */
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
+    float tauray[NSR_BANDS],         /* I: molecular optical thickness coeff */
+    double ogtransa1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb0[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double wvtransa[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double wvtransb[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double oztransa[NSR_BANDS],      /* I: ozone transmission coeff */
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
@@ -757,337 +187,6 @@ int atmcorlamb2
 
     /* Successful completion */
     return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  raycorlamb2
-
-PURPOSE:  ????
-
-RETURN VALUE:
-Type = None
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-    1. Standard sea level pressure is 1013 millibars.
-******************************************************************************/
-void raycorlamb2
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float rotoa,                     /* I: top of atmosphere reflectance */
-    float *roslamb,                  /* O: lambertian surface reflectance */
-    float *tgo,                      /* O: other gaseous transmittance */
-    float *roatm,                    /* O: atmospheric reflectance */
-    float *ttatmg,
-    float *satm,                     /* O: spherical albedo */
-    float *xrorayp                   /* O: molecular reflectance */
-)
-{
-    float xttv;    /* upward transmittance */
-    float xtts;    /* downward transmittance */
-    float ttatm;   /* total transmission of the atmosphere */
-    float tgog;    /* other gases transmission */
-    float tgoz;    /* ozone transmission */
-    float tgwv;    /* water vapor transmission */
-    float tgwvhalf;  /* water vapor transmission, half content */
-    float xtaur;   /* rayleigh optical depth for surface pressure */
-    float xphi;    /* azimuthal difference between sun and observation (deg) */
-    float xmus;    /* cosine of solar zenith angle */
-    float xmuv;    /* cosine of observation zenith angle */
-
-    /* This routine returns variables for calculating roslamb.
-       Pressure in the atmosphere is pres / 1013. */
-    xtaur = tauray[iband] * pres * ONE_DIV_1013;  /* vs / 1013.0 */
-    xmus = cos (xts * DEG2RAD);
-    xmuv = cos (xtv * DEG2RAD);
-    comptransray (xtaur, xmus, &xtts);
-    comptransray (xtaur, xmuv, &xttv);
-
-    /* Compute total transmission (product downward by upward) */
-    ttatm = xtts * xttv;
-    
-    /* Compute spherical albedo */
-    local_csalbr (xtaur, satm);
-
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
-        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
-
-    /* Compute rayleigh component (intrinsic reflectance, at p0) */
-    xtaur = tauray[iband];
-    xphi = xfi;
-
-    /* Compute rayleigh component (intrinsic reflectance, at p=pres).
-       Pressure in the atmosphere is pres / 1013. */
-    xtaur = tauray[iband] * pres * ONE_DIV_1013;  /* vs / 1013.0 */
-    local_chand (xphi, xmuv, xmus, xtaur, xrorayp);
-
-    /* Perform atmospheric correction */
-    *roatm = *xrorayp;
-    *roslamb = rotoa / (tgog * tgoz);
-    *roslamb = ((*roslamb) - ((*roatm) - (*xrorayp)) * tgwvhalf - (*xrorayp));
-    *roslamb = (*roslamb) / (ttatm*tgwv);
-    *roslamb = (*roslamb) / (1.0 + (*satm) * (*roslamb));
-    *tgo = tgog * tgoz;
-    *roatm = ((*roatm) - (*xrorayp)) * tgwvhalf + (*xrorayp);
-    *ttatmg = ttatm * tgwv;
-}
-
-
-/******************************************************************************
-MODULE:  atmcorlamb
-
-PURPOSE:  Lambertian atmospheric correction 1.
-
-RETURN VALUE:
-Type = int
-Value          Description
------          -----------
-ERROR          Error occurred ???
-SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-    1. Standard sea level pressure is 1013 millibars.
-******************************************************************************/
-int atmcorlamb
-(
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
-    float raot550nm,
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
-    int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float uoz,                       /* I: total column ozone */
-    float uwv,                       /* I: total column water vapor (precipital
-                                           water vapor) */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float rotoa,                     /* I: top of atmosphere reflectance */
-    float *roslamb                   /* O: lambertian surface reflectance */
-)
-{
-    char FUNC_NAME[] = "atmcorlamb";   /* function name */
-    char errmsg[STR_SIZE];  /* error message */
-    int retval;             /* function return value */
-    float xttv;    /* upward transmittance */
-    float xtts;    /* downward transmittance */
-    float ttatm;   /* total transmission of the atmosphere */
-    float tgog;    /* other gases transmission */
-    float tgoz;    /* ozone transmission */
-    float tgwv;    /* water vapor transmission */
-    float tgwvhalf;  /* water vapor transmission, half content */
-    float xtaur;   /* rayleigh optical depth for surface pressure */
-    float roatm;   /* atmospheric reflectance */
-    float satm;    /* spherical albedo */
-    float xphi;    /* azimuthal difference between sun and observation (deg) */
-    float xmus;    /* cosine of solar zenith angle */
-    float xmuv;    /* cosine of observation zenith angle */
-    float xrorayp; /* molecular reflectance */
-
-    retval = comproatm (xts, xtv, xfi, raot550nm, iband, pres, tpres, aot550nm,
-        rolutt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, xtsstep, xtsmin,
-        xtvstep, xtvmin, &roatm);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing atmospheric reflectance.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    retval = comptrans (xts, raot550nm, iband, pres, tpres, aot550nm, transt,
-        xtsstep, xtsmin, tts, &xtts);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing transmission.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    retval = comptrans (xtv, raot550nm, iband, pres, tpres, aot550nm, transt,
-        xtvstep, xtvmin, tts, &xttv);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing transmission.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    /* Compute total transmission (product downward by  upward) */
-    ttatm = xtts * xttv;
-
-    /* Compute spherical albedo */
-    compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, &satm);
-
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
-        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
-
-    /* Compute rayleigh component (intrinsic reflectance, at p0) */
-    xphi = xfi;
-    xmus = cos (xts * DEG2RAD);
-    xmuv = cos (xtv * DEG2RAD);
-
-    /* Compute rayleigh component (intrinsic reflectance, at p=pres).
-       Pressure in the atmosphere is pres / 1013. */
-    xtaur = tauray[iband] * pres * ONE_DIV_1013;  /* vs / 1013.0 */
-    local_chand (xphi, xmuv, xmus, xtaur, &xrorayp);
-
-    /* Perform atmospheric correction */
-    *roslamb = rotoa / (tgog * tgoz);
-    *roslamb = ((*roslamb) - (roatm - xrorayp) * tgwvhalf - xrorayp);
-    *roslamb /= ttatm * tgwv;
-    *roslamb = (*roslamb) / (1.0 + satm * (*roslamb));
-
-    /* Successful completion */
-    return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  local_csalbr
-
-PURPOSE:  Computes the atmospheric (Rayleigh) spherical albedo
-
-RETURN VALUE:
-Type = None
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-******************************************************************************/
-void local_csalbr
-(
-    float xtau,       /* I: molecular optical depth */
-    float *xalb       /* O: atmospheric (Rayleigh) spherical albedo */
-)
-{
-    *xalb = 3.0 * xtau - fintexp3(xtau) * (4.0 + 2.0 * xtau) + 2.0 * exp(-xtau);
-    *xalb /= 4.0 + 3.0 * xtau;
-}
-
-
-/******************************************************************************
-MODULE:  fintexp3
-
-PURPOSE:  Computes the parameter necessary to compute Rayleigh spherical
-albedo for standard and actual pressure.
-
-RETURN VALUE:
-Type = float
-Value          Description
------          -----------
-float          fintexp3 return value
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-******************************************************************************/
-float fintexp3
-(
-    float xtau       /* I: molecular optical depth */
-)
-{
-    return ((exp(-xtau) * (1.0 - xtau) + xtau * xtau * fintexp1(xtau)) * 0.5);
-}
-
-
-/******************************************************************************
-MODULE:  fintexp1
-
-PURPOSE:  Computes the summation portion of the exponential integral function 
-
-RETURN VALUE:
-Type = float
-Value          Description
------          -----------
-float          fintexp1 return value
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-
-NOTES:
-    1. Accuracy 2e-07 for 0 < xtau < 1.
-******************************************************************************/
-float fintexp1
-(
-    float xtau       /* I: molecular optical depth */
-)
-{
-    int i;        /* looping variable */
-    float xx;     /* function temporary value */
-    float xftau;
-    float a[6] = {-0.57721566, 0.99999193, -0.24991055, 0.05519968,
-        -0.00976004, 0.00107857};
-
-    xx = a[0];
-    xftau = 1.0;
-    for (i = 1; i < 6; i++)
-    {
-        xftau = xftau * xtau;
-        xx += a[i] * xftau;
-    }
-    return (xx - log(xtau));
 }
 
 
@@ -1194,41 +293,6 @@ void local_chand
 
 
 /******************************************************************************
-MODULE:  comptransray
-
-PURPOSE:  Computes the transmission
-
-RETURN VALUE:
-Type = None
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-7/15/2014    Gail Schmidt     Changed (2.0 / 3.0) to 0.66666667 and
-                                      (4.0 / 3.0) to 1.33333333
-
-NOTES:
-******************************************************************************/
-void comptransray
-(
-    float xtaur,   /* I: rayleigh optical depth for surface pressure */
-    float xmus,    /* I: cosine of solar zenith angle */
-    float *ttray   /* O: */
-)
-{
-    float ddiftt;
-    float ddirtt;
-
-    ddiftt = (0.66666667 + xmus) + (0.66666667 - xmus) * exp(-xtaur / xmus);
-    ddiftt = ddiftt / (1.33333333 + xtaur) - exp(-xtaur / xmus);
-    ddirtt = exp(-xtaur / xmus);
-    *ttray = ddirtt + ddiftt;
-}
-
-
-/******************************************************************************
 MODULE:  comptg
 
 PURPOSE:  Computes the transmission of the water vapor, ozone, and other gases.
@@ -1254,12 +318,12 @@ void comptg
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
     float pres,                  /* I: surface pressure */
-    double ogtransa1[16],        /* I: other gases transmission coeff */
-    double ogtransb0[16],        /* I: other gases transmission coeff */
-    double ogtransb1[16],        /* I: other gases transmission coeff */
-    double wvtransa[16],         /* I: water vapor transmission coeff */
-    double wvtransb[16],         /* I: water vapor transmission coeff */
-    double oztransa[16],         /* I: ozone transmission coeff */
+    double ogtransa1[NSR_BANDS], /* I: other gases transmission coeff */
+    double ogtransb0[NSR_BANDS], /* I: other gases transmission coeff */
+    double ogtransb1[NSR_BANDS], /* I: other gases transmission coeff */
+    double wvtransa[NSR_BANDS],  /* I: water vapor transmission coeff */
+    double wvtransb[NSR_BANDS],  /* I: water vapor transmission coeff */
+    double oztransa[NSR_BANDS],  /* I: ozone transmission coeff */
     float *tgoz,                 /* O: ozone transmission */
     float *tgwv,                 /* O: water vapor transmission */
     float *tgwvhalf,             /* O: water vapor transmission, half content */
@@ -1326,8 +390,8 @@ void compsalb
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
+    float ***sphalbt,                /* I: spherical albedo table
+                                           [NSR_BANDS][7][22] */
     float *satm                      /* O: spherical albedo */
 )
 {
@@ -1404,17 +468,17 @@ int comptrans
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
+    float ****transt,                /* I: transmission table
+                                           [NSR_BANDS][7][22][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
-    float tts[22],
+    float tts[22],                   /* I: sun angle table */
     float *xtts                      /* O: downward transmittance */
 )
 {
     char FUNC_NAME[] = "comptrans";   /* function name */
     char errmsg[STR_SIZE];            /* error message */
-    int its;
+    int its;                        /* index for the sun angle table */
     int ip1, ip2, ip;               /* index variables for the pressure,
                                        AOT, and spherical albedo arrays */
     int iaot;                       /* aerosol optical thickness (AOT) index */
@@ -1452,7 +516,7 @@ int comptrans
         its = (int) ((xts - xtsmin) / xtsstep);
     if (its > 19)
     {
-        sprintf (errmsg, "xts is too large: %f", xts);
+        sprintf (errmsg, "Solar zenith (xts) is too large: %f", xts);
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
@@ -1505,6 +569,7 @@ Date         Programmer       Reason
                               then duplicated here.
 
 NOTES:
+  1. GAIL -- this is likely the major time hog in the overall interpolation
 ******************************************************************************/
 int comproatm
 (
@@ -1517,15 +582,18 @@ int comproatm
     float pres,                      /* I: surface pressure */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
+    float ****rolutt,                /* I: intrinsic reflectance table
+                                           [NSR_BANDS][7][22][8000] */
+    float **tsmax,                   /* I: maximum scattering angle table
+                                           [20][22] */
+    float **tsmin,                   /* I: minimum scattering angle table
+                                           [20][22] */
+    float **nbfic,                   /* I: communitive number of azimuth angles
+                                           [20][22] */
+    float **nbfi,                    /* I: number of azimuth angles [20][22] */
+    float tts[22],                   /* I: sun angle table */
     int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
+    float **ttv,                     /* I: view angle table [20][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
     float xtvstep,                   /* I: observation step value */
@@ -1539,8 +607,8 @@ int comproatm
                                        AOT, and spherical albedo arrays */
     int iaot1, iaot2;               /* index variables for the AOT and
                                        spherical albedo arrays */
-    int its;
-    int itv;
+    int its;                        /* index for the sun angle table */
+    int itv;                        /* index for the view angle table */
     int iaot;                       /* aerosol optical thickness (AOT) index */
     int isca;
     int iindex;
@@ -1593,7 +661,7 @@ int comproatm
         its = (int) ((xts - xtsmin) / xtsstep);
     if (its > 19)
     {
-        sprintf (errmsg, "xts is too large: %f", xts);
+        sprintf (errmsg, "Solar zenith (xts) is too large: %f", xts);
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
@@ -2193,19 +1261,20 @@ NOTES:
 ******************************************************************************/
 int readluts
 (
-    float **tsmax,              /* O: [20][22] */
-    float **tsmin,              /* O: [20][22] */
-    float **ttv,                /* O: [20][22] */
-    float tts[22],              /* O: */
-    float **nbfic,              /* O: [20][22] */
-    float **nbfi,               /* O: [20][22] */
+    float **tsmax,              /* O: maximum scattering angle table [20][22] */
+    float **tsmin,              /* O: minimum scattering angle table [20][22] */
+    float **ttv,                /* O: view angle table [20][22] */
+    float tts[22],              /* O: sun angle table */
+    float **nbfic,              /* O: communitive number of azimuth angles
+                                      [20][22] */
+    float **nbfi,               /* O: number of azimuth angles [20][22] */
     int32 indts[22],            /* O: */
-    float ****rolutt,           /*** O: intrinsic reflectance table
-                                      [16][7][22][8000] */
-    float ****transt,           /*** O: transmission table
-                                      [16][7][22][22] */
-    float ***sphalbt,           /*** O: spherical albedo table
-                                      [16][7][22] */
+    float ****rolutt,           /* O: intrinsic reflectance table
+                                      [NSR_BANDS][7][22][8000] */
+    float ****transt,           /* O: transmission table
+                                      [NSR_BANDS][7][22][22] */
+    float ***sphalbt,           /* O: spherical albedo table
+                                      [NSR_BANDS][7][22] */
     float xtsstep,              /* I: solar zenith step value */
     float xtsmin,               /* I: minimum solar zenith value */
     char anglehdf[STR_SIZE],    /* I: angle HDF filename */
@@ -2227,14 +1296,14 @@ int readluts
     int start[3];           /* starting point to read SDS data */
     int edges[3];           /* number of values to read in SDS data */
     char fname[STR_SIZE];   /* filename to be read */
-    float *rolut = NULL;    /*** intrinsic reflectance read from HDF file
+    float *rolut = NULL;    /* intrinsic reflectance read from HDF file
                                [8000*22*7] */
     float ttsr[22];        /* GAIL - should this be 21 instead?? */
-    float xx, yy;               /* temporary float values, not used */
-    int sd_id;                  /* file ID for the HDF file */
-    int sds_id;                 /* ID for the current SDS */
-    int sds_index;              /* index for the current SDS */
-    FILE *fp = NULL;            /* file pointer for reading ascii files */
+    float xx, yy;           /* temporary float values, not used */
+    int sd_id;              /* file ID for the HDF file */
+    int sds_id;             /* ID for the current SDS */
+    int sds_index;          /* index for the current SDS */
+    FILE *fp = NULL;        /* file pointer for reading ascii files */
 
     /* Initialize some variables */
     for (i = 0; i < 20; i++)
@@ -2548,7 +1617,7 @@ int readluts
         return (ERROR);
     }
 
-    /* rolutt[8000][22][7] */
+    /* rolut[8000][22][7] */
     rolut = calloc (8000*22*7, sizeof (float));
     if (rolut == NULL)
     {
@@ -2573,7 +1642,7 @@ int readluts
     edges[0] = 8000;
     edges[1] = 22;
     edges[2] = 7;
-    for (iband = 0; iband < 8; iband++)
+    for (iband = 0; iband < NSR_BANDS; iband++)
     {
         /* Get the sds name */
         sprintf (fname, "NRLUT_BAND_%d", iband+1);
@@ -2649,7 +1718,7 @@ int readluts
     }
 
     /* 8 bands of data */
-    for (iband = 0; iband < 8; iband++)
+    for (iband = 0; iband < NSR_BANDS; iband++)
     {
         /* This first read contains information about the band and source of
            the data; ignore for now */
@@ -2735,7 +1804,7 @@ int readluts
     }
 
     /* 8 bands of data */
-    for (iband = 0; iband < 8; iband++)
+    for (iband = 0; iband < NSR_BANDS; iband++)
     {
         /* This first read contains information about the source of the data;
            ignore for now */

@@ -43,7 +43,13 @@ Date         Programmer       Reason
                               these transmission arrays doubles and hard-coded
                               their static values in this code vs. reading
                               from a static ASCII file.
-
+7/29/2014    Gail Schmidt     Defined a static NSR_BANDS variable for the
+                              variables that refer to the surface reflectance
+                              band-related bands (ogtrans, wvtrans, tauray,
+                              erelc, etc.)  These previously were of size 16.
+                              Only compute the residual for the NSR_BANDS as
+                              well vs. doing the residual computation for 16
+                              bands.
 
 NOTES:
 ******************************************************************************/
@@ -59,35 +65,38 @@ int subaeroret
     float uoz,                       /* I: total column ozone */
     float uwv,                       /* I: total column water vapor (precipital
                                            water vapor) */
-    float erelc[16],                 /* I: band ratio variable */
-    float troatm[16],                /* I: atmospheric reflectance table */
+    float erelc[NSR_BANDS],          /* I: band ratio variable */
+    float troatm[NSR_BANDS],         /* I: atmospheric reflectance table */
     float tpres[7],                  /* I: surface pressure table */
     float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /*** I: intrinsic reflectance table
-                                           [16][7][22][8000] */
-    float ****transt,                /*** I: transmission table
-                                           [16][7][22][22] */
+    float ****rolutt,                /* I: intrinsic reflectance table
+                                           [NSR_BANDS][7][22][8000] */
+    float ****transt,                /* I: transmission table
+                                           [NSR_BANDS][7][22][22] */
     float xtsstep,                   /* I: solar zenith step value */
     float xtsmin,                    /* I: minimum solar zenith value */
     float xtvstep,                   /* I: observation step value */
     float xtvmin,                    /* I: minimum observation value */
-    float ***sphalbt,                /*** I: spherical albedo table
-                                           [16][7][22] */
-    float **tsmax,                   /* I: [20][22] */
-    float **tsmin,                   /* I: [20][22] */
-    float **nbfic,                   /* I: [20][22] */
-    float **nbfi,                    /* I: [20][22] */
-    float tts[22],
+    float ***sphalbt,                /* I: spherical albedo table
+                                           [NSR_BANDS][7][22] */
+    float **tsmax,                   /* I: maximum scattering angle table
+                                           [20][22] */
+    float **tsmin,                   /* I: minimum scattering angle table
+                                           [20][22] */
+    float **nbfic,                   /* I: communitive number of azimuth angles
+                                           [20][22] */
+    float **nbfi,                    /* I: number of azimuth anglesi [20][22] */
+    float tts[22],                   /* I: sun angle table */
     int32 indts[22],
-    float **ttv,                     /* I: [20][22] */
-    float tauray[16],                /* I: molecular optical thickness coeff */
-    double ogtransa1[16],            /* I: other gases transmission coeff */
-    double ogtransb0[16],            /* I: other gases transmission coeff */
-    double ogtransb1[16],            /* I: other gases transmission coeff */
-    double wvtransa[16],             /* I: water vapor transmission coeff */
-    double wvtransb[16],             /* I: water vapor transmission coeff */
-    double oztransa[16],             /* I: ozone transmission coeff */
-    float *raot,
+    float **ttv,                     /* I: view angle table [20][22] */
+    float tauray[NSR_BANDS],         /* I: molecular optical thickness coeff */
+    double ogtransa1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb0[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double wvtransa[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double wvtransb[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double oztransa[NSR_BANDS],      /* I: ozone transmission coeff */
+    float *raot,                     /* O: AOT reflectance */
     float *residual                  /* O: model residual */
 )
 {
@@ -156,9 +165,8 @@ int subaeroret
         iter = 0;
         while ((ros1 < th1) || (ros3 < th3)) 	
         {
-            if (iter > 0 && iaot == 0)
-                raot550nm = raot550nm * 0.5;
-            else if (iter > 0 && iaot > 0)   /* GAIL don't we also need to check iaot > 0? Do we even care about iter > 0?? */
+/*** GAIL -- need to verify iaot >= 1 ***/
+            if (iter > 0)
                 raot550nm = (raot550nm + aot550nm[iaot-1]) * 0.5;
 
             /* Atmospheric correction for band 3 */
@@ -425,9 +433,10 @@ int subaeroret
     }  /* if raot550nm */
     *raot = raot550nm;
 
+/**** GAIL -- should this be DN_BAND7 vs. DN_BAND6?? */
     /* Compute the model residual */
     *residual = fabs (ros3 - ros1 * pratio);
-    for (iband = 0; iband < 6; iband++)
+    for (iband = 0; iband <= DN_BAND6; iband++)
     {
         if (erelc[iband] > 0.0)
         {

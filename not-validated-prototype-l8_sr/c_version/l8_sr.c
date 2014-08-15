@@ -36,10 +36,23 @@ Date          Programmer       Reason
                                from a static ASCII file.
 7/22/2014     Gail Schmidt     Changed the 2D arrays to 1D arrays for the
                                image data to speed up processing.
+7/29/2014     Gail Schmidt     Defined a static NSR_BANDS variable for the
+                               variables that refer to the surface reflectance
+                               band-related bands (ogtrans, wvtrans, tauray,
+                               erelc, etc.)  These previously were of size 16.
 
 NOTES:
-1. SDstart and SDreaddata have minor memory leaks.  Ultimately both call
+1. Bands 1-7 are corrected to surface reflectance.  Band 8 (pand band) is not
+   processed.  Band 9 (cirrus band) is corrected to TOA reflectance.  Bands
+   10 and 11 are corrected to brightness temperature.
+2. The TOA reflectance corrections are made with a correction for the sun angle.
+   The sun angle correction is currently only made based on the angle at the
+   center of the scene, not the per pixel angle.
+3. SDstart and SDreaddata have minor memory leaks.  Ultimately both call
    HAregister_atom which makes a malloc call and the memory is never freed.
+4. Conversion algorithms for TOA reflectance and at-sensor brightness
+   temperature are available from
+   http://landsat.usgs.gov/Landsat8_Using_Product.php
 ******************************************************************************/
 int main (int argc, char *argv[])
 {
@@ -141,39 +154,41 @@ int main (int argc, char *argv[])
 
     /* Atmospheric correction variables */
     /* Look up table for atmospheric and geometric quantities */
-    float tauray[16] =           /* molecular optical thickness coeff */
+    float tauray[NSR_BANDS] =  /* molecular optical thickness coeff */
         {0.23638, 0.16933, 0.09070, 0.04827, 0.01563, 0.00129, 0.00037,
-         0.07984, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-         /* only 8 bands are used */
-    double oztransa[16] =        /* ozone transmission coeff */
+         0.07984};
+    double oztransa[NSR_BANDS] =   /* ozone transmission coeff */
         {-0.00255649, -0.0177861, -0.0969872, -0.0611428, 0.0001, 0.0001,
           0.0001, -0.0834061};
-    double wvtransa[16] =        /* water vapor transmission coeff */
+    double wvtransa[NSR_BANDS] =   /* water vapor transmission coeff */
         {2.29849e-27, 2.29849e-27, 0.00194772, 0.00404159, 0.000729136,
          0.00067324, 0.0177533, 0.00279738};
-    double wvtransb[16] =        /* water vapor transmission coeff */
+    double wvtransb[NSR_BANDS] =   /* water vapor transmission coeff */
         {0.999742, 0.999742, 0.775024, 0.774482, 0.893085, 0.939669, 0.65094,
          0.759952};
-    double ogtransa1[16] =       /* other gases transmission coeff */
+    double ogtransa1[NSR_BANDS] =  /* other gases transmission coeff */
         {4.91586e-20, 4.91586e-20, 4.91586e-20, 1.04801e-05, 1.35216e-05,
          0.0205425, 0.0256526, 0.000214329};
-    double ogtransb0[16] =       /* other gases transmission coeff */
+    double ogtransb0[NSR_BANDS] =  /* other gases transmission coeff */
         {0.000197019, 0.000197019, 0.000197019, 0.640215, -0.195998, 0.326577,
          0.243961, 0.396322};
-    double ogtransb1[16] =       /* other gases transmission coeff */
+    double ogtransb1[NSR_BANDS] =  /* other gases transmission coeff */
         {9.57011e-16, 9.57011e-16, 9.57011e-16, -0.348785, 0.275239, 0.0117192,
          0.0616101, 0.04728};
 
     float ****rolutt = NULL;    /*** I: intrinsic reflectance table
-                                        [16][7][22][8000] */
-    float ****transt = NULL;    /*** I: transmission table [16][7][22][22] */
-    float ***sphalbt = NULL;    /*** I: spherical albedo table [16][7][22] */
-    float **tsmax = NULL;       /* [20][22] */
-    float **tsmin = NULL;       /* [20][22] */
-    float **nbfic = NULL;       /* [20][22] */
-    float **nbfi = NULL;        /* [20][22] */
-    float **ttv = NULL;         /* [20][22] */
-    float tts[22];
+                                        [NSR_BANDS][7][22][8000] */
+    float ****transt = NULL;    /*** I: transmission table
+                                        [NSR_BANDS][7][22][22] */
+    float ***sphalbt = NULL;    /*** I: spherical albedo table
+                                        [NSR_BANDS][7][22] */
+    float **tsmax = NULL;       /* maximum scattering angle table [20][22] */
+    float **tsmin = NULL;       /* minimum scattering angle table [20][22] */
+    float **nbfic = NULL;       /* communitive number of azimuth angles
+                                   [20][22] */
+    float **nbfi = NULL;        /* number of azimuth angles [20][22] */
+    float **ttv = NULL;         /* view angle table [20][22] */
+    float tts[22];              /* sun angle table */
     int32 indts[22];
     float aot550nm[22] =  /* AOT look-up table */
         {0.01, 0.05, 0.10, 0.15, 0.20, 0.30, 0.40, 0.60, 0.80, 1.00, 1.20,
@@ -202,12 +217,12 @@ int main (int argc, char *argv[])
                            line+1, samp; and line+1, samp+1 */
     float pres11, pres12, pres21, pres22;  /* pressure at line,samp;
                            line, samp+1; line+1, samp; and line+1, samp+1 */
-    float erelc[16];    /* band ratio variable GAIL - 8?? or 16?? */
-    float troatm[16];   /* atmospheric reflectance table */
-    float btgo[8];      /* other gaseous transmittance for bands 1-8 */
-    float broatm[8];    /* atmospheric reflectance for bands 1-8 */
-    float bttatmg[8];   /* ttatmg for bands 1-8 */
-    float bsatm[8];     /* spherical albedo for bands 1-8 */
+    float erelc[NSR_BANDS];    /* band ratio variable for bands 1-7 */
+    float troatm[NSR_BANDS];   /* atmospheric reflectance table for bands 1-7 */
+    float btgo[NSR_BANDS];     /* other gaseous transmittance for bands 1-7 */
+    float broatm[NSR_BANDS];   /* atmospheric reflectance for bands 1-7 */
+    float bttatmg[NSR_BANDS];  /* ttatmg for bands 1-7 */
+    float bsatm[NSR_BANDS];    /* spherical albedo for bands 1-7 */
     int iband1, iband3; /* band indices (zero-based) */
     float raot;
     float residual;     /* model residual */
@@ -262,7 +277,7 @@ int main (int argc, char *argv[])
     }
 
     /* Validate the input metadata file */
-    if (validate_xml_file (xml_infile, ESPA_SCHEMA) != SUCCESS)
+    if (validate_xml_file (xml_infile) != SUCCESS)
     {  /* Error messages already written */
         exit (ERROR);
     }
@@ -440,9 +455,9 @@ int main (int argc, char *argv[])
         }
     }
 
-    /* rolutt[16][7][22][8000] and transt[16][7][22][22] and
-       sphalbt[16][7][22] */
-    rolutt = calloc (16, sizeof (float***));
+    /* rolutt[NSR_BANDS][7][22][8000] and transt[NSR_BANDS][7][22][22] and
+       sphalbt[NSR_BANDS][7][22] */
+    rolutt = calloc (NSR_BANDS, sizeof (float***));
     if (rolutt == NULL)
     {
         sprintf (errmsg, "Error allocating memory for rolutt");
@@ -450,7 +465,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    transt = calloc (16, sizeof (float***));
+    transt = calloc (NSR_BANDS, sizeof (float***));
     if (transt == NULL)
     {
         sprintf (errmsg, "Error allocating memory for transt");
@@ -458,7 +473,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    sphalbt = calloc (16, sizeof (float**));
+    sphalbt = calloc (NSR_BANDS, sizeof (float**));
     if (sphalbt == NULL)
     {
         sprintf (errmsg, "Error allocating memory for sphalbt");
@@ -466,7 +481,7 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < NSR_BANDS; i++)
     {
         rolutt[i] = calloc (7, sizeof (float**));
         if (rolutt[i] == NULL)
@@ -1508,7 +1523,7 @@ int main (int argc, char *argv[])
             }
             else
             {  /* Inverting aerosol */
-                for (ib = 0; ib < 8; ib++)
+                for (ib = 0; ib < NSR_BANDS; ib++)
                     erelc[ib] = -1.0;
 
                 if (ratiob1[lcmg][scmg] == 0)
@@ -2174,7 +2189,7 @@ int main (int argc, char *argv[])
     free (wv);
     free (oz);
 
-    for (i = 0; i < 16; i++)
+    for (i = 0; i < NSR_BANDS; i++)
     {
         for (j = 0; j < 7; j++)
         {
