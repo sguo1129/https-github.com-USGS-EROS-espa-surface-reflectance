@@ -230,12 +230,20 @@ int main (int argc, char *argv[])
     float xmus;         /* cosine of solar zenith */
     float corf;
     float tmpf;         /* temporary floating point value */
-    float xcals = 3.3420E-04;
-    float xcalo = 0.10000;
-    float k1b10 = 774.89;            /* temperature constant for band 10 */
-    float k1b11 = 480.89;            /* temperature constant for band 11 */
-    float k2b10 = 1321.08;           /* temperature constant for band 10 */
-    float k2b11 = 1201.14;           /* temperature constant for band 11 */
+
+    /* K[1|2]b1[0|1] constants, additive, and multiplier are also found in the
+       MTL file */
+    const float xcals = 3.3420E-04;  /* radiance multiplier for bands
+                                        10 and 11 */
+    const float xcalo = 0.10000;     /* radiance additive for bands
+                                        10 and 11 */
+    const float refl_mult = 2.0E-05; /* reflectance multiplier for bands 1-9 */
+    const float refl_add = -0.1;     /* reflectance additive for bands 1-9 */
+    const float k1b10 = 774.89;      /* temperature constant for band 10 */
+    const float k1b11 = 480.89;      /* temperature constant for band 11 */
+    const float k2b10 = 1321.08;     /* temperature constant for band 10 */
+    const float k2b11 = 1201.14;     /* temperature constant for band 11 */
+
     float dy, dx;                    /* delta x/y for true north adjustment */
     float ang;                       /* angle for true north adjustment */
     long nbclear;                    /* count of the clear (non-cloud) pixels */
@@ -1252,14 +1260,16 @@ int main (int argc, char *argv[])
 
     raot550nm = 0.05;
 
-    /* Loop through all the bands (except the QA band) and perform atmospheric
-       corrections */
-    printf ("Calibrating reflectance and thermal bands ...\n");
+    /* Loop through all the bands (except the QA band) and compute the TOA
+       reflectance and at-sensor brightness temp */
+    printf ("Calculating TOA reflectance and at-sensor brightness "
+            "temperatures. Band ");
     for (ib = 0; ib <= NBAND_TTL_MAX-1; ib++)
     {
         /* Don't process the pan band */
         if (ib == DN_BAND8)
             continue;
+        printf ("%d ... ", ib+1);
 
         /* Get the parameters for the atmospheric correction */
         if (ib < DN_BAND9)
@@ -1289,7 +1299,9 @@ int main (int argc, char *argv[])
             bsatm[ib] = satm;
         }
 
-        /* Read the current band and calibrate bands 1-9 (except pan) */
+        /* Read the current band and calibrate bands 1-9 (except pan) to
+           obtain TOA reflectance. Bands are corrected for the sun angle at
+           the center of the scene. */
         if (ib <= DN_BAND9)
         {
             if (ib <= DN_BAND7)
@@ -1313,8 +1325,25 @@ int main (int argc, char *argv[])
 
             for (i = 0; i < nlines*nsamps; i++)
             {
-                rotoa = (uband[i] * 2.0000E-05) - 0.1;
-                sband[sband_ib][i] = (int) (rotoa * 10000.0 / xmus);
+                /* If this pixel is not fill */
+                if (qaband[i] != 1)
+                {
+                    /* Compute the TOA reflectance based on the scene center sun
+                       angle.  Scale the value for output. */
+                    rotoa = (uband[i] * refl_mult) + refl_add;
+                    rotoa = rotoa * MULT_FACTOR / xmus;
+
+                    /* Save the scaled TOA reflectance value, but make
+                       sure it falls within the defined valid range. */
+                    if (rotoa < MIN_VALID)
+                        sband[sband_ib][i] = MIN_VALID;
+                    else if (rotoa > MAX_VALID)
+                        sband[sband_ib][i] = MAX_VALID;
+                    else
+                        sband[sband_ib][i] = (int) rotoa;
+                }
+                else
+                    sband[sband_ib][i] = FILL_VALUE;
             }
         }
 
@@ -1323,10 +1352,9 @@ int main (int argc, char *argv[])
         {
             for (i = 0; i < nlines*nsamps; i++)
             {
-                /* If this pixel is not fill -- GAIL -- should we use btest with bit 0 here?? */
                 if (qaband[i] != 1)
                 {
-                    rotoa = sband[sband_ib][i] * 0.0001;  /* div 10000 */
+                    rotoa = sband[sband_ib][i] * SCALE_FACTOR;
                     if (ib == DN_BAND1)
                         aerob1[i] = sband[sband_ib][i];
                     if (ib == DN_BAND2)
@@ -1359,19 +1387,34 @@ int main (int argc, char *argv[])
                 exit (ERROR);
             }
 
+            /* Compute brightness temp for band 10.  Make sure it falls
+               within the min/max range for the thermal bands. */
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
                 if (qaband[i] != 1)
                 {
+                    /* Compute the TOA spectral radiance */
                     tmpf = xcals * uband[i] + xcalo;
-                    tmpf = k2b10 / log (1.0 + k1b10 / tmpf);
-                    sband[SR_BAND10][i] = (int) (tmpf * 10.0);
+
+                    /* Compute the at-satellite brightness temp (K) and
+                       scale for output */
+                    tmpf = k2b10 / log (k1b10 / tmpf + 1.0);
+                    tmpf = tmpf * MULT_FACTOR_TH;  /* scale the value */
+
+                    /* Make sure the brightness temp falls within the specified
+                       range */
+                    if (tmpf < MIN_VALID_TH)
+                        sband[SR_BAND10][i] = MIN_VALID_TH;
+                    else if (tmpf > MAX_VALID_TH)
+                        sband[SR_BAND10][i] = MAX_VALID_TH;
+                    else
+                        sband[SR_BAND10][i] = (int) (tmpf + 0.5);
                 }
                 else
                     sband[SR_BAND10][i] = FILL_VALUE;
             }
-        }  /* end if ib */
+        }  /* end if band 10 */
 
         if (ib == DN_BAND11)
         {
@@ -1382,23 +1425,40 @@ int main (int argc, char *argv[])
                 exit (ERROR);
             }
 
+            /* Compute brightness temp for band 11.  Make sure it falls
+               within the min/max range for the thermal bands. */
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
                 if (qaband[i] != 1)
                 {
+                    /* Compute the TOA spectral radiance */
                     tmpf = xcals * uband[i] + xcalo;
-                    tmpf = k2b11 / log (1.0 + k1b11 / tmpf);
-                    sband[SR_BAND11][i] = (int) (tmpf * 10.0);
+
+                    /* Compute the at-satellite brightness temp (K) and
+                       scale for output */
+                    tmpf = k2b11 / log (k1b11 / tmpf + 1.0);
+                    tmpf = tmpf * MULT_FACTOR_TH;  /* scale the value */
+
+                    /* Make sure the brightness temp falls within the specified
+                       range */
+                    if (tmpf < MIN_VALID_TH)
+                        sband[SR_BAND11][i] = MIN_VALID_TH;
+                    else if (tmpf > MAX_VALID_TH)
+                        sband[SR_BAND11][i] = MAX_VALID_TH;
+                    else
+                        sband[SR_BAND11][i] = (int) (tmpf + 0.5);
                 }
                 else
                     sband[SR_BAND11][i] = FILL_VALUE;
             }
-        }  /* end if ib */
+        }  /* end if band 11 */
     }  /* end for ib */
+    printf ("\n");
 
     /* The input data has been read and calibrated. The memory can be freed. */
     free (uband);
+    uband = NULL;
 
     /* Interpolate the auxiliary data for each pixel location */
     printf ("Interpolating the auxiliary data ...\n");
@@ -1425,7 +1485,7 @@ int main (int argc, char *argv[])
 
             /* Get the lat/long for the current pixel, for the center of the
                pixel */
-            img.l = i - 0.5;  /* GAIL */
+            img.l = i - 0.5;
             img.s = j + 0.5;
             img.is_fill = false;
             if (!from_space (space, &img, &geo))
@@ -1528,23 +1588,23 @@ int main (int argc, char *argv[])
 
                 if (ratiob1[lcmg][scmg] == 0)
                 {
-                    erelc[DN_BAND4] = 1.0;
                     erelc[DN_BAND1] = 0.417;
                     erelc[DN_BAND2] = 0.476;
+                    erelc[DN_BAND4] = 1.0;
                     erelc[DN_BAND7] = 1.79;
                 }
                 else
                 {
+                    erelc[DN_BAND1] = ratiob1[lcmg][scmg] * 0.001;
+                    erelc[DN_BAND2] = ratiob2[lcmg][scmg] * 0.001;
                     erelc[DN_BAND4] = 1.0;
-                    erelc[DN_BAND1] = ratiob1[lcmg][scmg] * 0.001;/* vs /1000 */
-                    erelc[DN_BAND2] = ratiob2[lcmg][scmg] * 0.001;/* vs /1000 */
-                    erelc[DN_BAND7] = ratiob7[lcmg][scmg] * 0.001;/* vs /1000 */
+                    erelc[DN_BAND7] = ratiob7[lcmg][scmg] * 0.001;
                 }
 
-                troatm[0] = aerob1[curr_pix] * 0.0001;  /* vs / 10000 */
-                troatm[1] = aerob2[curr_pix] * 0.0001;  /* vs / 10000 */
-                troatm[3] = aerob4[curr_pix] * 0.0001;  /* vs / 10000 */
-                troatm[6] = aerob7[curr_pix] * 0.0001;  /* vs / 10000 */
+                troatm[0] = aerob1[curr_pix] * SCALE_FACTOR;
+                troatm[1] = aerob2[curr_pix] * SCALE_FACTOR;
+                troatm[3] = aerob4[curr_pix] * SCALE_FACTOR;
+                troatm[6] = aerob7[curr_pix] * SCALE_FACTOR;
 
                 /* If this is water ... */
                 if (btest (cloud[curr_pix], WAT_QA))
@@ -1579,7 +1639,7 @@ int main (int argc, char *argv[])
                 if (residual < (0.01 + 0.005 * corf))
                 {  /* test if band 5 makes sense */
                     iband = DN_BAND5;
-                    rotoa = aerob5[curr_pix] * 0.0001;  /* vs / 10000 */
+                    rotoa = aerob5[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
                     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                         tpres, aot550nm, rolutt, transt, xtsstep, xtsmin,
@@ -1598,7 +1658,7 @@ int main (int argc, char *argv[])
                     ros5 = roslamb;
 
                     iband = DN_BAND4;
-                    rotoa = aerob4[curr_pix] * 0.0001;  /* vs / 10000 */
+                    rotoa = aerob4[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
                     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                         tpres, aot550nm, rolutt, transt, xtsstep, xtsmin,
@@ -1672,7 +1732,7 @@ int main (int argc, char *argv[])
         if (qaband[i] != 1)
         {
             nbval++;
-            mall += sband[SR_BAND10][i] * 0.1;  /* vs / 10 */
+            mall += sband[SR_BAND10][i] * SCALE_FACTOR_TH;
             if ((!btest (cloud[i], CIR_QA)) &&
                 (sband[SR_BAND5][i] > 300))
             {
@@ -1680,7 +1740,7 @@ int main (int argc, char *argv[])
                 if (anom < 300)
                 {
                     nbclear++;
-                    mclear += sband[SR_BAND10][i] * 0.1;  /* vs / 10 */
+                    mclear += sband[SR_BAND10][i] * SCALE_FACTOR_TH;
                 }
             }
         }
@@ -1703,7 +1763,7 @@ int main (int argc, char *argv[])
         if (tresi[i] < 0.0)
         {
             if (((sband[SR_BAND2][i] - sband[SR_BAND4][i] * 0.5) > 500) &&
-                ((sband[SR_BAND10][i] * 0.1) < (mclear - 2.0)))
+                ((sband[SR_BAND10][i] * SCALE_FACTOR_TH) < (mclear - 2.0)))
             {  /* Snow or cloud for now */
                 cloud[i] += 2;
             }
@@ -1812,7 +1872,7 @@ int main (int argc, char *argv[])
             if (btest (cloud[curr_pix], CLD_QA) ||
                 btest (cloud[curr_pix], CIR_QA))
             {
-                tcloud = sband[SR_BAND10][curr_pix] * 0.1;  /* vs / 10 */
+                tcloud = sband[SR_BAND10][curr_pix] * SCALE_FACTOR_TH;
                 cldh = (mclear - tcloud) * 1000.0 / cfac;
                 if (cldh < 0.0)
                     cldh = 0.0;
@@ -2015,7 +2075,7 @@ int main (int argc, char *argv[])
                     !btest (cloud[i], CIR_QA) &&
                     !btest (cloud[i], CLD_QA))
                 {
-                    rsurf = sband[ib][i] * 0.0001;  /* vs / 10000 */
+                    rsurf = sband[ib][i] * SCALE_FACTOR;
                     rotoa = (rsurf * bttatmg[ib] / (1.0 - bsatm[ib] * rsurf)
                         + broatm[ib]) * btgo[ib];
                     raot550nm = taero[i];
