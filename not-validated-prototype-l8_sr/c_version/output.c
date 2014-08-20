@@ -38,13 +38,18 @@ HISTORY:
 Date         Programmer       Reason
 ---------    ---------------  -------------------------------------
 6/24/2014    Gail Schmidt     Original Development
+8/1/2014     Gail Schmidt     Modified to support either TOA or SR bands, and
+                              to be flexible with the setup of the TOA
+                              reflectance bands
 
 NOTES:
 ******************************************************************************/
 Output_t *open_output
 (
     Espa_internal_meta_t *in_meta,  /* I: input metadata structure */
-    Input_t *input                  /* I: input band data structure */
+    Input_t *input,                 /* I: input band data structure */
+    bool toa                        /* I: set this structure up for the TOA
+                                          bands vs. the SR bands */
 )
 {
     Output_t *this = NULL;
@@ -150,18 +155,35 @@ Output_t *open_output
     {
         strncpy (bmeta[ib].short_name, in_meta->band[refl_indx].short_name, 3);
         bmeta[ib].short_name[3] = '\0';
-        strcat (bmeta[ib].short_name, "SR");
-        strcpy (bmeta[ib].product, "sr_refl");
+        if (toa)
+        {
+            strcat (bmeta[ib].short_name, "TOA");
+            strcpy (bmeta[ib].product, "toa_refl");
+        }
+        else
+        {
+            strcat (bmeta[ib].short_name, "SR");
+            strcpy (bmeta[ib].product, "sr_refl");
+        }
+
         bmeta[ib].nlines = this->nlines;
         bmeta[ib].nsamps = this->nsamps;
         bmeta[ib].pixel_size[0] = input->size.pixsize[0];
         bmeta[ib].pixel_size[1] = input->size.pixsize[1];
         strcpy (bmeta[ib].pixel_units, "meters");
-        sprintf (bmeta[ib].app_version, "revised_cloud_mask_%s", SR_VERSION);
+        sprintf (bmeta[ib].app_version, "l8_surface_reflectance_%s",
+            SR_VERSION);
         strcpy (bmeta[ib].production_date, production_date);
 
-        /* Handle the cloud band differently */
-        if (ib == SR_CLOUD)
+        /* Handle the cloud band differently.  If this is only TOA then we
+           don't need to process the cloud mask.  If this is SR, then we don't
+           need to process the cirrus or thermal bands. */
+        if (toa && ib == SR_CLOUD)
+            continue;
+        else if (!toa &&
+            ((ib == SR_BAND9) || (ib == SR_BAND10) || (ib == SR_BAND11)))
+            continue;
+        else if (ib == SR_CLOUD)
         {
             bmeta[ib].data_type = ESPA_UINT8;
             bmeta[ib].fill_value = CLOUD_FILL_VALUE;
@@ -210,21 +232,30 @@ Output_t *open_output
 
             if (ib >= SR_BAND1 && ib <= SR_BAND7)
             {
-                sprintf (bmeta[ib].name, "sr_band%d", ib+1);
-                sprintf (bmeta[ib].long_name, "band %d surface reflectance",
-                    ib+1);
+                if (toa)
+                {
+                    sprintf (bmeta[ib].name, "toa_band%d", ib+1);
+                    sprintf (bmeta[ib].long_name, "band %d top-of-atmosphere "
+                        "reflectance", ib+1);
+                }
+                else
+                {
+                    sprintf (bmeta[ib].name, "sr_band%d", ib+1);
+                    sprintf (bmeta[ib].long_name, "band %d surface reflectance",
+                        ib+1);
+                }
             }
-            else if (ib == SR_BAND9)
-            {
-                sprintf (bmeta[ib].name, "sr_band%d", ib+2);
-                sprintf (bmeta[ib].long_name, "band %d surface reflectance",
-                    ib+2);
+            else if (ib == SR_BAND9)  /* cirrus band */
+            {  /* band 9 is only atmospherically corrected */
+                sprintf (bmeta[ib].name, "toa_band%d", ib+2);
+                sprintf (bmeta[ib].long_name, "band %d top-of-atmosphere "
+                    "reflectance", ib+2);
             }
             else if (ib == SR_BAND10 || ib == SR_BAND11)  /* thermal bands */
             {
                 sprintf (bmeta[ib].name, "toa_band%d", ib+2);
-                sprintf (bmeta[ib].long_name, "band %d brightness temperature",
-                    ib+2);
+                sprintf (bmeta[ib].long_name, "band %d at-satellite brightness "
+                    "temperature", ib+2);
                 sprintf (bmeta[ib].data_units, "temperature (kelvin)");
             }
         }
@@ -272,7 +303,8 @@ NOTES:
 ******************************************************************************/
 int close_output
 (
-    Output_t *this    /* I/O: Output data structure to close */
+    Output_t *this,   /* I/O: Output data structure to close */
+    bool toa          /* I: output structure is for TOA bands vs. SR bands */
 )
 {
     char FUNC_NAME[] = "close_output";   /* function name */
@@ -288,7 +320,15 @@ int close_output
 
     /* Close raw binary products */
     for (ib = 0; ib < this->nband; ib++)
-        close_raw_binary (this->fp_bin[ib]);
+    {
+        if (ib == SR_CLOUD && toa)
+            continue;
+        else if (!toa &&
+            ((ib == SR_BAND9) || (ib == SR_BAND10) || (ib == SR_BAND11)))
+            continue;
+        else
+            close_raw_binary (this->fp_bin[ib]);
+    }
     this->open = false;
 
     return (SUCCESS);

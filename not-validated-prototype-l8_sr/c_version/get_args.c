@@ -35,25 +35,32 @@ int get_args
     char **xml_infile,    /* O: address of input XML file */
     char **aux_infile,    /* O: address of input auxiliary file containing
                                 water vapor and ozone */
+    bool *process_sr,     /* O: process the surface reflectance products */
+    bool *write_toa,      /* O: write intermediate TOA products flag */
     bool *verbose         /* O: verbose flag */
 )
 {
     int c;                           /* current argument index */
     int option_index;                /* index for the command-line option */
     static int verbose_flag=0;       /* verbose flag */
+    static int write_toa_flag=0;     /* write TOA flag */
     char errmsg[STR_SIZE];           /* error message */
     char FUNC_NAME[] = "get_args";   /* function name */
     static struct option long_options[] =
     {
         {"verbose", no_argument, &verbose_flag, 1},
+        {"write_toa", no_argument, &write_toa_flag, 1},
         {"xml", required_argument, 0, 'i'},
         {"aux", required_argument, 0, 'a'},
+        {"process_sr", required_argument, 0, 'p'},
         {"help", no_argument, 0, 'h'},
         {0, 0, 0, 0}
     };
 
     /* Initialize the flags to false */
     *verbose = false;
+    *write_toa = false;
+    *process_sr = true;    /* default is to process SR products */
 
     /* Loop through all the cmd-line options */
     opterr = 0;   /* turn off getopt_long error msgs as we'll print our own */
@@ -87,6 +94,21 @@ int get_args
                 *aux_infile = strdup (optarg);
                 break;
      
+            case 'p':  /* process SR products */
+                if (!strcmp (optarg, "true"))
+                    *process_sr = true;
+                else if (!strcmp (optarg, "false"))
+                    *process_sr = false;
+                else
+                {
+                    sprintf (errmsg, "Unknown value for process_sr: %s",
+                        optarg);
+                    error_handler (true, FUNC_NAME, errmsg);
+                    usage ();
+                    return (ERROR);
+                }
+                break;
+     
             case '?':
             default:
                 sprintf (errmsg, "Unknown option %s", argv[optind-1]);
@@ -96,6 +118,11 @@ int get_args
                 break;
         }
     }
+
+if (*process_sr)
+    printf ("DEBUG: process_sr is true!\n");
+else
+    printf ("DEBUG: process_sr is false!\n");
 
     /* Make sure the XML file was specified */
     if (*xml_infile == NULL)
@@ -116,9 +143,16 @@ int get_args
         return (ERROR);
     }
 
-    /* Check the verbose flag */
+    /* Check the flags */
     if (verbose_flag)
         *verbose = true;
+    if (write_toa_flag)
+        *write_toa = true;
+
+if (*write_toa)
+    printf ("DEBUG: write_toa is true!\n");
+else
+    printf ("DEBUG: write_toa is false!\n");
 
     return (SUCCESS);
 }

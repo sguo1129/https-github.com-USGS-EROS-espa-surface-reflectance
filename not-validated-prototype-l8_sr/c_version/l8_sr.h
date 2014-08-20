@@ -27,6 +27,8 @@ int get_args
     char **xml_infile,    /* O: address of input XML file */
     char **aux_infile,    /* O: address of input auxiliary file containing
                                 water vapor and ozone */
+    bool *process_sr,     /* O: process the surface reflectance products */
+    bool *write_toa,      /* O: write intermediate TOA products flag */
     bool *verbose         /* O: verbose flag */
 );
 
