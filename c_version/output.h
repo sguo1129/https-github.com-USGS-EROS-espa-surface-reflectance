@@ -35,12 +35,15 @@ typedef struct {
 Output_t *open_output
 (
     Espa_internal_meta_t *in_meta,  /* I: input metadata structure */
-    Input_t *input                  /* I: input band data structure */
+    Input_t *input,                 /* I: input band data structure */
+    bool toa                        /* I: set this structure up for the TOA
+                                          bands vs. the SR bands */
 );
 
 int close_output
 (
-    Output_t *this    /* I/O: Output data structure to close */
+    Output_t *this,   /* I/O: Output data structure to close */
+    bool toa          /* I: output structure is for TOA bands vs. SR bands */
 );
 
 int free_output
