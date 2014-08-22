@@ -29,12 +29,12 @@ Date         Programmer       Reason
 7/29/2014    Gail Schmidt     Defined a static NSR_BANDS variable for the
                               variables that refer to the surface reflectance
                               band-related bands (ogtrans, wvtrans, tauray,
-                              erelc, etc.)  These previously were of size 16,
-                              to support MODIS bands.
+                              erelc, etc.)  These previously were of size 16.
 8/7/2014     Gail Schmidt     Removed the unused functions (invaero,
                               invaeroocean, atmcorocea2, raycorlamb2,
                               atmcorlamb, local_csalbr, fintexp3, fintexp1,
                               comptransray).
+8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
 
 NOTES:
 *****************************************************************************/
@@ -51,7 +51,7 @@ RETURN VALUE:
 Type = int
 Value          Description
 -----          -----------
-ERROR          Error occurred with atmospheric correction
+ERROR          Error occurred ???
 SUCCESS        Successful completion
 
 HISTORY:
@@ -84,6 +84,9 @@ int atmcorlamb2
     float xtvmin,                    /* I: minimum observation value */
     float ***sphalbt,                /* I: spherical albedo table
                                            [NSR_BANDS][7][22] */
+    float ***normext,                /* I: aerosol extinction coefficient at
+                                           the current wavelength (normalized
+                                           at 550nm) [NSR_BANDS][7][22] */
     float **tsmax,                   /* I: maximum scattering angle table
                                            [20][22] */
     float **tsmin,                   /* I: minimum scattering angle table
@@ -110,7 +113,8 @@ int atmcorlamb2
     float *roatm,                    /* O: atmospheric reflectance */
     float *ttatmg,
     float *satm,                     /* O: spherical albedo */
-    float *xrorayp                   /* O: molecular reflectance */
+    float *xrorayp,                  /* O: molecular reflectance */
+    float *next                      /* O: ???? */
 )
 {
     char FUNC_NAME[] = "atmcorlamb2";   /* function name */
@@ -161,7 +165,8 @@ int atmcorlamb2
     ttatm = xtts * xttv;
     
     /* Compute spherical albedo */
-    compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, satm);
+    compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, normext, satm,
+        next);
 
     comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
         wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
@@ -243,6 +248,7 @@ void local_chand
     xcosf3 = cos (2.0 * phios * DEG2RAD);
     xbeta2 = 0.5;
 
+    /***** GAIL -- these are actually static .... so compute ahead of time ***/
     xfd = xdep / (2.0 - xdep);
     xfd = (1.0 - xfd) / (1.0 + 2.0 * xfd);
 
@@ -259,7 +265,7 @@ void local_chand
     xp2 = xph2 * xitm;
     xp3 = xph3 * xitm;
 
-    xitm = (1 - exp(-xtau / xmus)) * (1 - exp(-xtau / xmuv));
+    xitm = (1.0 - exp(-xtau / xmus)) * (1.0 - exp(-xtau / xmuv));
     cfonc1 = xph1 * xitm;
     cfonc2 = xph2 * xitm;
     cfonc3 = xph3 * xitm;
@@ -380,6 +386,7 @@ Date         Programmer       Reason
 ---------    ---------------  -------------------------------------
 6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
                               by Eric Vermote, NASA GSFC
+8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
 
 NOTES:
 ******************************************************************************/
@@ -392,7 +399,11 @@ void compsalb
     float aot550nm[22],              /* I: AOT look-up table */
     float ***sphalbt,                /* I: spherical albedo table
                                            [NSR_BANDS][7][22] */
-    float *satm                      /* O: spherical albedo */
+    float ***normext,                /* I: aerosol extinction coefficient at
+                                           the current wavelength (normalized
+                                           at 550nm) [NSR_BANDS][7][22] */
+    float *satm,                     /* O: spherical albedo */
+    float *next                      /* O: ????? */
 )
 {
     int ip1, ip2, ip;               /* index variables for the pressure,
@@ -402,6 +413,7 @@ void compsalb
                                        spherical albedo arrays */
     float xtiaot1, xtiaot2;         /* spherical albedo trans value */
     float satm1, satm2;             /* spherical albedo value */
+    float next1, next2;             /* ???? */
     float dpres;                    /* pressure ratio */
     float deltaaot;                 /* AOT ratio */
 
@@ -424,19 +436,34 @@ void compsalb
     if (iaot1 == 21)
         iaot1 = 20;
     iaot2 = iaot1 + 1;
-       
-    xtiaot1 = sphalbt[iband][ip1][iaot1];
-    xtiaot2 = sphalbt[iband][ip1][iaot2];
+
+    /* Compute the delta AOT */
     deltaaot = raot550nm - aot550nm[iaot1];
     deltaaot /= aot550nm[iaot2] - aot550nm[iaot1];
+
+    /* Compute the spherical albedo */
+    xtiaot1 = sphalbt[iband][ip1][iaot1];
+    xtiaot2 = sphalbt[iband][ip1][iaot2];
     satm1 = xtiaot1 + (xtiaot2 - xtiaot1) * deltaaot;
-       
+
     xtiaot1 = sphalbt[iband][ip2][iaot1];
     xtiaot2 = sphalbt[iband][ip2][iaot2];
     satm2 = xtiaot1 + (xtiaot2 - xtiaot1) * deltaaot;
-       
+
     dpres = (pres - tpres[ip1]) / (tpres[ip2] - tpres[ip1]);
     *satm = satm1 + (satm2 - satm1) * dpres;
+
+    /* Compute the normalized?? spherical albedo */
+    xtiaot1 = normext[iband][ip1][iaot1];
+    xtiaot2 = normext[iband][ip1][iaot2];
+    next1 = xtiaot1 + (xtiaot2 - xtiaot1) * deltaaot;
+
+    xtiaot1 = normext[iband][ip2][iaot1];
+    xtiaot2 = normext[iband][ip2][iaot2];
+    next2 = xtiaot1 + (xtiaot2 - xtiaot1) * deltaaot;
+
+    dpres = (pres - tpres[ip1]) / (tpres[ip2] - tpres[ip1]);
+    *next = next1 + (next2 - next1) * dpres;
 }
 
 
@@ -556,7 +583,7 @@ RETURN VALUE:
 Type = int
 Value          Description
 -----          -----------
-ERROR          Error occurred ???
+ERROR          Error occurred computing the atmospheric reflectance
 SUCCESS        Successful completion
 
 HISTORY:
@@ -1256,6 +1283,7 @@ Date         Programmer       Reason
                               a small, static ASCII file.  Just made it a
                               hard-coded array in the main function.  Ditto for
                               the gaseous transmission coefficient file.
+8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
 
 NOTES:
 ******************************************************************************/
@@ -1274,6 +1302,9 @@ int readluts
     float ****transt,           /* O: transmission table
                                       [NSR_BANDS][7][22][22] */
     float ***sphalbt,           /* O: spherical albedo table
+                                      [NSR_BANDS][7][22] */
+    float ***normext,           /* O: aerosol extinction coefficient at the
+                                      current wavelength (normalized at 550nm)
                                       [NSR_BANDS][7][22] */
     float xtsstep,              /* I: solar zenith step value */
     float xtsmin,               /* I: minimum solar zenith value */
@@ -1299,7 +1330,7 @@ int readluts
     float *rolut = NULL;    /* intrinsic reflectance read from HDF file
                                [8000*22*7] */
     float ttsr[22];        /* GAIL - should this be 21 instead?? */
-    float xx, yy;           /* temporary float values, not used */
+    float xx;               /* temporary float values, not used */
     int sd_id;              /* file ID for the HDF file */
     int sds_id;             /* ID for the current SDS */
     int sds_index;          /* index for the current SDS */
@@ -1617,7 +1648,7 @@ int readluts
         return (ERROR);
     }
 
-    /* rolut[8000][22][7] */
+    /* rolutt[8000][22][7] */
     rolut = calloc (8000*22*7, sizeof (float));
     if (rolut == NULL)
     {
@@ -1834,7 +1865,7 @@ int readluts
             for (iaot = 0; iaot < 22; iaot++)
             {
                 if (fscanf (fp, "%f %f %f\n", &xx, &sphalbt[iband][ipres][iaot],
-                    &yy) != 3)
+                    &normext[iband][ipres][iaot]) != 3)
                 {
                     sprintf (errmsg, "Reading spherical albedo values from "
                         "spherical albedo coefficient file: %s", spheranm);

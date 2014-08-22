@@ -50,6 +50,7 @@ Date          Programmer       Reason
                                written.  Also added flag to allow the user to
                                specify TOA reflectance bands (bands 1-7) should
                                be written in addition to SR bands.
+8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
 
 NOTES:
 1. Bands 1-7 are corrected to surface reflectance.  Band 8 (pand band) is not
@@ -117,9 +118,23 @@ int main (int argc, char *argv[])
     int16 **sband = NULL;     /* output surface reflectance and brightness
                                  temp bands, qa band is separate as a uint16 */
     int16 **dem = NULL;       /* CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
+    int16 **andwi = NULL;     /* avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **sndwi = NULL;     /* standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob2 = NULL;   /* mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob7 = NULL;   /* mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob1 = NULL;   /* ??? band1 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob2 = NULL;   /* ??? band2 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob7 = NULL;   /* ??? band7 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob1 = NULL;   /* slope band1 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob2 = NULL;   /* slope band2 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob7 = NULL;   /* slope band7 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
     uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
     uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
     uint8 *cloud = NULL;      /* bit-packed value that represent clouds,
@@ -136,7 +151,9 @@ int main (int argc, char *argv[])
     int lcmg, scmg;      /* line/sample index for the CMG */
     int iband;           /* current band */
     float u, v;
+    float th1, th2;      /* values for NDWI calculations */
     float xcmg, ycmg;    /* x/y location for CMG */
+    float xndwi;         /* calculated NDWI value */
     float xts;           /* solar zenith angle (deg) */
     float xfs;           /* solar azimuth angle (deg) */
     float xtv;           /* observation zenith angle (deg) */
@@ -198,12 +215,14 @@ int main (int argc, char *argv[])
         {9.57011e-16, 9.57011e-16, 9.57011e-16, -0.348785, 0.275239, 0.0117192,
          0.0616101, 0.04728};
 
-    float ****rolutt = NULL;    /*** I: intrinsic reflectance table
-                                        [NSR_BANDS][7][22][8000] */
-    float ****transt = NULL;    /*** I: transmission table
-                                        [NSR_BANDS][7][22][22] */
-    float ***sphalbt = NULL;    /*** I: spherical albedo table
-                                        [NSR_BANDS][7][22] */
+    float ****rolutt = NULL;    /* intrinsic reflectance table
+                                   [NSR_BANDS][7][22][8000] */
+    float ****transt = NULL;    /* transmission table
+                                   [NSR_BANDS][7][22][22] */
+    float ***sphalbt = NULL;    /* spherical albedo table [NSR_BANDS][7][22] */
+    float ***normext = NULL;    /* aerosol extinction coefficient at the
+                                   current wavelength (normalized at 550nm)
+                                   [NSR_BANDS][7][22] */
     float **tsmax = NULL;       /* maximum scattering angle table [20][22] */
     float **tsmin = NULL;       /* minimum scattering angle table [20][22] */
     float **nbfic = NULL;       /* communitive number of azimuth angles
@@ -229,6 +248,7 @@ int main (int argc, char *argv[])
     float ttatmg;
     float satm;         /* spherical albedo */
     float xrorayp;      /* molecular reflectance */
+    float next;         /* ???? */
 
     float pixsize;      /* pixel size for the reflectance files */
     int nlines, nsamps; /* number of lines and samples in the reflectance and
@@ -282,8 +302,9 @@ int main (int argc, char *argv[])
     float tcloud;                    /* temperature of the current pixel */
 
     float cfac = 6.0;  /* cloud factor */
-    float aaot;
-    float sresi;       /* sum of 1 / residuals */
+    double aaot;
+    double sresi;      /* sum of 1 / residuals */
+    float fndvi;       /* NDVI value */
     int nbaot;
     int step;
     int hole;
@@ -381,7 +402,7 @@ int main (int argc, char *argv[])
     {
         process_sr = false;
         sprintf (errmsg, "Solar zenith angle is too large to allow for surface "
-            "reflectance processing.  Corrections will be limited to top-of-"
+            "reflectance processing.  Corrections will be limited to top of "
             "atmosphere and at-sensor brightness temperature corrections.");
         error_handler (false, FUNC_NAME, errmsg);
     }
@@ -418,6 +439,22 @@ int main (int argc, char *argv[])
         }
     }
 
+    andwi = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (andwi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the andwi");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    sndwi = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (sndwi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the sndwi");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
     ratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
     if (ratiob1 == NULL)
     {
@@ -442,8 +479,72 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
+    intratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (intratiob1 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the intratiob1");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    intratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (intratiob2 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the intratiob2");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    intratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (intratiob7 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the intratiob7");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    slpratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (slpratiob1 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the slpratiob1");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    slpratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (slpratiob2 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the slpratiob2");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    slpratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (slpratiob7 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the slpratiob7");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
     for (i = 0; i < RATIO_NBLAT; i++)
     {
+        andwi[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (andwi[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the andwi");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        sndwi[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (sndwi[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the sndwi");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
         ratiob1[i] = calloc (RATIO_NBLON, sizeof (int16));
         if (ratiob1[i] == NULL)
         {
@@ -464,6 +565,54 @@ int main (int argc, char *argv[])
         if (ratiob7[i] == NULL)
         {
             sprintf (errmsg, "Error allocating memory for the ratiob7");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        intratiob1[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (intratiob1[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the intratiob1");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        intratiob2[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (intratiob2[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the intratiob2");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        intratiob7[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (intratiob7[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the intratiob7");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        slpratiob1[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (slpratiob1[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the slpratiob1");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        slpratiob2[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (slpratiob2[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the slpratiob2");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        slpratiob7[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if (slpratiob7[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the slpratiob7");
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
         }
@@ -505,7 +654,7 @@ int main (int argc, char *argv[])
     }
 
     /* rolutt[NSR_BANDS][7][22][8000] and transt[NSR_BANDS][7][22][22] and
-       sphalbt[NSR_BANDS][7][22] */
+       sphalbt[NSR_BANDS][7][22] and normext[NSR_BANDS][7][22] */
     rolutt = calloc (NSR_BANDS, sizeof (float***));
     if (rolutt == NULL)
     {
@@ -526,6 +675,14 @@ int main (int argc, char *argv[])
     if (sphalbt == NULL)
     {
         sprintf (errmsg, "Error allocating memory for sphalbt");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    normext = calloc (NSR_BANDS, sizeof (float**));
+    if (normext == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for normext");
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -556,6 +713,14 @@ int main (int argc, char *argv[])
             exit (ERROR);
         }
 
+        normext[i] = calloc (7, sizeof (float*));
+        if (normext[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for normext");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
         for (j = 0; j < 7; j++)
         {
             rolutt[i][j] = calloc (22, sizeof (float*));
@@ -578,6 +743,14 @@ int main (int argc, char *argv[])
             if (sphalbt[i][j] == NULL)
             {
                 sprintf (errmsg, "Error allocating memory for sphalbt");
+                error_handler (true, FUNC_NAME, errmsg);
+                exit (ERROR);
+            }
+
+            normext[i][j] = calloc (22, sizeof (float));
+            if (normext[i][j] == NULL)
+            {
+                sprintf (errmsg, "Error allocating memory for normext");
                 error_handler (true, FUNC_NAME, errmsg);
                 exit (ERROR);
             }
@@ -696,7 +869,7 @@ int main (int argc, char *argv[])
     sprintf (spheranm, "%s/LDCMLUT/AERO_LUT_V3.0-URBANCLEAN-V2.0.ASCII",
         aux_path);
     sprintf (cmgdemnm, "%s/CMGDEM.hdf", aux_path);
-    sprintf (rationm, "%s/newratio_averagesSD.hdf", aux_path);
+    sprintf (rationm, "%s/ratiomapndwiexp.hdf", aux_path);
     sprintf (auxnm, "%s/LANDSATANC/%s", aux_path, aux_infile);
 
     if (stat (anglehdf, &statbuf) == -1)
@@ -762,9 +935,9 @@ int main (int argc, char *argv[])
     xtsmin = 0;
     xtsstep = 4.0;
     xtvmin = 2.84090;
-    xtvstep = 6.52107-2.84090;
+    xtvstep = 6.52107 - 2.84090;
     retval = readluts (tsmax, tsmin, ttv, tts, nbfi, nbfic, indts, rolutt,
-        transt, sphalbt, xtsstep, xtsmin, anglehdf, intrefnm, transmnm,
+        transt, sphalbt, normext, xtsstep, xtsmin, anglehdf, intrefnm, transmnm,
         spheranm);
     if (retval != SUCCESS)
     {
@@ -847,8 +1020,8 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    /* Find the SDS name */
-    strcpy (sds_name, "ratiob9 Mean");
+    /* Find the SDS name (SDS 6) */
+    strcpy (sds_name, "average ndvi");
     sds_index = SDnametoindex (sd_id, sds_name);
     if (sds_index == -1)
     {
@@ -873,7 +1046,7 @@ int main (int argc, char *argv[])
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, ratiob1[i]);
+        status = SDreaddata (sds_id, start, NULL, edges, andwi[i]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -891,8 +1064,8 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    /* Find the SDS name */
-    strcpy (sds_name, "ratiob3 Mean");
+    /* Find the SDS name (SDS 14) */
+    strcpy (sds_name, "standard ndvi");
     sds_index = SDnametoindex (sd_id, sds_name);
     if (sds_index == -1)
     {
@@ -917,7 +1090,7 @@ int main (int argc, char *argv[])
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, ratiob2[i]);
+        status = SDreaddata (sds_id, start, NULL, edges, sndwi[i]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -935,8 +1108,8 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    /* Find the SDS name */
-    strcpy (sds_name, "ratiob7 Mean");
+    /* Find the SDS name (SDS 21) */
+    strcpy (sds_name, "slope ratiob9");
     sds_index = SDnametoindex (sd_id, sds_name);
     if (sds_index == -1)
     {
@@ -961,7 +1134,227 @@ int main (int argc, char *argv[])
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, ratiob7[i]);
+        status = SDreaddata (sds_id, start, NULL, edges, slpratiob1[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Find the SDS name (SDS 22) */
+    strcpy (sds_name, "inter ratiob9");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, intratiob1[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Find the SDS name (SDS 15) */
+    strcpy (sds_name, "slope ratiob3");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, slpratiob2[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Find the SDS name (SDS 16) */
+    strcpy (sds_name, "inter ratiob3");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, intratiob2[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Find the SDS name (SDS 27) */
+    strcpy (sds_name, "slope ratiob7");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, slpratiob7[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Find the SDS name (SDS 28) */
+    strcpy (sds_name, "inter ratiob7");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, intratiob7[i]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -986,6 +1379,20 @@ int main (int argc, char *argv[])
         sprintf (errmsg, "Closing RATIO file.");
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
+    }
+
+    /* Compute the band ratios based on the averaged NDWI */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        for (j = 0; j < RATIO_NBLON; j++)
+        {
+            ratiob1[i][j] = (int16) (andwi[i][j] * slpratiob1[i][j] * 0.001 +
+                intratiob1[i][j]);
+            ratiob2[i][j] = (int16) (andwi[i][j] * slpratiob2[i][j] * 0.001 +
+                intratiob2[i][j]);
+            ratiob7[i][j] = (int16) (andwi[i][j] * slpratiob7[i][j] * 0.001 +
+                intratiob7[i][j]);
+        }
     }
 
     /* Read ozone and water vapor from the user-specified auxiliary file */
@@ -1271,8 +1678,8 @@ int main (int argc, char *argv[])
 
     /* Use that lat/long to determine the line/sample in the
        CMG-related lookup tables, using the center of the UL pixel */
-    ycmg = (89.975 - center_lat) * 20.0;   /* vs / 0.05 */
-    xcmg = (179.975 + center_lon) * 20.0;  /* vs / 0.05 */
+    ycmg = (89.975 - center_lat) * 20.0;    /* vs / 0.05 */
+    xcmg = (179.975 + center_lon) * 20.0;   /* vs / 0.05 */
     lcmg = (int) (ycmg + 0.5);
     scmg = (int) (xcmg + 0.5);
     if ((lcmg < 0 || lcmg >= CMG_NBLAT) || (scmg < 0 || scmg >= CMG_NBLON))
@@ -1551,7 +1958,6 @@ int main (int argc, char *argv[])
     {
         /* Remove the TOA bands 1-7 that were created by the open routine,
            since they aren't actually used */
-printf ("DEBUG: removing TOA bands 1-7\n");
         for (ib = SR_BAND1; ib <= SR_BAND7; ib++)
             unlink (toa_output->metadata.band[ib].file_name);
     }
@@ -1564,9 +1970,11 @@ printf ("DEBUG: removing TOA bands 1-7\n");
         /* Loop through all the reflectance bands and perform atmospheric
            corrections */
         printf ("Performing atmospheric corrections for each reflectance "
-            "band ...\n");
+            "band ...");
         for (ib = 0; ib <= SR_BAND7; ib++)
         {
+            printf (" %d ...", ib+1);
+
             /* Get the parameters for the atmospheric correction */
             /* rotoa is not defined for this call, which is ok, but the
                roslamb value is not valid upon output. Just set it to 0.0 to
@@ -1574,10 +1982,10 @@ printf ("DEBUG: removing TOA bands 1-7\n");
             rotoa = 0.0;
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, ib, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-                sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-                tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
-                oztransa, rotoa, &roslamb, &tgo, &roatm, &ttatmg, &satm,
-                &xrorayp);
+                sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+                uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm, &ttatmg,
+                &satm, &xrorayp, &next);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -1612,7 +2020,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                         aerob5[i] = sband[ib][i];
                     else if (ib == DN_BAND7)
                         aerob7[i] = sband[ib][i];
-    
+
                     /* Apply the atmospheric corrections, and store the scaled
                        value for later corrections */
                     roslamb = rotoa / tgo;
@@ -1623,7 +2031,8 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 }
             }  /* end for i */
         }  /* for ib */
-    
+        printf ("\n");
+
         /* Initialize the band ratios */
         for (ib = 0; ib < NSR_BANDS; ib++)
         {
@@ -1757,17 +2166,36 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 {  /* Inverting aerosol */
                     if (ratiob1[lcmg][scmg] == 0)
                     {
-                        erelc[DN_BAND1] = 0.417;
-                        erelc[DN_BAND2] = 0.476;
+                        /* Average the valid ratio around the location */
+                        erelc[DN_BAND1] = 0.4817;
+                        erelc[DN_BAND2] = erelc[DN_BAND1] / 0.844239;
                         erelc[DN_BAND4] = 1.0;
                         erelc[DN_BAND7] = 1.79;
                     }
                     else
                     {
-                        erelc[DN_BAND1] = ratiob1[lcmg][scmg] * 0.001;
-                        erelc[DN_BAND2] = ratiob2[lcmg][scmg] * 0.001;
+                        /* Use the NDWI to calculate the band ratio */
+                        xndwi = ((double) sband[SR_BAND5][curr_pix] -
+                                 (double) (sband[SR_BAND7][curr_pix] * 0.5)) /
+                                ((double) sband[SR_BAND5][curr_pix] +
+                                 (double) (sband[SR_BAND7][curr_pix] * 0.5));
+
+                        th1 = (andwi[lcmg][scmg] + 2.0 * sndwi[lcmg][scmg]) *
+                            0.001;
+                        th2 = (andwi[lcmg][scmg] - 2.0 * sndwi[lcmg][scmg]) *
+                            0.001;
+                        if (xndwi > th1)
+                            xndwi = th1;
+                        if (xndwi < th2)
+                            xndwi = th2;
+
+                        erelc[DN_BAND1] = (xndwi * slpratiob1[lcmg][scmg] +
+                            intratiob1[lcmg][scmg]) * 0.001;
+                        erelc[DN_BAND2] = (xndwi * slpratiob2[lcmg][scmg] +
+                            intratiob2[lcmg][scmg]) * 0.001;
                         erelc[DN_BAND4] = 1.0;
-                        erelc[DN_BAND7] = ratiob7[lcmg][scmg] * 0.001;
+                        erelc[DN_BAND7] = (xndwi * slpratiob7[lcmg][scmg] +
+                            intratiob7[lcmg][scmg]) * 0.001;
                     }
 
                     troatm[DN_BAND1] = aerob1[curr_pix] * SCALE_FACTOR;
@@ -1779,25 +2207,26 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                     if (btest (cloud[curr_pix], WAT_QA))
                     {
                         /* Check the NDVI */
-                        if (((sband[SR_BAND5][curr_pix] -
-                              sband[SR_BAND4][curr_pix]) /
-                             (sband[SR_BAND5][curr_pix] +
-                              sband[SR_BAND4][curr_pix])) < 0.1)
+                        fndvi = ((double) sband[SR_BAND5][curr_pix] -
+                                 (double) sband[SR_BAND4][curr_pix]) /
+                                ((double) sband[SR_BAND5][curr_pix] +
+                                 (double) sband[SR_BAND4][curr_pix]);
+                        if (fndvi < 0.1)
                         {  /* skip the rest of the processing */
                             taero[curr_pix] = 0.0;
                             tresi[curr_pix] = -0.01;
                             continue;
                         }
                     }
-
+           
                     iband1 = DN_BAND4;
                     iband3 = DN_BAND1;
                     retval = subaeroret (iband1, iband3, xts, xtv, xfi, pres,
                         uoz, uwv, erelc, troatm, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-                        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, tauray,
-                        ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
-                        oztransa, &raot, &residual);
+                        normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+                        tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                        wvtransb, oztransa, &raot, &residual, &next);
                     if (retval != SUCCESS)
                     {
                         sprintf (errmsg, "Performing atmospheric correction.");
@@ -1805,19 +2234,19 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                         exit (ERROR);
                     }
                     corf = raot / xmus;
-    
-                    if (residual < (0.01 + 0.005 * corf))
+
+                    if (residual < (0.015 + 0.005 * corf))
                     {  /* test if band 5 makes sense */
                         iband = DN_BAND5;
                         rotoa = aerob5[curr_pix] * SCALE_FACTOR;
                         raot550nm = raot;
                         retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband,
                             pres, tpres, aot550nm, rolutt, transt, xtsstep,
-                            xtsmin, xtvstep, xtvmin, sphalbt, tsmax, tsmin,
-                            nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
-                            ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                            xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax,
+                            tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
+                            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
                             wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
-                            &ttatmg, &satm, &xrorayp);
+                            &ttatmg, &satm, &xrorayp, &next);
                         if (retval != SUCCESS)
                         {
                             sprintf (errmsg, "Performing lambertian "
@@ -1826,17 +2255,17 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                             exit (ERROR);
                         }
                         ros5 = roslamb;
-    
+
                         iband = DN_BAND4;
                         rotoa = aerob4[curr_pix] * SCALE_FACTOR;
                         raot550nm = raot;
                         retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband,
                             pres, tpres, aot550nm, rolutt, transt, xtsstep,
-                            xtsmin, xtvstep, xtvmin, sphalbt, tsmax, tsmin,
-                            nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
-                            ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                            xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax,
+                            tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
+                            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
                             wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
-                            &ttatmg, &satm, &xrorayp);
+                            &ttatmg, &satm, &xrorayp, &next);
                         if (retval != SUCCESS)
                         {
                             sprintf (errmsg, "Performing lambertian "
@@ -1845,7 +2274,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                             exit (ERROR);
                         }
                         ros4 = roslamb;
-    
+
                         if ((ros5 > 0.1) && ((ros5 - ros4) / (ros5 + ros4) > 0))
                         {
                             taero[curr_pix] = raot;
@@ -1865,21 +2294,37 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 }  /* end if cirrus */
             }  /* end for i */
         }  /* end for j */
-    
+
         /* update status */
         printf ("100%%\n");
         fflush (stdout);
-    
+
         /* Done with the ratiob* arrays */
         for (i = 0; i < RATIO_NBLAT; i++)
         {
+            free (andwi[i]);
+            free (sndwi[i]);
             free (ratiob1[i]);
             free (ratiob2[i]);
             free (ratiob7[i]);
+            free (intratiob1[i]);
+            free (intratiob2[i]);
+            free (intratiob7[i]);
+            free (slpratiob1[i]);
+            free (slpratiob2[i]);
+            free (slpratiob7[i]);
         }
+        free (andwi);  andwi = NULL;
+        free (sndwi);  sndwi = NULL;
         free (ratiob1);  ratiob1 = NULL;
         free (ratiob2);  ratiob2 = NULL;
         free (ratiob7);  ratiob7 = NULL;
+        free (intratiob1);  intratiob1 = NULL;
+        free (intratiob2);  intratiob2 = NULL;
+        free (intratiob7);  intratiob7 = NULL;
+        free (slpratiob1);  slpratiob1 = NULL;
+        free (slpratiob2);  slpratiob2 = NULL;
+        free (slpratiob7);  slpratiob7 = NULL;
 
         /* Done with the aerob* arrays */
         free (aerob1);  aerob1 = NULL;
@@ -1915,18 +2360,18 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 }
             }
         }  /* end for i */
-    
+
         if (nbclear > 0)
             mclear = mclear / nbclear;
         else
             mclear = 275.0;
-    
+
         if (nbval > 0)
             mall = mall / nbval;
-    
+
         printf ("Average clear temperature %%clear %f %f %f %ld\n", mclear,
             nbclear * 100.0 / (nlines * nsamps), mall, nbval);
-    
+
         /* Determine the cloud mask */
         for (i = 0; i < nlines*nsamps; i++)
         {
@@ -1939,7 +2384,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 }
             }
         }
-    
+
         /* Set up the adjacent to something bad (snow or cloud) bit */
         printf ("Setting up the adjacent to something bit ...\n");
         for (i = 0; i < nlines; i++)
@@ -1956,14 +2401,14 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                         /* Make sure the line is valid */
                         if (k < 0 || k >= nlines)
                             continue;
-    
+
                         win_pix = k * nsamps + j-5;
                         for (l = j-5; l <= j+5; l++, win_pix++)
                         {
                             /* Make sure the sample is valid */
                             if (l < 0 || l >= nsamps)
                                 continue;
-    
+
                             if (!btest (cloud[win_pix], CLD_QA) &&
                                 !btest (cloud[win_pix], CIR_QA) &&
                                 !btest (cloud[win_pix], CLDA_QA))
@@ -1975,7 +2420,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 }  /* if btest */
             }  /* for j */
         }  /* for i */
-    
+
 #ifdef NOT_USED
         /* Compute adjustment to true North */
         /* Use scene center */
@@ -1994,7 +2439,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
         center_lat = geo.lat * RAD2DEG;
         center_lon = geo.lon * RAD2DEG;
         printf ("Scene center lat/long: %f, %f\n", center_lat, center_lon);
-    
+
         /* Move 100 pixels to the north */
         img.l -= 100;
         if (!from_space (space, &img, &geo))
@@ -2007,7 +2452,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
         lat = geo.lat * RAD2DEG;
         lon = geo.lon * RAD2DEG;
         printf ("100 lines north of scene center lat/long: %f, %f\n", lat, lon);
-    
+
         /* Use the longitude from the scene center and the latitude from the
            point 100 lines north to compute the line, sample */
         geo.lon = center_lon * DEG2RAD;
@@ -2026,7 +2471,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
         ang = atan (dx / dy) * RAD2DEG;
         printf ("Adjustment to true North: %f\n", ang);
 #endif
-    
+
         /* Compute the cloud shadow */
         printf ("Determining cloud shadow ...\n");
         facl = cosf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* lines */
@@ -2058,7 +2503,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                         /* Make sure the line and sample is valid */
                         if (k < 0 || k >= nlines || l < 0 || l >= nsamps)
                             continue;
-    
+
                         win_pix = k * nsamps + l;
                         if ((sband[SR_BAND6][win_pix] < 800) &&
                             ((sband[SR_BAND3][win_pix] -
@@ -2082,14 +2527,14 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                             }
                         }
                     }  /* for icldh */
-    
+
                     /* Set the cloud shadow bit */
                     if (mband5 < 9999)
                         cloud[mband5k*nsamps + mband5l] += 8;
                 }  /* end if btest */
             }  /* end for j */
         }  /* end for i */
-    
+
         /* Expand the cloud shadow using the residual */
         printf ("Expanding cloud shadow ...\n");
         for (i = 0; i < nlines; i++)
@@ -2106,14 +2551,14 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                         /* Make sure the line is valid */
                         if (k < 0 || k >= nlines)
                             continue;
-    
+
                         win_pix = k * nsamps + j-6;
                         for (l = j-6; l <= j+6; l++, win_pix++)
                         {
                             /* Make sure the sample is valid */
                             if (l < 0 || l >= nsamps)
                                 continue;
-    
+
                             if (btest (cloud[win_pix], CLD_QA) ||
                                 btest (cloud[win_pix], CLDS_QA))
                                 continue;
@@ -2133,7 +2578,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 }  /* end if btest */
             }  /* end for j */
         }  /* end for i */
-    
+
         /* Update the cloud shadow */
         printf ("Updating cloud shadow ...\n");
         for (i = 0; i < nlines*nsamps; i++)
@@ -2146,7 +2591,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 cloud[i] -= 16;
             }
         }  /* end for i */
-    
+
         /* Aerosol interpolation */
         printf ("Performing aerosol interpolation ...\n");
         hole = 1;
@@ -2161,21 +2606,21 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                     nbaot = 0;
                     aaot = 0.0;
                     sresi = 0.0;
-    
+
                     /* Check the window around the current pixel */
                     for (k = i; k <= i+step-1; k++)
                     {
                         /* Make sure the line is valid */
                         if (k < 0 || k >= nlines)
                             continue;
-    
+
                         win_pix = k * nsamps + j;
                         for (l = j; l <= j+step-1; l++, win_pix++)
                         {
                             /* Make sure the sample is valid */
                             if (l < 0 || l >= nsamps)
                                 continue;
-    
+
                             if ((tresi[win_pix] > 0) && (cloud[win_pix] == 0))
                             {
                                 nbaot++;
@@ -2184,26 +2629,26 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                             }
                         }
                     }
-    
+
                     /* If pixels were found */
                     if (nbaot != 0)
                     {
-                        aaot = aaot / sresi;
-    
+                        aaot /= sresi;
+
                         /* Check the window around the current pixel */
                         for (k = i; k <= i+step-1; k++)
                         {
                             /* Make sure the line is valid */
                             if (k < 0 || k >= nlines)
                                 continue;
-    
+
                             win_pix = k * nsamps + j;
                             for (l = j; l <= j+step-1; l++, win_pix++)
                             {
                                 /* Make sure the sample is valid */
                                 if (l < 0 || l >= nsamps)
                                     continue;
-    
+
                                 if ((tresi[win_pix] < 0) &&
                                     (!btest (cloud[win_pix], CIR_QA)) &&
                                     (!btest (cloud[win_pix], CLD_QA)) &&
@@ -2211,7 +2656,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                                 {
                                     taero[win_pix] = aaot;
                                     tresi[win_pix] = 1.0;
-                                    }
+                                }
                             }  /* for l */
                         }  /* for k */
                     }
@@ -2221,17 +2666,18 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                     }
                 }  /* end for j */
             }  /* end for i */
-    
+
             /* Modify the step value */
             step *= 2;
         }  /* end while */
-    
+
         /* Perform the atmospheric correction */
-        printf ("Performing atmospheric corrections for each reflectance "
-            "band ... ");
+        printf ("Performing atmospheric correction ...\n");
+        /* 0 .. DN_BAND7 is the same as 0 .. SR_BAND7 here, since the pan band
+           isn't spanned */
         for (ib = 0; ib <= DN_BAND7; ib++)
         {
-            printf (" %d ...", ib+1);
+            printf ("  Band %d\n", ib+1);
             for (i = 0; i < nlines * nsamps; i++)
             {
                 /* If this pixel is fill, then don't process. Otherwise the
@@ -2251,11 +2697,11 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                         uoz = tozi[i];
                         retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, ib,
                             pres, tpres, aot550nm, rolutt, transt, xtsstep,
-                            xtsmin, xtvstep, xtvmin, sphalbt, tsmax, tsmin,
-                            nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
-                            ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                            xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax,
+                            tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
+                            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
                             wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
-                            &ttatmg, &satm, &xrorayp);
+                            &ttatmg, &satm, &xrorayp, &next);
                         if (retval != SUCCESS)
                         {
                             sprintf (errmsg, "Performing lambertian "
@@ -2263,10 +2709,10 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                             error_handler (true, FUNC_NAME, errmsg);
                             exit (ERROR);
                         }
-    
+
                         /* Handle the aerosol computation in the cloud mask if
                            this is the cirrus band */
-                        if (ib == 0)
+                        if (ib == DN_BAND1)
                         {
                             if (roslamb < -0.005)
                             {
@@ -2278,11 +2724,11 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm,
                                     ib, pres, tpres, aot550nm, rolutt, transt,
                                     xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-                                    tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-                                    uoz, uwv, tauray, ogtransa1, ogtransb0,
-                                    ogtransb1, wvtransa, wvtransb, oztransa,
-                                    rotoa, &roslamb, &tgo, &roatm, &ttatmg,
-                                    &satm, &xrorayp);
+                                    normext, tsmax, tsmin, nbfic, nbfi, tts,
+                                    indts, ttv, uoz, uwv, tauray, ogtransa1,
+                                    ogtransb0, ogtransb1, wvtransa, wvtransb,
+                                    oztransa, rotoa, &roslamb, &tgo, &roatm,
+                                    &ttatmg, &satm, &xrorayp, &next);
                                 if (retval != SUCCESS)
                                 {
                                     sprintf (errmsg, "Performing lambertian "
@@ -2293,13 +2739,13 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                             }
                             else
                             {  /* Set up aerosol QA bits */
-                                if (raot550nm < 0.2)
+                                if (fabs (rsurf - roslamb) <= 0.015)
                                 {  /* Set the first aerosol bit */
                                     cloud[i] += 16;
                                 }
                                 else
                                 {
-                                    if (raot550nm < 0.5)
+                                    if (fabs (rsurf - roslamb) < 0.03)
                                     {  /* Set the second aerosol bit */
                                         cloud[i] += 32;
                                     }
@@ -2310,7 +2756,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                                 }
                             }  /* end if/else roslamb */
                         }  /* end if ib */
-    
+
                         /* Save the scaled surface reflectance value, but make
                            sure it falls within the defined valid range. */
                         roslamb = roslamb * MULT_FACTOR;  /* scale the value */
@@ -2324,20 +2770,19 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 }  /* end if qaband */
             }  /* end for i */
         }  /* end for ib */
-        printf ("\n");
-    
+
         /* Write the data to the output file */
         printf ("Writing surface reflectance corrected data to the output "
             "files ...\n");
-    
-        /* Open the output file for surface reflectance */
+
+        /* Open the output file */
         sr_output = open_output (&xml_metadata, input, false /*surf refl*/);
         if (sr_output == NULL)
         {   /* error message already printed */
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
+
         /* Loop through the reflectance bands and write the data */
         for (ib = 0; ib <= DN_BAND7; ib++)
         {
@@ -2350,7 +2795,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 error_handler (true, FUNC_NAME, errmsg);
                 exit (ERROR);
             }
-    
+
             /* Create the ENVI header file this band */
             if (create_envi_struct (&sr_output->metadata.band[ib],
                 &xml_metadata.global, &envi_hdr) != SUCCESS)
@@ -2359,7 +2804,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 error_handler (true, FUNC_NAME, errmsg);
                 exit (ERROR);
             }
-    
+  
             /* Write the ENVI header */
             strcpy (envi_file, sr_output->metadata.band[ib].file_name);
             cptr = strchr (envi_file, '.');
@@ -2371,7 +2816,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
                 exit (ERROR);
             }
         }
-    
+
         /* Append the surface reflectance bands (1-7) to the XML file */
         if (append_metadata (7, sr_output->metadata.band, xml_infile) !=
             SUCCESS)
@@ -2381,7 +2826,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
+
         /* Write the cloud mask band */
         printf ("  Band %d: %s\n", SR_CLOUD+1,
                 sr_output->metadata.band[SR_CLOUD].file_name);
@@ -2392,7 +2837,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
+
         /* Create the ENVI header for the cloud mask band */
         if (create_envi_struct (&sr_output->metadata.band[SR_CLOUD],
             &xml_metadata.global, &envi_hdr) != SUCCESS)
@@ -2401,7 +2846,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-     
+
         /* Write the ENVI header */
         strcpy (envi_file, sr_output->metadata.band[SR_CLOUD].file_name);
         cptr = strchr (envi_file, '.');
@@ -2412,7 +2857,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-      
+
         /* Append the cloud mask band to the XML file */
         if (append_metadata (1, &sr_output->metadata.band[SR_CLOUD],
             xml_infile) != SUCCESS)
@@ -2421,7 +2866,7 @@ printf ("DEBUG: removing TOA bands 1-7\n");
             error_handler (true, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
+
         /* Close the output surface reflectance products */
         close_output (sr_output, false /*sr products*/);
         free_output (sr_output);
@@ -2521,7 +2966,7 @@ Type = None
 
 HISTORY:
 Date        Programmer       Reason
---------    ---------------  -------------------------------------
+---------   ---------------  -------------------------------------
 7/6/2014    Gail Schmidt     Original Development
 7/31/2014   Gail Schmidt     Added flag to write the TOA and process option
                              for surface reflectance

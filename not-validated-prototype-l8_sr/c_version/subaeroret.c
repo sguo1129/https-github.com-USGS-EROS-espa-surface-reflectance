@@ -13,6 +13,7 @@ Date         Programmer       Reason
 ----------   --------------   -------------------------------------
 6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
                               by Eric Vermote, NASA GSFC
+8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
 
 NOTES:
 *****************************************************************************/
@@ -50,6 +51,7 @@ Date         Programmer       Reason
                               Only compute the residual for the NSR_BANDS as
                               well vs. doing the residual computation for 16
                               bands.
+8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
 
 NOTES:
 ******************************************************************************/
@@ -79,6 +81,8 @@ int subaeroret
     float xtvmin,                    /* I: minimum observation value */
     float ***sphalbt,                /* I: spherical albedo table
                                            [NSR_BANDS][7][22] */
+    float ***normext,                /* I: ????
+                                           [NSR_BANDS][7][22] */
     float **tsmax,                   /* I: maximum scattering angle table
                                            [20][22] */
     float **tsmin,                   /* I: minimum scattering angle table
@@ -97,7 +101,8 @@ int subaeroret
     double wvtransb[NSR_BANDS],      /* I: water vapor transmission coeff */
     double oztransa[NSR_BANDS],      /* I: ozone transmission coeff */
     float *raot,                     /* O: AOT reflectance */
-    float *residual                  /* O: model residual */
+    float *residual,                 /* O: model residual */
+    float *snext                     /* O: ????? */
 )
 {
     char FUNC_NAME[] = "subaeroret";   /* function name */
@@ -112,19 +117,20 @@ int subaeroret
     float roslamb;          /* lambertian surface reflectance */
     double ros1, ros3;      /* surface reflectance for bands */
     double raot1, raot2;    /* AOT ratios that bracket the predicted ratio */
+    float next;             /* ???? */
     float tgo;
     float roatm;            /* atmospherice reflectance */
     float ttatmg;
     float satm;             /* spherical albedo */
     float xrorayp;          /* molecular reflectance */
 	double aratio1, aratio2;
-    double pratio;           /* targeted ratio between the surface reflectance
-                               in bands */
+    double pratio;          /* targeted ratio between the surface reflectance
+                               in two bands */
     double eratio;
-    double eaot;             /* estimate of AOT */
+    double eaot;            /* estimate of AOT */
     double th1, th3;
     double peratio;
-    double pros1, pros3;     /* predicted surface reflectance */
+    double pros1, pros3;    /* predicted surface reflectance */
 
     /* Correct band 3 and band 1 with increasing AOT (using pre till ratio is
        equal to erelc[2]). pratio is the targeted ratio between the surface
@@ -165,18 +171,44 @@ int subaeroret
         iter = 0;
         while ((ros1 < th1) || (ros3 < th3)) 	
         {
-/*** GAIL -- need to verify iaot >= 1 ***/
             if (iter > 0)
-                raot550nm = (raot550nm + aot550nm[iaot-1]) * 0.5;
+            {
+                if (iaot >= 1)
+                {
+                    raot550nm = (raot550nm + aot550nm[iaot-1]) * 0.5;
+                }
+                else
+                {
+                    /* Inversion failed.  Compute the model residual with
+                       what we have and then return */
+                    *raot = raot550nm;
+                    retval = subaeroret_residual (iband1, iband3, ros1, ros3,
+                        roslamb, pratio, raot550nm, xts, xtv, xfi, pres,
+                        uoz, uwv, erelc, troatm, tpres, aot550nm, rolutt,
+                        transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+                        normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+                        tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                        wvtransb, oztransa, residual, snext);
+                    if (retval != SUCCESS)
+                    {
+                        sprintf (errmsg, "Computing the subaeroret model "
+                            "residual");
+                        error_handler (true, FUNC_NAME, errmsg);
+                        return (ERROR);
+                    }
+
+                    return (SUCCESS);
+                }
+            }
 
             /* Atmospheric correction for band 3 */
             iband = iband3;
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-                sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-                uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+                uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
                 wvtransb, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
-                &ttatmg, &satm, &xrorayp);
+                &ttatmg, &satm, &xrorayp, &next);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -190,10 +222,10 @@ int subaeroret
             iband = iband1;
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-                sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-                uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+                uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
                 wvtransb, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
-                &ttatmg, &satm, &xrorayp);
+                &ttatmg, &satm, &xrorayp, &next);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -225,9 +257,27 @@ int subaeroret
        bracket the predicted ratio are found, they are used to estimate the
        AOT (eaot) using linear interpolation. */
     if ((aratio1 > pratio) && (aratio2 > pratio))
-    {  /* early break out if the ratios are not valid */
-        *residual = 999999.0;
+    {
+        /* Early break out if the ratios are not valid */
+        if (raot1 < raot2)
+            raot550nm = raot1;
+        else
+            raot550nm = raot2;
         *raot = raot550nm;
+
+        retval = subaeroret_residual (iband1, iband3, ros1, ros3, roslamb,
+            pratio, raot550nm, xts, xtv, xfi, pres, uoz, uwv, erelc, troatm,
+            tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
+            sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+            oztransa, residual, snext);
+        if (retval != SUCCESS)
+        {
+            sprintf (errmsg, "Computing the subaeroret model residual");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
         return (SUCCESS);
     }
 
@@ -241,9 +291,9 @@ int subaeroret
     iband = iband3;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
         aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
         ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
-        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -257,9 +307,9 @@ int subaeroret
     iband = iband1;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
         aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
         ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
-        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -289,9 +339,9 @@ int subaeroret
     iband = iband3;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
         aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
         ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
-        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -305,9 +355,9 @@ int subaeroret
     iband = iband1;
     retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
         aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-        tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
+        normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv, tauray,
         ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa,
-        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+        troatm[iband], &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -336,10 +386,10 @@ int subaeroret
                 iband = iband3;
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
-                    xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
-                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
-                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+                    xtvmin, sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts,
+                    indts, ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                    ogtransb1, wvtransa, wvtransb, oztransa, troatm[iband],
+                    &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -353,10 +403,10 @@ int subaeroret
                 iband = iband1;
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
-                    xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
-                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
-                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+                    xtvmin, sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts,
+                    indts, ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                    ogtransb1, wvtransa, wvtransb, oztransa, troatm[iband],
+                    &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -389,10 +439,10 @@ int subaeroret
                 iband = iband3;
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
-                    xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
-                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
-                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+                    xtvmin, sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, 
+                    indts, ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                    ogtransb1, wvtransa, wvtransb, oztransa, troatm[iband],
+                    &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -406,10 +456,10 @@ int subaeroret
                 iband = iband1;
                 retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres,
                     tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
-                    xtvmin, sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts,
-                    ttv, uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1,
-                    wvtransa, wvtransb, oztransa, troatm[iband], &roslamb,
-                    &tgo, &roatm, &ttatmg, &satm, &xrorayp);
+                    xtvmin, sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts,
+                    indts, ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                    ogtransb1, wvtransa, wvtransb, oztransa, troatm[iband],
+                    &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
                 if (retval != SUCCESS)
                 {
                     sprintf (errmsg, "Performing lambertian atmospheric "
@@ -433,6 +483,111 @@ int subaeroret
     }  /* if raot550nm */
     *raot = raot550nm;
 
+    /* Compute the model residual */
+    retval = subaeroret_residual (iband1, iband3, ros1, ros3, roslamb,
+        pratio, raot550nm, xts, xtv, xfi, pres, uoz, uwv, erelc, troatm,
+        tpres, aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
+        sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+        tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa, wvtransb,
+        oztransa, residual, snext);
+    if (retval != SUCCESS)
+    {
+        sprintf (errmsg, "Computing the subaeroret model residual");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Successful completion */
+    return (SUCCESS);
+}
+
+
+/******************************************************************************
+MODULE:  subaeroret_residual
+
+PURPOSE:  Computes the model residual for the subaeroret function.
+
+RETURN VALUE:
+Type = int
+Value          Description
+-----          -----------
+ERROR          Error occurred reading the LUT or doing the correction
+SUCCESS        Successful completion
+
+HISTORY:
+Date         Programmer       Reason
+---------    ---------------  -------------------------------------
+8/14/2014    Gail Schmidt     Original development
+
+NOTES:
+******************************************************************************/
+int subaeroret_residual
+(
+    int iband1,                      /* I: band 1 index (0-based) */
+    int iband3,                      /* I: band 3 index (0-based) */
+    double ros1,                     /* I: surface reflectance for band 1 */
+    double ros3,                     /* I: surface reflectance for band 3 */
+    float roslamb,                   /* I: lambertian surface reflectance */
+    double pratio,                   /* I: targeted ratio between the surface
+                                           reflectance in two bands */
+    float raot550nm,                 /* I: nearest input value of AOT */
+
+    float xts,                       /* I: solar zenith angle (deg) */
+    float xtv,                       /* I: observation zenith angle (deg) */
+    float xfi,                       /* I: azimuthal difference between sun and
+                                           observation (deg) */
+    float pres,                      /* I: surface pressure */
+    float uoz,                       /* I: total column ozone */
+    float uwv,                       /* I: total column water vapor (precipital
+                                           water vapor) */
+    float erelc[NSR_BANDS],          /* I: band ratio variable */
+    float troatm[NSR_BANDS],         /* I: atmospheric reflectance table */
+    float tpres[7],                  /* I: surface pressure table */
+    float aot550nm[22],              /* I: AOT look-up table */
+    float ****rolutt,                /* I: intrinsic reflectance table
+                                           [NSR_BANDS][7][22][8000] */
+    float ****transt,                /* I: transmission table
+                                           [NSR_BANDS][7][22][22] */
+    float xtsstep,                   /* I: solar zenith step value */
+    float xtsmin,                    /* I: minimum solar zenith value */
+    float xtvstep,                   /* I: observation step value */
+    float xtvmin,                    /* I: minimum observation value */
+    float ***sphalbt,                /* I: spherical albedo table
+                                           [NSR_BANDS][7][22] */
+    float ***normext,                /* I: ????
+                                           [NSR_BANDS][7][22] */
+    float **tsmax,                   /* I: maximum scattering angle table
+                                           [20][22] */
+    float **tsmin,                   /* I: minimum scattering angle table
+                                           [20][22] */
+    float **nbfic,                   /* I: communitive number of azimuth angles
+                                           [20][22] */
+    float **nbfi,                    /* I: number of azimuth anglesi [20][22] */
+    float tts[22],                   /* I: sun angle table */
+    int32 indts[22],
+    float **ttv,                     /* I: view angle table [20][22] */
+    float tauray[NSR_BANDS],         /* I: molecular optical thickness coeff */
+    double ogtransa1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb0[NSR_BANDS],     /* I: other gases transmission coeff */
+    double ogtransb1[NSR_BANDS],     /* I: other gases transmission coeff */
+    double wvtransa[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double wvtransb[NSR_BANDS],      /* I: water vapor transmission coeff */
+    double oztransa[NSR_BANDS],      /* I: ozone transmission coeff */
+    float *residual,                 /* O: model residual */
+    float *snext                     /* O: ????? */
+)
+{
+    char FUNC_NAME[] = "subaeroret_residual";   /* function name */
+    char errmsg[STR_SIZE];  /* error message */
+    int iband;              /* looping variable for bands */
+    int retval;             /* function return value */
+    float next;             /* ???? */
+    float tgo;
+    float roatm;            /* atmospherice reflectance */
+    float ttatmg;
+    float satm;             /* spherical albedo */
+    float xrorayp;          /* molecular reflectance */
+
 /**** GAIL -- should this be DN_BAND7 vs. DN_BAND6?? */
     /* Compute the model residual */
     *residual = fabs (ros3 - ros1 * pratio);
@@ -442,10 +597,10 @@ int subaeroret
         {
             retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband, pres, tpres,
                 aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-                sphalbt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
-                uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
+                sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+                uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
                 wvtransb, oztransa, troatm[iband], &roslamb, &tgo, &roatm,
-                &ttatmg, &satm, &xrorayp);
+                &ttatmg, &satm, &xrorayp, &next);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -454,6 +609,8 @@ int subaeroret
                 return (ERROR);
             }
             *residual += fabs (roslamb - ros1 * (erelc[iband] / erelc[iband1]));
+            if (iband == iband3)
+                *snext = next;
         }
     }
 
