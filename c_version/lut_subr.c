@@ -51,7 +51,7 @@ RETURN VALUE:
 Type = int
 Value          Description
 -----          -----------
-ERROR          Error occurred ???
+ERROR          Error occurred doing the atmospheric corrections.
 SUCCESS        Successful completion
 
 HISTORY:
@@ -1878,6 +1878,1279 @@ int readluts
 
     /* Close spherical albedo file */
     fclose (fp);
+
+    /* Successful completion */
+    return (SUCCESS);
+}
+
+
+/******************************************************************************
+MODULE:  memory_allocation
+
+PURPOSE:  Allocates memory for all the various arrays within the L8 surface
+reflectance application.
+
+RETURN VALUE:
+Type = int
+Value          Description
+-----          -----------
+ERROR          Error occurred allocating memory
+SUCCESS        Successful completion
+
+HISTORY:
+Date         Programmer       Reason
+---------    ---------------  -------------------------------------
+8/25/2014    Gail Schmidt     Original development
+
+NOTES:
+  1. Memory is allocated for each of the input variables, so it is up to the
+     calling routine to free this memory.
+  2. Each array passed into this function is passed in as the address to that
+     1D, 2D, nD array.
+******************************************************************************/
+int memory_allocation
+(
+    int nlines,          /* I: number of lines in the scene */
+    int nsamps,          /* I: number of samples in the scene */
+    int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
+    int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***intratiob1, /* O: band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***intratiob2, /* O: band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***intratiob7, /* O: band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    uint16 ***wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
+    uint8 ***oz,         /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+    float *****rolutt,   /* O: intrinsic reflectance table
+                               [NSR_BANDS][7][22][8000] */
+    float *****transt,   /* O: transmission table
+                               [NSR_BANDS][7][22][22] */
+    float ****sphalbt,   /* O: spherical albedo table [NSR_BANDS][7][22] */
+    float ****normext,   /* O: aerosol extinction coefficient at the current
+                               wavelength (normalized at 550nm)
+                               [NSR_BANDS][7][22] */
+    float ***tsmax,      /* O: maximum scattering angle table [20][22] */
+    float ***tsmin,      /* O: minimum scattering angle table [20][22] */
+    float ***nbfic,      /* O: communitive number of azimuth angles [20][22] */
+    float ***nbfi,       /* O: number of azimuth angles [20][22] */
+    float ***ttv,        /* O: view angle table [20][22] */
+    uint16 **uband,      /* O: array of input image data for a current band,
+                               nlines x nsamps */
+    uint16 **qaband,     /* O: QA band for the input image, nlines x nsamps */
+    int16 **aerob1,      /* O: atmospherically corrected band 1 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob2,      /* O: atmospherically corrected band 2 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob4,      /* O: atmospherically corrected band 4 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob5,      /* O: atmospherically corrected band 5 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob7,      /* O: atmospherically corrected band 7 data
+                               (TOA refl), nlines x nsamps */
+    int16 ***sband,      /* O: output surface reflectance and brightness temp
+                               bands */
+    uint8 **cloud,       /* O: bit-packed value that represent clouds,
+                               nlines x nsamps */
+    float **twvi,        /* O: interpolated water vapor value,
+                               nlines x nsamps */
+    float **tozi,        /* O: interpolated ozone value, nlines x nsamps */
+    float **tp,          /* O: interpolated pressure value, nlines x nsamps */
+    float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
+    float **taero        /* O: aerosol values for each pixel, nlines x nsamps */
+)
+{
+    char FUNC_NAME[] = "memory_allocation"; /* function name */
+    char errmsg[STR_SIZE];   /* error message */
+    int i, j, k;             /* looping variables */
+
+    /* Allocate memory for all the climate modeling grid files */
+    *dem = calloc (DEM_NBLAT, sizeof (int16*));
+    if (*dem == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the DEM");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+    for (i = 0; i < DEM_NBLAT; i++)
+    {
+        (*dem)[i] = calloc (DEM_NBLON, sizeof (int16));
+        if ((*dem)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the DEM");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    *andwi = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*andwi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the andwi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *sndwi = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*sndwi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the sndwi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *ratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*ratiob1 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the ratiob1");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *ratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*ratiob2 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the ratiob2");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *ratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*ratiob7 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the ratiob7");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *intratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*intratiob1 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the intratiob1");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *intratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*intratiob2 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the intratiob2");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *intratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*intratiob7 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the intratiob7");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *slpratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*slpratiob1 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the slpratiob1");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *slpratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*slpratiob2 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the slpratiob2");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *slpratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    if (*slpratiob7 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the slpratiob7");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        (*andwi)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*andwi)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the andwi");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*sndwi)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*sndwi)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the sndwi");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*ratiob1)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*ratiob1)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the ratiob1");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*ratiob2)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*ratiob2)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the ratiob2");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*ratiob7)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*ratiob7)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the ratiob7");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*intratiob1)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*intratiob1)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the intratiob1");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*intratiob2)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*intratiob2)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the intratiob2");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*intratiob7)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*intratiob7)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the intratiob7");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*slpratiob1)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*slpratiob1)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the slpratiob1");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*slpratiob2)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*slpratiob2)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the slpratiob2");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*slpratiob7)[i] = calloc (RATIO_NBLON, sizeof (int16));
+        if ((*slpratiob7)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the slpratiob7");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    *wv = calloc (CMG_NBLAT, sizeof (int16*));
+    if (*wv == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the wv");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *oz = calloc (CMG_NBLAT, sizeof (uint8*));
+    if (*oz == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for the oz");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    for (i = 0; i < CMG_NBLAT; i++)
+    {
+        (*wv)[i] = calloc (CMG_NBLON, sizeof (int16));
+        if ((*wv)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the wv");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*oz)[i] = calloc (CMG_NBLON, sizeof (uint8));
+        if ((*oz)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for the oz");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* rolutt[NSR_BANDS][7][22][8000] and transt[NSR_BANDS][7][22][22] and
+       sphalbt[NSR_BANDS][7][22] and normext[NSR_BANDS][7][22] */
+    *rolutt = calloc (NSR_BANDS, sizeof (float***));
+    if (*rolutt == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for rolutt");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *transt = calloc (NSR_BANDS, sizeof (float***));
+    if (*transt == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for transt");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *sphalbt = calloc (NSR_BANDS, sizeof (float**));
+    if (*sphalbt == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for sphalbt");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *normext = calloc (NSR_BANDS, sizeof (float**));
+    if (*normext == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for normext");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    for (i = 0; i < NSR_BANDS; i++)
+    {
+        (*rolutt)[i] = calloc (7, sizeof (float**));
+        if ((*rolutt)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for rolutt");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*transt)[i] = calloc (7, sizeof (float**));
+        if ((*transt)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for transt");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*sphalbt)[i] = calloc (7, sizeof (float*));
+        if ((*sphalbt)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for sphalbt");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*normext)[i] = calloc (7, sizeof (float*));
+        if ((*normext)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for normext");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        for (j = 0; j < 7; j++)
+        {
+            (*rolutt)[i][j] = calloc (22, sizeof (float*));
+            if ((*rolutt)[i][j] == NULL)
+            {
+                sprintf (errmsg, "Error allocating memory for rolutt");
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            }
+
+            (*transt)[i][j] = calloc (22, sizeof (float*));
+            if ((*transt)[i][j] == NULL)
+            {
+                sprintf (errmsg, "Error allocating memory for transt");
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            }
+
+            (*sphalbt)[i][j] = calloc (22, sizeof (float));
+            if ((*sphalbt)[i][j] == NULL)
+            {
+                sprintf (errmsg, "Error allocating memory for sphalbt");
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            }
+
+            (*normext)[i][j] = calloc (22, sizeof (float));
+            if ((*normext)[i][j] == NULL)
+            {
+                sprintf (errmsg, "Error allocating memory for normext");
+                error_handler (true, FUNC_NAME, errmsg);
+                return (ERROR);
+            }
+
+            for (k = 0; k < 22; k++)
+            {
+                (*rolutt)[i][j][k] = calloc (8000, sizeof (float));
+                if ((*rolutt)[i][j][k] == NULL)
+                {
+                    sprintf (errmsg, "Error allocating memory for rolutt");
+                    error_handler (true, FUNC_NAME, errmsg);
+                    return (ERROR);
+                }
+
+                (*transt)[i][j][k] = calloc (22, sizeof (float));
+                if ((*transt)[i][j][k] == NULL)
+                {
+                    sprintf (errmsg, "Error allocating memory for transt");
+                    error_handler (true, FUNC_NAME, errmsg);
+                    return (ERROR);
+                }
+            }  /* for k */
+        }  /* for j */
+    }  /* for i */
+
+    /* tsmax[20][22] and float tsmin[20][22] and float nbfic[20][22] and
+       nbfi[20][22] and float ttv[20][22] */
+    *tsmax = calloc (20, sizeof (float*));
+    if (*tsmax == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tsmax");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *tsmin = calloc (20, sizeof (float*));
+    if (*tsmin == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tsmin");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *nbfic = calloc (20, sizeof (float*));
+    if (*nbfic == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for nbfic");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *nbfi = calloc (20, sizeof (float*));
+    if (*nbfi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for nbfi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *ttv = calloc (20, sizeof (float*));
+    if (*ttv == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for ttv");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    for (i = 0; i < 20; i++)
+    {
+        (*tsmax)[i] = calloc (22, sizeof (float));
+        if ((*tsmax)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for tsmax");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*tsmin)[i] = calloc (22, sizeof (float));
+        if ((*tsmin)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for tsmin");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*nbfic)[i] = calloc (22, sizeof (float));
+        if ((*nbfic)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for nbfic");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*nbfi)[i] = calloc (22, sizeof (float));
+        if ((*nbfi)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for nbfi");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+
+        (*ttv)[i] = calloc (22, sizeof (float));
+        if ((*ttv)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for ttv");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Allocate space for band data */
+    *uband = calloc (nlines*nsamps, sizeof (uint16));
+    if (*uband == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for uband");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *qaband = calloc (nlines*nsamps, sizeof (uint16));
+    if (*qaband == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for qaband");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob1 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob1 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob1");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob2 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob2 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob2");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob4 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob4 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob4");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob5 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob5 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob5");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob7 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob7 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob7");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *twvi = calloc (nlines*nsamps, sizeof (float));
+    if (*twvi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for twvi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *tozi = calloc (nlines*nsamps, sizeof (float));
+    if (*tozi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tozi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *tp = calloc (nlines*nsamps, sizeof (float));
+    if (*tp == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tp");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *tresi = calloc (nlines*nsamps, sizeof (float));
+    if (*tresi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tresi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *taero = calloc (nlines*nsamps, sizeof (float));
+    if (*taero == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for taero");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *cloud = calloc (nlines*nsamps, sizeof (uint8));
+    if (*cloud == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for cloud");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Given that the QA band is its own separate array of uint16s, we need
+       one less band for the signed image data */
+    *sband = calloc (NBAND_TTL_OUT-1, sizeof (int16*));
+    if (*sband == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for sband");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+    for (i = 0; i < NBAND_TTL_OUT-1; i++)
+    {
+        (*sband)[i] = calloc (nlines*nsamps, sizeof (int16));
+        if ((*sband)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for sband");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Successful completion */
+    return (SUCCESS);
+}
+
+
+/******************************************************************************
+MODULE:  read_auxiliary_files
+
+PURPOSE:  Reads the auxiliary files required for this application.
+
+RETURN VALUE:
+Type = int
+Value          Description
+-----          -----------
+ERROR          Error occurred reading one of the auxiliary files
+SUCCESS        Successful completion
+
+HISTORY:
+Date         Programmer       Reason
+---------    ---------------  -------------------------------------
+8/25/2014    Gail Schmidt     Original development
+
+NOTES:
+  1. It is assumed that memory has already been allocated for the input data
+     arrays.
+******************************************************************************/
+int read_auxiliary_files
+(
+    char *anglehdf,     /* I: angle HDF filename */
+    char *intrefnm,     /* I: intrinsic reflectance filename */
+    char *transmnm,     /* I: transmission filename */
+    char *spheranm,     /* I: spherical albedo filename */
+    char *cmgdemnm,     /* I: climate modeling grid DEM filename */
+    char *rationm,      /* I: ratio averages filename */
+    char *auxnm,        /* I: auxiliary filename for ozone and water vapor */
+    int16 **dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
+    int16 **andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob1, /* O: band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob2, /* O: band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob7, /* O: band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    uint16 **wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
+    uint8 **oz          /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+)
+{
+    char FUNC_NAME[] = "read_auxiliary_files"; /* function name */
+    char errmsg[STR_SIZE];   /* error message */
+    char sds_name[STR_SIZE]; /* name of the SDS being read */
+    int i, j;            /* looping variables */
+    int status;          /* return status of the HDF function */
+    int start[5];        /* starting point to read SDS data; handles up to
+                            4D dataset */
+    int edges[5];        /* number of values to read in SDS data; handles up to
+                            4D dataset */
+    int sd_id;           /* file ID for the HDF file */
+    int sds_id;          /* ID for the current SDS */
+    int sds_index;       /* index for the current SDS */
+
+    /* Read the DEM */
+    sd_id = SDstart (cmgdemnm, DFACC_RDONLY);
+    if (sd_id < 0)
+    {
+        sprintf (errmsg, "Unable to open %s for reading as SDS", cmgdemnm);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name */
+    strcpy (sds_name, "averaged elevation");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the DEM file %s", sds_name,
+            cmgdemnm);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < DEM_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = DEM_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, dem[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Close the DEM file */
+    status = SDend (sd_id);
+    if (status != 0)
+    {
+        sprintf (errmsg, "Closing DEM file.");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the RATIO file */
+    sd_id = SDstart (rationm, DFACC_RDONLY);
+    if (sd_id < 0)
+    {
+        sprintf (errmsg, "Unable to open %s for reading as SDS", rationm);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 6) */
+    strcpy (sds_name, "average ndvi");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, andwi[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 14) */
+    strcpy (sds_name, "standard ndvi");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, sndwi[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 21) */
+    strcpy (sds_name, "slope ratiob9");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, slpratiob1[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 22) */
+    strcpy (sds_name, "inter ratiob9");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, intratiob1[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 15) */
+    strcpy (sds_name, "slope ratiob3");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, slpratiob2[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 16) */
+    strcpy (sds_name, "inter ratiob3");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, intratiob2[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 27) */
+    strcpy (sds_name, "slope ratiob7");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, slpratiob7[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 28) */
+    strcpy (sds_name, "inter ratiob7");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, intratiob7[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Close the RATIO file */
+    status = SDend (sd_id);
+    if (status != 0)
+    {
+        sprintf (errmsg, "Closing RATIO file.");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Compute the band ratios based on the averaged NDWI */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        for (j = 0; j < RATIO_NBLON; j++)
+        {
+            ratiob1[i][j] = (int16) (andwi[i][j] * slpratiob1[i][j] * 0.001 +
+                intratiob1[i][j]);
+            ratiob2[i][j] = (int16) (andwi[i][j] * slpratiob2[i][j] * 0.001 +
+                intratiob2[i][j]);
+            ratiob7[i][j] = (int16) (andwi[i][j] * slpratiob7[i][j] * 0.001 +
+                intratiob7[i][j]);
+        }
+    }
+
+    /* Read ozone and water vapor from the user-specified auxiliary file */
+    sd_id = SDstart (auxnm, DFACC_RDONLY);
+    if (sd_id < 0)
+    {
+        sprintf (errmsg, "Unable to open %s for reading as SDS", auxnm);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name */
+    strcpy (sds_name, "Coarse Resolution Ozone");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the AUX file %s", sds_name,
+            auxnm);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < CMG_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = CMG_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, oz[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name */
+    strcpy (sds_name, "Coarse Resolution Water Vapor");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the AUX file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < CMG_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = CMG_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, wv[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Close the AUX file */
+    status = SDend (sd_id);
+    if (status != 0)
+    {
+        sprintf (errmsg, "Closing AUX file.");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
 
     /* Successful completion */
     return (SUCCESS);
