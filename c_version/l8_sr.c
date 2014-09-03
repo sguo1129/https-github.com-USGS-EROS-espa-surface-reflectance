@@ -415,14 +415,14 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    /* Get the path for the auxiliary products from the ANC_PATH environment
+    /* Get the path for the auxiliary products from the L8_AUX_DIR environment
        variable.  If it isn't defined, then assume the products are in the
        local directory. */
-    aux_path = getenv ("ANC_PATH");
+    aux_path = getenv ("L8_AUX_DIR");
     if (aux_path == NULL)
     {
         aux_path = ".";
-        sprintf (errmsg, "ANC_PATH environment variable isn't defined. It is "
+        sprintf (errmsg, "L8_AUX_DIR environment variable isn't defined. It is "
             "assumed the auxiliary products will be available from the local "
             "directory.");
         error_handler (false, FUNC_NAME, errmsg);
@@ -437,12 +437,12 @@ int main (int argc, char *argv[])
         aux_path);
     sprintf (cmgdemnm, "%s/CMGDEM.hdf", aux_path);
     sprintf (rationm, "%s/ratiomapndwiexp.hdf", aux_path);
-    sprintf (auxnm, "%s/LANDSATANC/%s", aux_path, aux_infile);
+    sprintf (auxnm, "%s/LADS/%s", aux_path, aux_infile);
 
     if (stat (anglehdf, &statbuf) == -1)
     {
         sprintf (errmsg, "Could not find anglehdf data file: %s\n  Check "
-            "ANC_PATH environment variable.", anglehdf);
+            "L8_AUX_DIR environment variable.", anglehdf);
         error_handler (false, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -450,7 +450,7 @@ int main (int argc, char *argv[])
     if (stat (intrefnm, &statbuf) == -1)
     {
         sprintf (errmsg, "Could not find intrefnm data file: %s\n  Check "
-            "ANC_PATH environment variable.", intrefnm);
+            "L8_AUX_DIR environment variable.", intrefnm);
         error_handler (false, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -458,7 +458,7 @@ int main (int argc, char *argv[])
     if (stat (transmnm, &statbuf) == -1)
     {
         sprintf (errmsg, "Could not find transmnm data file: %s\n  Check "
-            "ANC_PATH environment variable.", transmnm);
+            "L8_AUX_DIR environment variable.", transmnm);
         error_handler (false, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -466,7 +466,7 @@ int main (int argc, char *argv[])
     if (stat (spheranm, &statbuf) == -1)
     {
         sprintf (errmsg, "Could not find spheranm data file: %s\n  Check "
-            "ANC_PATH environment variable.", spheranm);
+            "L8_AUX_DIR environment variable.", spheranm);
         error_handler (false, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -474,7 +474,7 @@ int main (int argc, char *argv[])
     if (stat (cmgdemnm, &statbuf) == -1)
     {
         sprintf (errmsg, "Could not find cmgdemnm data file: %s\n  Check "
-            "ANC_PATH environment variable.", cmgdemnm);
+            "L8_AUX_DIR environment variable.", cmgdemnm);
         error_handler (false, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -482,7 +482,7 @@ int main (int argc, char *argv[])
     if (stat (rationm, &statbuf) == -1)
     {
         sprintf (errmsg, "Could not find rationm data file: %s\n  Check "
-            "ANC_PATH environment variable.", rationm);
+            "L8_AUX_DIR environment variable.", rationm);
         error_handler (false, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -490,7 +490,7 @@ int main (int argc, char *argv[])
     if (stat (auxnm, &statbuf) == -1)
     {
         sprintf (errmsg, "Could not find auxnm data file: %s\n  Check "
-            "ANC_PATH environment variable.", auxnm);
+            "L8_AUX_DIR environment variable.", auxnm);
         error_handler (false, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -1894,7 +1894,7 @@ void usage ()
     printf ("    -xml: name of the input XML file to be processed\n");
     printf ("    -aux: name of the input auxiliary file containing ozone "
             "and water vapor for the scene date.  The file is expected to "
-            "live in the $ANC_PATH/LANDSATANC directory or in the local "
+            "live in the $L8_AUX_DIR/LADS directory or in the local "
             "directory.\n");
 
     printf ("\nwhere the following parameters are optional:\n");
