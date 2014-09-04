@@ -79,6 +79,7 @@ int main (int argc, char *argv[])
     char *aux_infile = NULL; /* input auxiliary filename for water vapor
                                 and ozone*/
     char *cptr = NULL;       /* pointer to the file extension */
+    char aux_year[5];        /* string to contain the year of auxiliary file */
 
     int retval;              /* return status */
     int ib;                  /* looping variable for input bands */
@@ -428,6 +429,11 @@ int main (int argc, char *argv[])
         error_handler (false, FUNC_NAME, errmsg);
     }
 
+    /* Grab the year of the auxiliary input file to be used for the correct
+       location of the auxiliary file in the auxliary directory */
+    strncpy (aux_year, &aux_infile[5], 4);
+    aux_year[4] = '\0';
+
     /* Set up the look-up table files and make sure they exist */
     sprintf (anglehdf, "%s/LDCMLUT/ANGLE_NEW.hdf", aux_path);
     sprintf (intrefnm, "%s/LDCMLUT/RES_LUT_V3.0-URBANCLEAN-V2.0.hdf", aux_path);
@@ -437,7 +443,7 @@ int main (int argc, char *argv[])
         aux_path);
     sprintf (cmgdemnm, "%s/CMGDEM.hdf", aux_path);
     sprintf (rationm, "%s/ratiomapndwiexp.hdf", aux_path);
-    sprintf (auxnm, "%s/LADS/%s", aux_path, aux_infile);
+    sprintf (auxnm, "%s/LADS/%s/%s", aux_path, aux_year, aux_infile);
 
     if (stat (anglehdf, &statbuf) == -1)
     {
