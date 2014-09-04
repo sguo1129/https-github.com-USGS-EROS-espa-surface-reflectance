@@ -595,7 +595,7 @@ void make_outfile_name
     char outfile[STR_SIZE]  /* O: output filename for the auxiliary products */
 )
 {
-    sprintf (outfile, "%sL8ANC.%s.hdf_fused", SRC_DIRECTORY, yearday_str);
+    sprintf (outfile, "%s/L8ANC%s.hdf_fused", output_dir, yearday_str);
     return;
 }
 

@@ -190,11 +190,8 @@ class SurfaceReflectance():
             write_toa_opt_str = "--write_toa "
 
         cmdstr = "%sl8_sr --xml=%s --aux=%s %s%s--verbose" % \
-            ("/media/sf_Software_SandBox/L8_SR/trunk/c_version/", \
-             xml_infile, aux_file, process_sr_opt_str, \
+            (bin_dir, xml_infile, aux_file, process_sr_opt_str, \
              write_toa_opt_str)
-##            (bin_dir, xml_infile, aux_file, process_sr_opt_str, \
-##             write_toa_opt_str)
         print 'DEBUG: l8_sr command: %s' % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         logIt (output, log_handler)

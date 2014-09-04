@@ -219,7 +219,7 @@ def getLadsData (auxdir, year, today):
         # if today is set and the data for the current year and doy exists
         # already, then we are are up-to-date for the current year
         for myfile in os.listdir(outputDir):
-            if fnmatch.fnmatch (myfile, 'L8ANC.A' + datestr + '.hdf_fused'):
+            if fnmatch.fnmatch (myfile, 'L8ANCA' + datestr + '.hdf_fused'):
                 break
 
         # download the daily LADS files for the specified year and DOY to
@@ -233,8 +233,10 @@ def getLadsData (auxdir, year, today):
         # get the Terra CMA file for the current DOY (should only be one)
         fileList = []    # create empty list to store files matching date
         for myfile in os.listdir(dloaddir):
-            if fnmatch.fnmatch (myfile, 'MOD09CMA*' + datestr + '.hdf'):
+            print "myfile: " + myfile
+            if fnmatch.fnmatch (myfile, 'MOD09CMA.A' + datestr + '*.hdf'):
                 fileList.append (myfile)
+                print "MOD09 found"
 
         # make sure files were found or print a warning
         nfiles = len(fileList)
@@ -256,7 +258,7 @@ def getLadsData (auxdir, year, today):
         # get the Terra CMG file for the current DOY (should only be one)
         fileList = []    # create empty list to store files matching date
         for myfile in os.listdir(dloaddir):
-            if fnmatch.fnmatch (myfile, 'MOD09CMG*' + datestr + ".hdf"):
+            if fnmatch.fnmatch (myfile, 'MOD09CMG.A' + datestr + '*.hdf'):
                 fileList.append(myfile)
 
         # make sure files were found or print a warning
@@ -279,7 +281,7 @@ def getLadsData (auxdir, year, today):
         # get the Aqua CMA file for the current DOY (should only be one)
         fileList = []    # create empty list to store files matching date
         for myfile in os.listdir(dloaddir):
-            if fnmatch.fnmatch (myfile, 'MYD09CMA*' + datestr + '.hdf'):
+            if fnmatch.fnmatch (myfile, 'MYD09CMA.A' + datestr + '*.hdf'):
                 fileList.append(myfile)
 
         # make sure files were found or print a warning
@@ -302,7 +304,7 @@ def getLadsData (auxdir, year, today):
         # get the Aqua CMG file for the current DOY (should only be one)
         fileList = []    # create empty list to store files matching date
         for myfile in os.listdir(dloaddir):
-            if fnmatch.fnmatch (myfile, 'MYD09CMG*' + datestr + ".hdf"):
+            if fnmatch.fnmatch (myfile, 'MYD09CMG.A' + datestr + '*.hdf'):
                 fileList.append(myfile)
 
         # make sure files were found or print a warning
@@ -324,15 +326,15 @@ def getLadsData (auxdir, year, today):
 
         # generate the full path for the input and output file to be
         # processed. if the output file already exists, then remove it.
-        cmdstr = 'combine_l8_aux_path --terra_cmg %s --terra_cma %s ' \
-            '--aqua_cmg %s --aqua_cma %s --output_dir' % (terra_cmg, \
+        cmdstr = 'combine_l8_aux_data --terra_cmg %s --terra_cma %s ' \
+            '--aqua_cmg %s --aqua_cma %s --output_dir %s' % (terra_cmg, \
             terra_cma, aqua_cmg, aqua_cma, outputDir)
         print "Executing %s\n" % cmdstr
         (status, output) = commands.getstatusoutput (cmdstr)
         print output
         exit_code = status >> 8
         if exit_code != 0:
-            print "Error running combine_l8_aux_path for year %d, DOY %d." % \
+            print "Error running combine_l8_aux_data for year %d, DOY %d." % \
                 (year, doy)
             return ERROR
     # end for doy
