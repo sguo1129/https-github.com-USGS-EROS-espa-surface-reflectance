@@ -948,7 +948,11 @@ void parse_lgid
             if (n_token == 0)
                 strcpy (product_type, mystr);
             else if (n_token == 1)
-                strcpy (yearday, mystr);
+            {
+                /* Skip the first character in the year/day token */
+                strncpy (yearday, &mystr[1], 7);
+                yearday[7] = '\0';
+            }
 
             /* Increment the token count and reset the location of the
                next character in the current string */
