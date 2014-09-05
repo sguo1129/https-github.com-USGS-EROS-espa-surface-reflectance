@@ -216,11 +216,19 @@ def getLadsData (auxdir, year, today):
         # get the year + DOY string
         datestr = "%d%03d" % (year, doy)
 
-        # if today is set and the data for the current year and doy exists
-        # already, then we are are up-to-date for the current year
+        # if the data for the current year and doy exists already, then we are
+        # going to skip that file if processing for the --today.  For
+        # --quarterly, we will completely reprocess.
+        skip_date = False
         for myfile in os.listdir(outputDir):
-            if fnmatch.fnmatch (myfile, 'L8ANCA' + datestr + '.hdf_fused'):
+            if fnmatch.fnmatch (myfile, 'L8ANC' + datestr + '.hdf_fused') \
+                and today:
+                print 'L8ANC' + datestr + '.hdf_fused already exists. Skip.'
+                skip_date = True
                 break
+
+        if skip_date:
+            continue
 
         # download the daily LADS files for the specified year and DOY to
         # /tmp/lads
@@ -366,7 +374,8 @@ def getLadsData (auxdir, year, today):
 #    --start_year / --end_year.
 # 2. --today will process the data for the most recent year (including the
 #    previous year if the DOY is within the first month of the year).  Thus
-#    this option is used for nightly updates.
+#    this option is used for nightly updates.  If the hdf fused data products
+#    already exist for a particular year/doy, they will not be reprocessed.
 # 3. --quarterly will process the data for today all the way back to the
 #    earliest year so that any updated LADS files are picked up and
 #    processed.  Thus this option is used for quarterly updates.
