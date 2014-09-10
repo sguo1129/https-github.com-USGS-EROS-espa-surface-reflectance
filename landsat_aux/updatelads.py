@@ -13,6 +13,8 @@ import re
 import time
 import subprocess
 from optparse import OptionParser
+import xmlrpclib
+import logging
 
 # Global static variables
 ERROR = 1
@@ -33,11 +35,14 @@ class DatasourceResolver:
     TERRA_CMG = '/allData/24/MOD09CMG/'
     AQUA_CMA = '/allData/22/MYD09CMA/'
     AQUA_CMG = '/allData/22/MYD09CMG/'
-    USER = 'landtest'
-    PASSWORD = 'STlads'
+#    USER = 'landtest'
+#    PASSWORD = 'STlads'
 
     def __init__(self):
-        pass
+        # get the LADS username and password
+        server = xmlrpclib.ServerProxy(os.environ.get('ESPA_XMLRPC'))
+        self.user = server.get_configuration('ladsftp.username')
+        self.password = server.get_configuration('ladsftp.password')
 
     #######################################################################
     # Description: buildURL builds the URLs for the Terra and Aqua CMG and
@@ -60,25 +65,25 @@ class DatasourceResolver:
 
         # append TERRA CMA data
         url = 'ftp://%s:%s@%s%s%d/%03d/MOD09CMA*%d%03d*.hdf' % \
-            (self.USER, self.PASSWORD, self.SERVER_URL, self.TERRA_CMA, year,
+            (self.user, self.password, self.SERVER_URL, self.TERRA_CMA, year,
              doy, year, doy)
         urlList.append(url)
 
         # append TERRA CMG data
         url = 'ftp://%s:%s@%s%s%d/%03d/MOD09CMG*%d%03d*.hdf' % \
-            (self.USER, self.PASSWORD, self.SERVER_URL, self.TERRA_CMG, year,
+            (self.user, self.password, self.SERVER_URL, self.TERRA_CMG, year,
              doy, year, doy)
         urlList.append(url)
 
         # append AQUA CMA data
         url = 'ftp://%s:%s@%s%s%d/%03d/MYD09CMA*%d%03d*.hdf' % \
-            (self.USER, self.PASSWORD, self.SERVER_URL, self.AQUA_CMA, year,
+            (self.user, self.password, self.SERVER_URL, self.AQUA_CMA, year,
              doy, year, doy)
         urlList.append(url)
 
         # append AQUA CMG data
         url = 'ftp://%s:%s@%s%s%d/%03d/MYD09CMG*%d%03d*.hdf' % \
-            (self.USER, self.PASSWORD, self.SERVER_URL, self.AQUA_CMG, year,
+            (self.user, self.password, self.SERVER_URL, self.AQUA_CMG, year,
              doy, year, doy)
         urlList.append(url)
 
@@ -137,15 +142,20 @@ def isLeapYear (year):
 #   function is pretty short and sweet, so we'll stick with wget.
 ############################################################################
 def downloadLads (year, doy, destination):
+    # get the logger
+    logger = logging.getLogger(__name__)
+
     # make sure the download directory exists (and is cleaned up) or create
     # it recursively
     if not os.path.exists(destination):
-        print "%s does not exist... creating" % destination
+        msg = "%s does not exist... creating" % destination
+        logger.info(msg)
         os.makedirs(destination, 0777)
     else:
         # directory already exists and possibly has files in it.  any old
         # files need to be cleaned up
-        print "Cleaning download directory: %s" % destination
+        msg = "Cleaning download directory: %s" % destination
+        logger.info(msg)
         for myfile in os.listdir(destination):
             name = os.path.join(destination, myfile)
             if not os.path.isdir(name):
@@ -155,17 +165,20 @@ def downloadLads (year, doy, destination):
     # locations for the Aqua and Terra CMG/CMA files.
     urlList = DatasourceResolver().buildURLs(year, doy)
     if urlList == None:
-        print "LADS URLs could not be resolved for year %d and DOY %d." % \
+        msg = "LADS URLs could not be resolved for year %d and DOY %d." % \
             (year, doy)
+        logger.error(msg)
         return ERROR
 
     # download the data for the current year from the list of URLs.
     # if there is a problem with the connection, then retry up to 5 times.
     # Note: if you don't like the wget output, --quiet can be used to minimize
     # the output info.
-    print "Downloading data for year %d to: %s" % (year, destination)
+    msg = "Downloading data for year %d to: %s" % (year, destination)
+    logger.info(msg)
     for url in urlList:
-        print "Retrieving %s to %s" % (url, destination)
+        msg = "Retrieving %s to %s" % (url, destination)
+        logger.info(msg)
         cmd = 'wget --tries=5 %s' % url
         subprocess.call(cmd, shell=True, cwd=destination)
 
@@ -191,11 +204,15 @@ def downloadLads (year, doy, destination):
 # Notes:
 ############################################################################
 def getLadsData (auxdir, year, today):
+    # get the logger
+    logger = logging.getLogger(__name__)
+
     # determine the directory for the output auxiliary data files to be
     # processed.  create the directory if it doesn't exist.
     outputDir = "%s/LADS/%d" % (auxdir, year)
     if not os.path.exists(outputDir):
-        print "%s does not exist... creating" % outputDir
+        msg = "%s does not exist... creating" % outputDir
+        logger.info(msg)
         os.makedirs(outputDir, 0777)
 
     # if the specified year is the current year, only process up through
@@ -223,7 +240,8 @@ def getLadsData (auxdir, year, today):
         for myfile in os.listdir(outputDir):
             if fnmatch.fnmatch (myfile, 'L8ANC' + datestr + '.hdf_fused') \
                 and today:
-                print 'L8ANC' + datestr + '.hdf_fused already exists. Skip.'
+                msg = 'L8ANC' + datestr + '.hdf_fused already exists. Skip.'
+                logger.info(msg)
                 skip_date = True
                 break
 
@@ -241,16 +259,15 @@ def getLadsData (auxdir, year, today):
         # get the Terra CMA file for the current DOY (should only be one)
         fileList = []    # create empty list to store files matching date
         for myfile in os.listdir(dloaddir):
-            print "myfile: " + myfile
             if fnmatch.fnmatch (myfile, 'MOD09CMA.A' + datestr + '*.hdf'):
                 fileList.append (myfile)
-                print "MOD09 found"
 
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            print "WARNING: No LADS MOD09CMA data available for doy %d year " \
-                "%d. " % (doy, year)
+            msg = "No LADS MOD09CMA data available for doy %d year %d." % \
+                (doy, year)
+            logger.warning(msg)
             continue
         else:
             # if only one file was found which matched our date, then that's
@@ -259,8 +276,9 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 terra_cma = dloaddir + '/' + fileList[0]
             else:
-                print "Multiple LADS MOD09CMA files found for doy %d year " \
+                msg = "Multiple LADS MOD09CMA files found for doy %d year " \
                     "%d." % (doy, year)
+                logger.error(msg)
                 return ERROR
 
         # get the Terra CMG file for the current DOY (should only be one)
@@ -272,8 +290,9 @@ def getLadsData (auxdir, year, today):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            print "WARNING: No LADS MOD09CMG data available for doy %d year " \
-                "%d. " % (doy, year)
+            msg = "No LADS MOD09CMG data available for doy %d year %d." % \
+                (doy, year)
+            logger.warning(msg)
             continue
         else:
             # if only one file was found which matched our date, then that's
@@ -282,8 +301,9 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 terra_cmg = dloaddir + '/' + fileList[0]
             else:
-                print "Multiple LADS MOD09CMG files found for doy %d year " \
+                msg = "Multiple LADS MOD09CMG files found for doy %d year " \
                     "%d." % (doy, year)
+                logger.error(msg)
                 return ERROR
 
         # get the Aqua CMA file for the current DOY (should only be one)
@@ -295,8 +315,9 @@ def getLadsData (auxdir, year, today):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            print "WARNING: No LADS MYD09CMA data available for doy %d year " \
-                "%d. " % (doy, year)
+            msg = "No LADS MYD09CMA data available for doy %d year %d." % \
+                (doy, year)
+            logger.warning(msg)
             continue
         else:
             # if only one file was found which matched our date, then that's
@@ -305,8 +326,9 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 aqua_cma = dloaddir + '/' + fileList[0]
             else:
-                print "Multiple LADS MYD09CMA files found for doy %d year " \
+                msg = "Multiple LADS MYD09CMA files found for doy %d year " \
                     "%d." % (doy, year)
+                logger.error(msg)
                 return ERROR
 
         # get the Aqua CMG file for the current DOY (should only be one)
@@ -318,8 +340,9 @@ def getLadsData (auxdir, year, today):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            print "WARNING: No LADS MYD09CMG data available for doy %d year " \
-                "%d. " % (doy, year)
+            msg = "No LADS MYD09CMG data available for doy %d year %d." % \
+                (doy, year)
+            logger.warning(msg)
             continue
         else:
             # if only one file was found which matched our date, then that's
@@ -328,8 +351,9 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 aqua_cmg = dloaddir + '/' + fileList[0]
             else:
-                print "Multiple LADS MYD09CMG files found for doy %d year " \
+                msg = "Multiple LADS MYD09CMG files found for doy %d year " \
                     "%d." % (doy, year)
+                logger.error(msg)
                 return ERROR
 
         # generate the full path for the input and output file to be
@@ -337,18 +361,22 @@ def getLadsData (auxdir, year, today):
         cmdstr = 'combine_l8_aux_data --terra_cmg %s --terra_cma %s ' \
             '--aqua_cmg %s --aqua_cma %s --output_dir %s' % (terra_cmg, \
             terra_cma, aqua_cmg, aqua_cma, outputDir)
-        print "Executing %s\n" % cmdstr
+        msg = "Executing %s\n" % cmdstr
+        logger.info(msg)
+
         (status, output) = commands.getstatusoutput (cmdstr)
-        print output
+        logger.info(output)
         exit_code = status >> 8
         if exit_code != 0:
-            print "Error running combine_l8_aux_data for year %d, DOY %d." % \
+            msg = "Error running combine_l8_aux_data for year %d, DOY %d." % \
                 (year, doy)
+            logger.error(msg)
             return ERROR
     # end for doy
 
     # remove the files downloaded to the temporary directory
-    print "Removing downloaded files"
+    msg = "Removing downloaded files"
+    logger.info(msg)
     for myfile in os.listdir(dloaddir):
         name = os.path.join(dloaddir, myfile)
         os.remove(name)
@@ -384,6 +412,9 @@ def getLadsData (auxdir, year, today):
 #    date.
 ############################################################################
 def main ():
+    # get the logger
+    logger = logging.getLogger(__name__)
+
     # get the command line arguments
     parser = OptionParser()
     parser.add_option ("-s", "--start_year", type="int", dest="syear",
@@ -407,44 +438,59 @@ def main ():
     # check the arguments
     if (today == False) and (quarterly == False) and \
        (syear == 0 or eyear == 0):
-        print "Invalid command line argument combination.  Type --help "  \
+        msg = "Invalid command line argument combination.  Type --help "  \
             "for more information"
+        logger.error(msg)
         return ERROR
 
     # determine the auxiliary directory to store the data
     auxdir = os.environ.get('L8_AUX_DIR')
     if auxdir == None:
-        print "L8_AUX_DIR environment variable not set... exiting"
+        msg = "L8_AUX_DIR environment variable not set... exiting"
+        logger.error(msg)
         return ERROR
 
     # if processing today then process the current year.  if the current
     # DOY is within the first month, then process the previous year as well
     # to make sure we have all the recently available data processed.
     if today:
-        print "Processing LADS data up to the most recent year and DOY."
+        msg = "Processing LADS data up to the most recent year and DOY."
+        logger.info(msg)
         now = datetime.datetime.now()
         day_of_year = now.timetuple().tm_yday
         eyear = now.year
         syear = START_YEAR
 
     elif quarterly:
-        print "Processing LADS data back to %d" % START_YEAR
+        msg = "Processing LADS data back to %d" % START_YEAR
+        logger.info(msg)
         now = datetime.datetime.now()
         day_of_year = now.timetuple().tm_yday
         eyear = now.year
         syear = START_YEAR
 
-    print 'Processing LADS data for %d - %d' % (syear, eyear)
+    msg = 'Processing LADS data for %d - %d' % (syear, eyear)
+    logger.info(msg)
     for yr in range(eyear, syear-1, -1):
-        print 'Processing year: %d' % yr
+        msg = 'Processing year: %d' % yr
+        logger.info(msg)
         status = getLadsData(auxdir, yr, today)
         if status == ERROR:
-            print "Problems occurred while processing LADS data for year " \
+            msg = "Problems occurred while processing LADS data for year " \
                 "%d." % yr
+            logger.error(msg)
             return ERROR
 
-    print 'LADS processing complete.'
+    msg = 'LADS processing complete.'
+    logger.info(msg)
     return SUCCESS
 
 if __name__ == "__main__":
+    # setup the default logger format and level. log to STDOUT.
+    logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
+                                ' %(levelname)-8s'
+                                ' %(filename)s:%(lineno)d:'
+                                '%(funcName)s -- %(message)s'),
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.INFO)
     sys.exit (main())
