@@ -713,7 +713,7 @@ int parse_sds_info
     int localdims[2];       /* stored version of the dimensions */
     int sds_dims[2];        /* SDS dimension sizes */
     int data_type;          /* value representing the data type of this SDS */
-    int n_val;              /* number of values read in the string */
+    int n_val = 0;          /* number of values read in the string */
     char sds_name[STR_SIZE]; /* name of the SDS at the specified index */
     char lgid[STR_SIZE];    /* local granule ID */
     char product_type[20];  /* MODIS product type */
