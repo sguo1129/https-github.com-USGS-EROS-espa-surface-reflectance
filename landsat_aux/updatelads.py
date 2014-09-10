@@ -35,8 +35,6 @@ class DatasourceResolver:
     TERRA_CMG = '/allData/24/MOD09CMG/'
     AQUA_CMA = '/allData/22/MYD09CMA/'
     AQUA_CMG = '/allData/22/MYD09CMG/'
-#    USER = 'landtest'
-#    PASSWORD = 'STlads'
 
     def __init__(self):
         # get the LADS username and password
