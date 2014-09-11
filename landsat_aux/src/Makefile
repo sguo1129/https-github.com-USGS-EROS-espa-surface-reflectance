@@ -5,7 +5,8 @@
 # Set up compile options
 CC = gcc
 RM = rm -f
-EXTRA = -Wall -static -O2
+//EXTRA = -Wall -O2
+EXTRA = -Wall -g
 
 # Define the include files
 INC = combine_l8_aux_data.h
@@ -22,7 +23,6 @@ OBJ = $(SRC:.c=.o)
 EXLIB = -L$(ESPALIB) -l_espa_common \
   -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
   -L$(XML2LIB) -lxml2 -lz
-#  -L$(XML2LIB) -lxml2 -L$(HDFEOS_GCTPLIB) -lGctp -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
@@ -38,8 +38,7 @@ combine_l8_aux_data: $(OBJ) $(INC)
 install:
 	install -d $(BIN)
 	install -m 755 $(EXE) $(BIN)
-	install -m 755 *.py $(BIN)
-#	install -m 755 ../scripts/*.py $(BIN)
+	install -m 755 ../scripts/*.py $(BIN)
 
 clean:
 	$(RM) *.o $(EXE)

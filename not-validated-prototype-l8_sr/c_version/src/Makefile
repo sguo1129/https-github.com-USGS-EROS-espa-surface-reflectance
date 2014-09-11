@@ -43,8 +43,7 @@ l8_sr: $(OBJ) $(INC)
 install:
 	install -d $(BIN)
 	install -m 755 $(EXE) $(BIN)
-	install -m 755 *.py $(BIN)
-#	install -m 755 ../scripts/*.py $(BIN)
+	install -m 755 ../scripts/*.py $(BIN)
 
 clean:
 	$(RM) *.o $(EXE)
