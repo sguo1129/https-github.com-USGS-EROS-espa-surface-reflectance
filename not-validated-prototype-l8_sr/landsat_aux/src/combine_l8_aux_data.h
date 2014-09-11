@@ -56,9 +56,9 @@ int parse_sds_info
 
 void parse_lgid
 (
-    char lgid[],          /* I: local granule ID */
-    char product_type[],  /* O: MODIS product type */
-    char yearday[]        /* O: year/day string */
+    char lgid[],            /* I: local granule ID */
+    char product_type[],    /* O: MODIS product type */
+    char yearday[]          /* O: year/day string */
 );
 
 int metareader

@@ -1,4 +1,4 @@
-/*****************************************************************************
+/******************************************************************************
 FILE: combine_l8_aux_data.c
   
 PURPOSE: Contains functions for reading the daily, global Aqua and Terra CMG
@@ -21,7 +21,7 @@ Unknown      Jim Ray          Original development by Jim Ray, Sigma Space Corp.
 NOTES:
   1. MODIS CMG files are daily global surface reflectance products.
   2. MODIS CMA files are daily global aerosol optical thickness products.
-*****************************************************************************/
+******************************************************************************/
 #include "combine_l8_aux_data.h"
 
 /* Program will look for these SDSs in the CMG/CMA inputs */
