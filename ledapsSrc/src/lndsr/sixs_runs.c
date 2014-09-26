@@ -122,7 +122,8 @@ int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
 			fprintf(fd,"+\n");
 			fclose(fd);
 	
-			sprintf(cmd,"sh %s",sixs_cmd_filename);
+            /* Modified 9/26/2014 to run bash shell vs. sh */
+			sprintf(cmd,"bash %s",sixs_cmd_filename);
 			if (system(cmd)) {
 				fprintf(stderr,"ERROR: Can't run 6S \n");
 				exit(-1);
@@ -438,7 +439,8 @@ int create_6S_tables_water(sixs_tables_t *sixs_tables) {
 			fprintf(fd,"+\n");
 			fclose(fd);
 	
-			sprintf(cmd,"sh %s",sixs_cmd_filename);
+            /* Modified 9/26/2014 to run bash shell vs. sh */
+			sprintf(cmd,"bash %s",sixs_cmd_filename);
 			if (system(cmd)) {
 				fprintf(stderr,"ERROR: Can't run 6S \n");
 				exit(-1);
@@ -705,8 +707,11 @@ int compute_atmos_params_6S(sixs_atmos_params_t *sixs_atmos_params) {
 	fprintf(fd,"+\n");
 	fclose(fd);
 	
-	sprintf(cmd,"sh %s",sixs_cmd_filename);
-	system(cmd);
+	sprintf(cmd,"bash %s",sixs_cmd_filename);
+	if (system(cmd)) {
+		fprintf(stderr,"ERROR: Can't run 6S \n");
+		exit(-1);
+	}
 	
 	if ((fd=fopen(sixs_out_filename,"r"))==NULL) {
 		fprintf(stderr,"ERROR: reading temporary file %s\n",sixs_out_filename);

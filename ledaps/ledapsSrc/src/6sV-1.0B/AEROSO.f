@@ -21,6 +21,8 @@ c - to vary the number of quadratures
       real xmud,ext,ome,gasym,phase,qhase,uhase
       real coef,sigm,pi
       integer i,j,k,l,j1,j2,iaer,icp,ipol
+      integer open_status
+      character cwd*500
       character FILE*80
 
       common /sixs_aer/ ext(20),ome(20),gasym(20),phase(20),qhase(20),
@@ -41,7 +43,14 @@ c - to vary the number of quadratures
 c      if(iaer.eq.0) return
  
       if (iaer.eq.12) then
-        open(10,file=FILE)
+        open(10, file=FILE, iostat=open_status)
+        if (open_status /= 0) then
+          write(*,*) 'AEROSO.f: Could not open ', FILE, ' for reading.'
+          call getcwd(cwd)
+          write(*,*) 'AEROSO.f: Current working directory: ', trim(cwd)
+          stop 'AEROSO.f: 6S processing error'
+        endif
+
 	read (10,*) nbmu
         read(10,*)
         do l=1,20
@@ -255,7 +264,13 @@ c     mixing parameters calculation
     5 continue
 
       if (iaer.ge.8.and.iaer.le.11) then
-        open(10,file=FILE)
+        open(10, file=FILE, iostat=open_status)
+        if (open_status /= 0) then
+          write(*,*) 'AEROSO.f: Could not open ', FILE, ' for reading.'
+          call getcwd(cwd)
+          write(*,*) 'AEROSO.f: Current working directory: ', trim(cwd)
+          stop 'AEROSO.f: 6S processing error'
+        endif
 	write(10,*) nbmu
         write(10,'(3x,A5,1x,5(1x,A10,1x),1x,A10)')'Wlgth','Nor_Ext_Co',
      s  'Nor_Sca_Co','Sg_Sca_Alb','Asymm_Para','Extinct_Co','Scatter_Co'

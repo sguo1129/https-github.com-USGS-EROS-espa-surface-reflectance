@@ -246,6 +246,8 @@ c variables used in the BRDF coupling correction process
 c variables related to surface polarization
         integer irop
 	real ropq,ropu,pveg,wspd,azw,razw
+      integer open_status
+      character cwd*500
 
 
 c***********************************************************************
@@ -3072,7 +3074,14 @@ C SIMPLE LUT in azimuth
 C LUT FOR Look up table data        
       if (ilut.eq.1) then
       its=acos(xmus)*180.0/pi
-      open(10,file='rotoa_bs',ACCESS='APPEND')
+      open(10, file='rotoa_bs', ACCESS='APPEND', iostat=open_status)
+      if (open_status /= 0) then
+        write(*,*) 'main.f: Could not open rotoa_bs for reading.'
+        call getcwd(cwd)
+        write(*,*) 'main.f: Current working directory: ', trim(cwd)
+        stop 'main.f: 6S processing error'
+      endif
+
       write(10,2222) "AERO-LUT Lambda min,max ",wlinf,wlsup
  2222 Format(A28,3(F10.7,1X))      
       write(10,2222) "Tau-Lambda,Tau550 asol  ",sodaer,taer55,asol
@@ -3142,7 +3151,14 @@ C Case a LUT output is desired
 C Case for an aps LUT
       if (ilut.eq.3) then
       its=acos(xmus)*180.0/pi
-      open(10,file='rotoa_aps_bs',ACCESS='APPEND')
+      open(10, file='rotoa_aps_bs', ACCESS='APPEND', iostat=open_status)
+      if (open_status /= 0) then
+        write(*,*) 'main.f: Could not open rotoa_aps_bs for reading.'
+        call getcwd(cwd)
+        write(*,*) 'main.f: Current working directory: ', trim(cwd)
+        stop 'main.f: 6S processing error'
+      endif
+
       write(10,2222) "AERO-LUT Lambda min,max ",wlinf,wlsup
       write(10,2222) "Tau-Lambda,Tau550 asol  ",sodaer,taer55,asol
       aerod=0
