@@ -170,6 +170,10 @@ class Ledaps():
     #
     # Inputs:
     #   xmlfile - name of the Landsat XML file to be processed
+    #   process_sr - specifies whether the surface reflectance processing,
+    #       should be completed.  True or False.  Default is True, otherwise
+    #       the processing will halt after the TOA reflectance products are
+    #       complete.
     #   logfile - name of the logfile for logging information; if None then
     #       the output will be written to stdout
     #   usebin - this specifies if the LEDAPS exes reside in the $BIN
@@ -186,7 +190,8 @@ class Ledaps():
     #      xmlfile directory is not writable, then this script exits with
     #      an error.
     #######################################################################
-    def runLedaps(self, xmlfile=None, logfile=None, usebin=None):
+    def runLedaps(self, xmlfile=None, process_sr="True", logfile=None,
+                  usebin=None):
         # if no parameters were passed then get the info from the
         # command line
         if xmlfile is None:
@@ -196,6 +201,13 @@ class Ledaps():
                               type="string", dest="xmlfile",
                               help="name of Landsat XML file",
                               metavar="FILE")
+            parser.add_option("-s", "--process_sr", type="string",
+                              dest="process_sr",
+                              help=("process the surface reflectance products;"
+                                    " True or False (default is True) "
+                                    " If False, then processing will halt"
+                                    " after the TOA reflectance products are"
+                                    " complete."))
             parser.add_option("--usebin",
                               dest="usebin", default=False,
                               action="store_true",
@@ -214,6 +226,9 @@ class Ledaps():
             if xmlfile is None:
                 parser.error("missing xmlfile command-line argument")
                 return ERROR
+            process_sr = options.process_sr  # process SR or not
+            if process_sr is None:
+                process_sr = "True"  # If not provided, default to True
 
         # open the log file if it exists; use line buffering for the output
         log_handler = None
@@ -292,27 +307,28 @@ class Ledaps():
             os.chdir(mydir)
             return ERROR
 
-        cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, xml)
-#        print 'DEBUG: lndsr command: %s' % cmdstr
-        (status, output) = commands.getstatusoutput(cmdstr)
-        logIt(output, log_handler)
-        exit_code = status >> 8
-        if exit_code != 0:
-            msg = 'Error running lndsr.  Processing will terminate.'
-            logIt(msg, log_handler)
-            os.chdir(mydir)
-            return ERROR
+        if process_sr == "True":
+            cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, xml)
+#            print 'DEBUG: lndsr command: %s' % cmdstr
+            (status, output) = commands.getstatusoutput(cmdstr)
+            logIt(output, log_handler)
+            exit_code = status >> 8
+            if exit_code != 0:
+                msg = 'Error running lndsr.  Processing will terminate.'
+                logIt(msg, log_handler)
+                os.chdir(mydir)
+                return ERROR
 
-        cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, xml)
-#        print 'DEBUG: lndsrbm command: %s' % cmdstr
-        (status, output) = commands.getstatusoutput(cmdstr)
-        logIt(output, log_handler)
-        exit_code = status >> 8
-        if exit_code != 0:
-            msg = 'Error running lndsrbm.  Processing will terminate.'
-            logIt(msg, log_handler)
-            os.chdir(mydir)
-            return ERROR
+            cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, xml)
+#            print 'DEBUG: lndsrbm command: %s' % cmdstr
+            (status, output) = commands.getstatusoutput(cmdstr)
+            logIt(output, log_handler)
+            exit_code = status >> 8
+            if exit_code != 0:
+                msg = 'Error running lndsrbm.  Processing will terminate.'
+                logIt(msg, log_handler)
+                os.chdir(mydir)
+                return ERROR
 
         # successful completion.  return to the original directory.
         os.chdir(mydir)
