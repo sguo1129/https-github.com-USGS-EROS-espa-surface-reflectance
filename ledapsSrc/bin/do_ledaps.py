@@ -9,6 +9,7 @@ from optparse import OptionParser
 ERROR = 1
 SUCCESS = 0
 
+
 ############################################################################
 # Description: isLeapYear will determine if the specified year is a leap
 # year.
@@ -22,7 +23,7 @@ SUCCESS = 0
 #
 # Notes:
 ############################################################################
-def isLeapYear (year):
+def isLeapYear(year):
     if (year % 4) == 0:
         if (year % 100) == 0:
             if (year % 400) == 0:
@@ -47,11 +48,11 @@ def isLeapYear (year):
 #
 # Notes:
 ############################################################################
-def logIt (msg, log_handler):
-    if log_handler == None:
+def logIt(msg, log_handler):
+    if log_handler is None:
         print msg
     else:
-        log_handler.write (msg + '\n')
+        log_handler.write(msg + '\n')
 
 
 #############################################################################
@@ -71,6 +72,8 @@ def logIt (msg, log_handler):
 #   Updated on 3/7/2014 by Gail Schmidt, USGS/EROS
 #   Modified the run_ledaps script to work with the input XML file as
 #       part of the switch to utilize the ESPA internal raw binary file
+#   Updated on 10/09/2014 by Ron Dilley, USGS/EROS
+#   Modified to be pep8 compliant.
 #
 # Usage: do_ledaps.py --help prints the help message
 ############################################################################
@@ -101,10 +104,10 @@ class Ledaps():
     #     ANC_PATH points to the base LEDAPS ancillary directory which
     #         contains the REANALYSIS and EP/TOMS subdirectories.
     #######################################################################
-    def findAncillary (self, year, doy=-99):
+    def findAncillary(self, year, doy=-99):
         # determine the ancillary directory to store the data
         ancdir = os.environ.get('ANC_PATH')
-        if ancdir == None:
+        if ancdir is None:
             print "ANC_PATH environment variable not set... exiting"
             return None
 
@@ -121,14 +124,14 @@ class Ledaps():
             if year == now.year:
                 ndays = now.timetuple().tm_yday
             else:
-                if isLeapYear (year) == True:
-                    ndays = 366   
+                if isLeapYear(year) is True:
+                    ndays = 366
                 else:
                     ndays = 365
 
         # loop through the number of days and determine if the required
         # ancillary data exists
-        for currdoy in range (1, ndays+1):
+        for currdoy in range(1, ndays+1):
             # if the DOY was specified then use that value otherwise use
             # the current DOY based on the number of days to be processed
             if doy != -99:
@@ -143,10 +146,12 @@ class Ledaps():
                 dayofyear = str(currdoy)
 
             # NCEP REANALYSIS file
-            ncepFile = "%s/REANALYSIS/RE_%d/REANALYSIS_%d%s.hdf" % (ancdir, year, year, dayofyear)
+            ncepFile = ("%s/REANALYSIS/RE_%d/REANALYSIS_%d%s.hdf"
+                        % (ancdir, year, year, dayofyear))
 
             # EP/TOMS file
-            tomsFile = "%s/EP_TOMS/ozone_%d/TOMS_%d%s.hdf" % (ancdir, year, year, dayofyear)
+            tomsFile = ("%s/EP_TOMS/ozone_%d/TOMS_%d%s.hdf"
+                        % (ancdir, year, year, dayofyear))
             if os.path.isfile(ncepFile) and os.path.isfile(tomsFile):
                 doyList.append(True)
             else:
@@ -154,7 +159,6 @@ class Ledaps():
 
         # return the True/False list
         return doyList
-
 
     ########################################################################
     # Description: runLedaps will use the parameters passed for xmlfile,
@@ -182,37 +186,42 @@ class Ledaps():
     #      xmlfile directory is not writable, then this script exits with
     #      an error.
     #######################################################################
-    def runLedaps (self, xmlfile=None, logfile=None, usebin=None):
+    def runLedaps(self, xmlfile=None, logfile=None, usebin=None):
         # if no parameters were passed then get the info from the
         # command line
-        if xmlfile == None:
+        if xmlfile is None:
             # get the command line argument for the XML file
             parser = OptionParser()
-            parser.add_option ("-f", "--xml", type="string",
-                dest="xmlfile",
-                help="name of Landsat XML file", metavar="FILE")
-            parser.add_option ("--usebin", dest="usebin", default=False,
-                action="store_true",
-                help="use BIN environment variable as the location of LEDAPS apps")
-            parser.add_option ("-l", "--logfile", type="string", dest="logfile",
-                help="name of optional log file", metavar="FILE")
+            parser.add_option("-f", "--xml",
+                              type="string", dest="xmlfile",
+                              help="name of Landsat XML file",
+                              metavar="FILE")
+            parser.add_option("--usebin",
+                              dest="usebin", default=False,
+                              action="store_true",
+                              help=("use BIN environment variable as the"
+                                    " location of LEDAPS apps"))
+            parser.add_option("-l", "--logfile",
+                              type="string", dest="logfile",
+                              help="name of optional log file",
+                              metavar="FILE")
             (options, args) = parser.parse_args()
-    
+
             # validate the command-line options
-            usebin = options.usebin          # should $BIN directory be used
-            logfile = options.logfile        # name of the log file
-            xmlfile = options.xmlfile        # name of the XML file
-            if xmlfile == None:
-                parser.error ("missing xmlfile command-line argument");
+            usebin = options.usebin    # should $BIN directory be used
+            logfile = options.logfile  # name of the log file
+            xmlfile = options.xmlfile  # name of the XML file
+            if xmlfile is None:
+                parser.error("missing xmlfile command-line argument")
                 return ERROR
-        
+
         # open the log file if it exists; use line buffering for the output
         log_handler = None
-        if logfile != None:
-            log_handler = open (logfile, 'w', buffering=1)
+        if logfile is not None:
+            log_handler = open(logfile, 'w', buffering=1)
         msg = 'LEDAPS processing of Landsat XML file: %s' % xmlfile
-        logIt (msg, log_handler)
-        
+        logIt(msg, log_handler)
+
         # should we expect the lnd* applications to be in the PATH or in the
         # BIN directory?
         if usebin:
@@ -220,26 +229,27 @@ class Ledaps():
             bin_dir = os.environ.get('BIN')
             bin_dir = bin_dir + '/'
             msg = 'BIN environment variable: %s' % bin_dir
-            logIt (msg, log_handler)
+            logIt(msg, log_handler)
         else:
             # don't use a path to the lnd* applications
             bin_dir = ""
             msg = 'LEDAPS executables expected to be in the PATH'
-            logIt (msg, log_handler)
-        
+            logIt(msg, log_handler)
+
         # make sure the XML file exists
         if not os.path.isfile(xmlfile):
-            msg = "Error: XML file does not exist or is not accessible: " + xmlfile
-            logIt (msg, log_handler)
+            msg = ("Error: XML file does not exist or is not accessible: %s"
+                   % xmlfile)
+            logIt(msg, log_handler)
             return ERROR
 
         # parse the XML filename, strip off the .xml
         # use the base XML filename and not the full path.
-        base_xmlfile = os.path.basename (xmlfile)
+        base_xmlfile = os.path.basename(xmlfile)
         xml = re.sub('\.xml$', '', base_xmlfile)
         msg = 'Processing XML basefile: %s' % xml
-        logIt (msg, log_handler)
-        
+        logIt(msg, log_handler)
+
         # get the path of the XML file and change directory to that location
         # for running this script.  save the current working directory for
         # return to upon error or when processing is complete.  Note: use
@@ -247,70 +257,72 @@ class Ledaps():
         # and doesn't really include a file path (i.e. the current working
         # directory).
         mydir = os.getcwd()
-        xmldir = os.path.dirname (os.path.abspath (xmlfile))
+        xmldir = os.path.dirname(os.path.abspath(xmlfile))
         if not os.access(xmldir, os.W_OK):
-            msg = 'Path of XML file is not writable: %s.  LEDAPS needs write access to the XML directory.' % xmldir
-            logIt (msg, log_handler)
+            msg = ('Path of XML file is not writable: %s.'
+                   '  LEDAPS needs write access to the XML directory.'
+                   % xmldir)
+            logIt(msg, log_handler)
             return ERROR
         msg = 'Changing directories for LEDAPS processing: %s' % xmldir
-        logIt (msg, log_handler)
-        os.chdir (xmldir)
+        logIt(msg, log_handler)
+        os.chdir(xmldir)
 
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
         cmdstr = "%slndpm %s" % (bin_dir, base_xmlfile)
 #        print 'DEBUG: lndpm command: %s' % cmdstr
-        (status, output) = commands.getstatusoutput (cmdstr)
-        logIt (output, log_handler)
+        (status, output) = commands.getstatusoutput(cmdstr)
+        logIt(output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndpm.  Processing will terminate.'
-            logIt (msg, log_handler)
-            os.chdir (mydir)
+            logIt(msg, log_handler)
+            os.chdir(mydir)
             return ERROR
-        
+
         cmdstr = "%slndcal lndcal.%s.txt" % (bin_dir, xml)
 #        print 'DEBUG: lndcal command: %s' % cmdstr
-        (status, output) = commands.getstatusoutput (cmdstr)
-        logIt (output, log_handler)
+        (status, output) = commands.getstatusoutput(cmdstr)
+        logIt(output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndcal.  Processing will terminate.'
-            logIt (msg, log_handler)
-            os.chdir (mydir)
+            logIt(msg, log_handler)
+            os.chdir(mydir)
             return ERROR
-        
+
         cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, xml)
 #        print 'DEBUG: lndsr command: %s' % cmdstr
-        (status, output) = commands.getstatusoutput (cmdstr)
-        logIt (output, log_handler)
+        (status, output) = commands.getstatusoutput(cmdstr)
+        logIt(output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndsr.  Processing will terminate.'
-            logIt (msg, log_handler)
-            os.chdir (mydir)
+            logIt(msg, log_handler)
+            os.chdir(mydir)
             return ERROR
-        
+
         cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, xml)
 #        print 'DEBUG: lndsrbm command: %s' % cmdstr
-        (status, output) = commands.getstatusoutput (cmdstr)
-        logIt (output, log_handler)
+        (status, output) = commands.getstatusoutput(cmdstr)
+        logIt(output, log_handler)
         exit_code = status >> 8
         if exit_code != 0:
             msg = 'Error running lndsrbm.  Processing will terminate.'
-            logIt (msg, log_handler)
-            os.chdir (mydir)
+            logIt(msg, log_handler)
+            os.chdir(mydir)
             return ERROR
-        
+
         # successful completion.  return to the original directory.
-        os.chdir (mydir)
+        os.chdir(mydir)
         msg = 'Completion of LEDAPS.'
-        logIt (msg, log_handler)
-        if logfile != None:
+        logIt(msg, log_handler)
+        if logfile is not None:
             log_handler.close()
         return SUCCESS
 
-######end of Ledaps class######
+# ##### end of Ledaps class #####
 
 if __name__ == "__main__":
-    sys.exit (Ledaps().runLedaps())
+    sys.exit(Ledaps().runLedaps())
