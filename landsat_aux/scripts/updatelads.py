@@ -224,6 +224,9 @@ def getLadsData (auxdir, year, today):
         else:
             day_of_year = 365
 
+    # set the download directory in /tmp/lads
+    dloaddir = "/tmp/lads/%d" % year
+
     # loop through each day in the year and process the LADS data.  process
     # in the reverse order so that if we are handling data for "today", then
     # we can stop as soon as we find the current DOY has been processed.
@@ -246,9 +249,7 @@ def getLadsData (auxdir, year, today):
         if skip_date:
             continue
 
-        # download the daily LADS files for the specified year and DOY to
-        # /tmp/lads
-        dloaddir = "/tmp/lads/%d" % year
+        # download the daily LADS files for the specified year and DOY
         status = downloadLads (year, doy, dloaddir)
         if status == ERROR:
             # warning message already printed
@@ -373,11 +374,12 @@ def getLadsData (auxdir, year, today):
     # end for doy
 
     # remove the files downloaded to the temporary directory
-    msg = "Removing downloaded files"
+    msg = "Removing downloaded files from %s" % dloaddir
     logger.info(msg)
-    for myfile in os.listdir(dloaddir):
-        name = os.path.join(dloaddir, myfile)
-        os.remove(name)
+    if os.path.exists(dloaddir):
+        for myfile in os.listdir(dloaddir):
+            name = os.path.join(dloaddir, myfile)
+            os.remove(name)
 
     return SUCCESS
 
