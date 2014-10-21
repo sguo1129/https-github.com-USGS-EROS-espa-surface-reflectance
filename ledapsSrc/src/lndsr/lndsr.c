@@ -62,6 +62,7 @@
 #define OZ_INDEX	0
 #define DEBUG_FLAG	0
 /* #define DEBUG_AR	0 */
+/* #define DEBUG_CLD 1 */
 
 /* DEM Definition: U_char format, 1 count = 100 meters */
 /* 0 = 0 meters */
@@ -331,8 +332,7 @@ int main (int argc, const char **argv) {
 	}
 #endif
 #ifdef DEBUG_CLD
-   strcpy(tmpfilename,param->output_file_name);
-	strcat(tmpfilename,".DEBUG_CLD");
+   strcpy(tmpfilename,"tempfile.DEBUG_CLD");
    fd_cld_diags=fopen(tmpfilename,"w");
    if (fd_cld_diags != NULL) {
 		fprintf(fd_cld_diags,"cell_row cell_col nb_samples airtemp_2m avg_t6_clear std_t6_clear avg_b7_clear std_b7_clear\n"); 
@@ -931,10 +931,6 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 				sumsq_value=cld_diags.std_t6_clear[il][is];
 				cld_diags.avg_t6_clear[il][is] = sum_value/cld_diags.nb_t6_clear[il][is];
 				if (cld_diags.nb_t6_clear[il][is] > 1) {
-/**
-					cld_diags.std_t6_clear[il][is] = (sumsq_value+cld_diags.nb_t6_clear[il][is]*cld_diags.avg_t6_clear[il][is]*cld_diags.avg_t6_clear[il][is]-2.*cld_diags.avg_t6_clear[il][is]*sum_value)/(cld_diags.nb_t6_clear[il][is]-1);
-					cld_diags.std_t6_clear[il][is]=sqrt(fabs(cld_diags.std_t6_clear[il][is]));
-**/
 					cld_diags.std_t6_clear[il][is] = (sumsq_value-(sum_value*sum_value)/cld_diags.nb_t6_clear[il][is])/(cld_diags.nb_t6_clear[il][is]-1);
 					cld_diags.std_t6_clear[il][is]=sqrt(fabs(cld_diags.std_t6_clear[il][is]));
 
@@ -1039,11 +1035,6 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
 ***/
 	if (il_ar > 0)
 		if (fwrite(ptr_rot_cld[0][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) EXIT_ERROR("writing dark target to temporary file", "main");
-/*	if (fwrite(ptr_rot_cld[1][0],lut->ar_region_size.l*input->size.s,1,fdtmp)!=1) EXIT_ERROR("writing dark target to temporary file", "main");
-*/
-/**
-	if (fwrite(line_ar[il_ar][0],lut->ar_size.s*2,1,fdtmp2)!=1) EXIT_ERROR("writing aot1 to temporary file", "main");
-**/
 	ptr_tmp_cld=ptr_rot_cld[0];
 	ptr_rot_cld[0]=ptr_rot_cld[1];
 	ptr_rot_cld[1]=ptr_rot_cld[2];
@@ -1270,7 +1261,7 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   }  /* for il */
   printf("\n");
   fclose(fdtmp);
-printf ("DEBUG: removing tmpfilename = %s\n", tmpfilename);
+  printf ("DEBUG: removing tmpfilename = %s\n", tmpfilename);
   unlink(tmpfilename); 
 	
   /* Print the statistics, skip bands that don't exist */

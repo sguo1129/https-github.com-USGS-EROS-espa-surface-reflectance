@@ -186,7 +186,7 @@ bit 7 = snow
 				temp_b6_clear=tmpflt_arr[0];
 				avg_b7_clear=tmpflt_arr[1];
 				atemp_ancillary=tmpflt_arr[2];
-				if (temp_b6_clear < 0.) {
+			    if (temp_b6_clear < 0.) {
 					temp_thshld1=atemp_ancillary-20.;
 					temp_thshld2=atemp_ancillary-20.;
 				} else {
@@ -204,7 +204,7 @@ bit 7 = snow
 					ddv_line[is] |= 0x20; /* set cloud bit */
 				} else if ((line_in[4][is]<2000)&&(t6 < temp_snow_thshld)) { /* snow */
 					ddv_line[is] |= 0x80;
-				} else { /* asuume cloudy */
+				} else { /* assume cloudy */
 					ddv_line[is] &= 0xbf; /* reset shadow bit */
 					ddv_line[is] &= 0xfb; /* reset adjacent cloud bit */
 					ddv_line[is] |= 0x20; /* set cloud bit */
@@ -250,22 +250,14 @@ bit 7 = snow
 			temp_b6_clear=tmpflt_arr[0];
 			avg_b7_clear=tmpflt_arr[1];
 			atemp_ancillary=tmpflt_arr[2];
+
 			if (temp_b6_clear < 0.) {
 				temp_thshld1=atemp_ancillary-20.;
 				temp_thshld2=atemp_ancillary-20.;
 			} else {
-/**
-				temp_thshld1=temp_b6_clear-5.;
-				temp_thshld2=temp_b6_clear-5.;
-**/
 				if (cld_diags->std_t6_clear[cld_row][cld_col] > 0.) {
 					temp_thshld1=temp_b6_clear-(cld_diags->std_t6_clear[cld_row][cld_col]+4.);
 					temp_thshld2=temp_b6_clear-(cld_diags->std_t6_clear[cld_row][cld_col]);
-/*EV add the two following lines on 5-21/-07 and commented them on 5-22-07*/	
-/*				
-					temp_thshld1=temp_b6_clear+(cld_diags->std_t6_clear[cld_row][cld_col]+4.);
-					temp_thshld2=temp_b6_clear+(cld_diags->std_t6_clear[cld_row][cld_col]);
-					*/
 				} else {
 					temp_thshld1=temp_b6_clear-4.;
 					temp_thshld2=temp_b6_clear-2.;
@@ -759,8 +751,13 @@ int interpol_clddiags_1pixel(cld_diags_t *cld_diags, int img_line, int img_sampl
 
 	inter_value[0] => t6_clear
 	inter_value[1] => b7_clear
-	inter_value[3] => airtemp_2m
+	inter_value[2] => airtemp_2m
 
+    Updated by Gail Schmidt, USGS EROS, on 10/20/2014
+    We want the airtemp_2m to be calculated regardless of whether the band6
+        temp is available (i.e. there were clear pixels to compute the average
+        thermal temp).  Many of the users of these interpolated values use the
+        airtemp_2m as the default if the band6 clear temps are not valid.
  */
 
 {
@@ -770,9 +767,9 @@ typedef struct {
 } Img_coord_int_t;
 	
   Img_coord_int_t p[4];
-  int i, n;
+  int i, n, n_anc;
   float dl, ds, w;
-  float sum[10], sum_w;
+  float sum[10], sum_w, sum_anc_w;
 
   int cell_half_height,cell_half_width;
 
@@ -808,13 +805,13 @@ typedef struct {
   p[3].s = p[1].s;
 
   n = 0;
+  n_anc = 0;
   sum_w = 0.0;
+  sum_anc_w = 0.0;
   for (i=0;i<3;i++)
   	sum[i]=0.;
   for (i = 0; i < 4; i++) {
     if (p[i].l != -1  &&  p[i].s != -1) {
-		if (cld_diags->avg_t6_clear[p[i].l][p[i].s] == -9999.)
-			 continue;
 
       dl = fabs(img_line - cell_half_height) - (p[i].l * cld_diags->cellheight);
       dl = fabs(dl) / cld_diags->cellheight; 
@@ -822,18 +819,28 @@ typedef struct {
       ds = fabs(ds) / cld_diags->cellwidth; 
       w = (1.0 - dl) * (1.0 - ds);
 
-      n++;
-      sum_w += w;
-      sum[0] += (cld_diags->avg_t6_clear[p[i].l][p[i].s] * w);
-      sum[1] += (cld_diags->avg_b7_clear[p[i].l][p[i].s] * w);
-      sum[2] += (cld_diags->airtemp_2m[p[i].l][p[i].s] * w);
+      if (cld_diags->avg_t6_clear[p[i].l][p[i].s] != -9999.) {
+        n++;
+        sum_w += w;
+        sum[0] += (cld_diags->avg_t6_clear[p[i].l][p[i].s] * w);
+        sum[1] += (cld_diags->avg_b7_clear[p[i].l][p[i].s] * w);
+      }
+
+      if (cld_diags->airtemp_2m[p[i].l][p[i].s] != -9999) {
+        n_anc++;
+        sum_anc_w += w;
+        sum[2] += (cld_diags->airtemp_2m[p[i].l][p[i].s] * w);
+      }
     }
   }
 
-  if ((n > 0)&&(sum_w>0)) {
-  	for (i=0;i<3;i++) {
-    inter_value[i] = sum[i] / sum_w;
-   }
+  if ((n > 0) && (sum_w>0)) {
+    inter_value[0] = sum[0] / sum_w;
+    inter_value[1] = sum[1] / sum_w;
+  }
+
+  if ((n_anc > 0) && (sum_anc_w>0)) {
+    inter_value[2] = sum[2] / sum_anc_w;
   }
 
   return 0;
