@@ -41,6 +41,7 @@ Date         Programmer       Reason
 8/1/2014     Gail Schmidt     Modified to support either TOA or SR bands, and
                               to be flexible with the setup of the TOA
                               reflectance bands
+10/22/2014   Gail Schmidt     Band 10 and 11 need to be of product type toa_bt
 
 NOTES:
 ******************************************************************************/
@@ -158,7 +159,10 @@ Output_t *open_output
         if (toa)
         {
             strcat (bmeta[ib].short_name, "TOA");
-            strcpy (bmeta[ib].product, "toa_refl");
+            if ((ib == SR_BAND10) || (ib == SR_BAND11))
+                strcpy (bmeta[ib].product, "toa_bt");
+            else
+                strcpy (bmeta[ib].product, "toa_refl");
         }
         else
         {
