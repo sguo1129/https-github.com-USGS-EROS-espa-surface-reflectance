@@ -102,9 +102,20 @@ def getNcepData (ancdir, year):
     # use the downloaded netCDF files to create the daily HDF files needed
     # for LEDAPS processing
     outputDest = ancdir + '/REANALYSIS/RE_' + str(year)
-    executeNcep(pressureFileSource, outputDest, year, True)
-    executeNcep(waterFileSource, outputDest, year, False)
-    executeNcep(airFileSource, outputDest, year, False)
+    status = executeNcep(pressureFileSource, outputDest, year, True)
+    if status == ERROR:
+        print "could not process pressureFile: %s" % pressureFileSource
+        return ERROR
+
+    status = executeNcep(waterFileSource, outputDest, year, False)
+    if status == ERROR:
+        print "could not process waterFile: %s" % waterFileSource
+        return ERROR
+
+    status = executeNcep(airFileSource, outputDest, year, False)
+    if status == ERROR:
+        print "could not process airFile: %s" % airFileSource
+        return ERROR
 
     # cleanup the downloaded annual netCDF files
     os.remove(airFileSource)
@@ -129,6 +140,8 @@ def getNcepData (ancdir, year):
 #   clean - should the HDF file be cleaned if it exists?
 #
 # Returns: nothing
+#     ERROR - error occurred while reading one of the NCEP input files
+#     SUCCESS - processing completed successfully
 #
 # Notes:
 #   If ncep is not successful processing a particular DOY, then a warning
@@ -172,10 +185,16 @@ def executeNcep (fullinputpath, outputdir, year, clean):
         (status, output) = commands.getstatusoutput (cmdstr)
         print output
         exit_code = status >> 8
-        if exit_code != 0:
+        if exit_code == 157:  # return value of -99 (2s complement of 157)
+            print "ERROR: Input file for year %d, DOY %d is not readable.  Stop processing since this same file is used for all days in the current year." % (year, doy)
+            return ERROR
+        elif exit_code != 0:
             print "WARNING: error running ncep for year %d, DOY %d.  processing will continue ..." % (year, doy)
             if os.path.isfile(fulloutputpath):
                 os.remove(fulloutputpath)
+
+    # successful processing
+    return SUCCESS
 
 
 ############################################################################
