@@ -83,7 +83,7 @@ typedef struct {
   int32 sds_file_id;       /* SDS file id */
   Myhdf_sds_t sds[NBAND_PRWV_MAX];
                            /* SDS data structures */
-  int16 *buf[NBAND_PRWV_MAX];
+  float *buf[NBAND_PRWV_MAX];
                            /* Input data buffer (one line of data) */
   float scale_factor[NBAND_PRWV_MAX];
   float add_offset[NBAND_PRWV_MAX];
@@ -107,11 +107,11 @@ typedef struct {
 /* Prototypes */
 
 InputPrwv_t *OpenInputPrwv(char *file_name);
-bool GetInputPrwv(InputPrwv_t *this, int iband, int *read_buffer);
+bool GetInputPrwv(InputPrwv_t *this, int iband, float *read_buffer);
 bool CloseInputPrwv(InputPrwv_t *this);
 bool FreeInputPrwv(InputPrwv_t *this);
 bool GetInputPrwvMeta(InputPrwv_t *this);
-int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, int*data, int index);
+int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, float *data, int index);
 
 InputOzon_t *OpenInputOzon(char *file_name);
 bool GetInputOzon(InputOzon_t *this, int iband, int *read_buffer);

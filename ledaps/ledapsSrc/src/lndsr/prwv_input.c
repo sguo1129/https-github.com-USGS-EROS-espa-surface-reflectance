@@ -14,6 +14,13 @@
  Robert Wolfe
  Added handling for SDS's with ranks greater than 2.
 
+ Revision 1.2 2014/10/24
+ Gail Schmidt
+ Modified the handling of PRWV variables to be float values without any
+   scale factor or add offset versus the previous version which was int16
+   with a scale factor and add offset.  The underlying NCEP variables have
+   changed, as delivered from NOAA/NCEP.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -151,10 +158,8 @@ InputPrwv_t *OpenInputPrwv(char *file_name)
   bool sds_open[NBAND_REFL_MAX];
   Myhdf_dim_t *dim[3];
   int ib,osize;
-  int16 *buf;
+  float *buf = NULL;
   const char* input_names[INPUT_NBANDS]={INPUT_NAME1,INPUT_NAME2,INPUT_NAME3};
-  Myhdf_attr_t attr;
-  double dval[NBAND_REFL_MAX];
 
   /* Create the Input data structure */
 
@@ -199,7 +204,7 @@ InputPrwv_t *OpenInputPrwv(char *file_name)
     this->sds[ib].dim[1].name = (char *)NULL;
     this->sds[ib].dim[2].name = (char *)NULL;
     sds_open[ib] = false;
-    this->buf[ib] = (int16 *)NULL;
+    this->buf[ib] = (float *)NULL;
   }
 
   for (ib = 0; ib < this->nband; ib++) {
@@ -230,8 +235,8 @@ InputPrwv_t *OpenInputPrwv(char *file_name)
 
     /* Check SDS type */
 
-    if (this->sds[ib].type != DFNT_INT16) {
-      error_string = "invalid number type";
+    if (this->sds[ib].type != DFNT_FLOAT) {
+      error_string = "invalid data type -- should be float";
       break;
     }
 
@@ -267,33 +272,24 @@ InputPrwv_t *OpenInputPrwv(char *file_name)
       }
     } 
 
-    attr.name = INPUT_SCALEF;
-    if (!GetAttrDouble(this->sds[ib].id, &attr, dval))
-      RETURN_ERROR("reading input scale", "OpenInputPrwv", false);
+    /* Set the scale factor and offset since they don't exist in the global
+       attributes */
 
-    this->scale_factor[ib]= dval[0];
-
-    attr.name = INPUT_ADDOFF;
-    if (!GetAttrDouble(this->sds[ib].id, &attr, dval))
-      RETURN_ERROR("reading add offset", "OpenInputPrwv", false);
-
-    this->add_offset[ib]= dval[0];
+    this->scale_factor[ib] = 1.0;
+    this->add_offset[ib] = 0.0;
   }
 
   /* Allocate input buffer */
 
   osize= 3 * ( this->size.ntime * this->size.nlat * this->size.nlon );
-             
-  if (sizeof(int16) != sizeof(int)) {
-    buf = (int16 *)calloc((size_t)(osize), sizeof(int16));
-    if (buf == (int16 *)NULL)
-      error_string = "allocating input buffer";
-    else {
-      this->buf[0] = buf;
-      for (ib = 1; ib < this->nband; ib++)
-        this->buf[ib] = this->buf[ib - 1] + 
-                      ( this->size.ntime * this->size.nlat * this->size.nlon );
-    }
+  buf = calloc((size_t)(osize), sizeof(float));
+  if (buf == NULL)
+    error_string = "allocating input buffer";
+  else {
+    this->buf[0] = buf;
+    for (ib = 1; ib < this->nband; ib++)
+      this->buf[ib] = this->buf[ib - 1] + 
+                    ( this->size.ntime * this->size.nlat * this->size.nlon );
   }
 
   if (error_string != (char *)NULL) {
@@ -306,7 +302,7 @@ InputPrwv_t *OpenInputPrwv(char *file_name)
         SDendaccess(this->sds[ib].id);
       if (this->sds[ib].name != (char *)NULL)
         free(this->sds[ib].name);
-      if (this->buf[ib] != (int16 *)NULL)
+      if (this->buf[ib] != NULL)
         free(this->buf[ib]);
     }
 
@@ -402,7 +398,7 @@ bool FreeInputPrwv(InputPrwv_t *this)
       if (this->sds[ib].name != (char *)NULL) 
         free(this->sds[ib].name);
     }
-    if (this->buf[0] != (int16 *)NULL)
+    if (this->buf[0] != NULL)
       free(this->buf[0]);
     if (this->file_name != (char *)NULL) free(this->file_name);
     free(this);
@@ -412,7 +408,7 @@ bool FreeInputPrwv(InputPrwv_t *this)
 }
 
 
-bool GetInputPrwv(InputPrwv_t *this, int iband, int *read_buffer)
+bool GetInputPrwv(InputPrwv_t *this, int iband, float *read_buffer)
 /* 
 !C******************************************************************************
 
@@ -422,7 +418,7 @@ bool GetInputPrwv(InputPrwv_t *this, int iband, int *read_buffer)
  this           'output' data structure; the following fields are input:
                    open, size, sds.id
  iline          output line number
- buf            buffer of data to be written
+ read_buffer    buffer of data to be written
 
 !Output Parameters:
  this           'output' data structure; the following fields are modified:
@@ -444,8 +440,6 @@ bool GetInputPrwv(InputPrwv_t *this, int iband, int *read_buffer)
 */
 {
   int32 start[MYHDF_MAX_RANK], nval[MYHDF_MAX_RANK];
-  void *buf;
-  int is,read_size;
 
   /* Check the parameters */
 
@@ -456,11 +450,6 @@ bool GetInputPrwv(InputPrwv_t *this, int iband, int *read_buffer)
   if (iband < 0  ||  iband >= this->nband)
     RETURN_ERROR("invalid band number", "GetInputPrwvLine", false);
 
-  if (sizeof(int16) == sizeof(int))
-    buf = (void *)read_buffer;
-  else
-    buf = (void *)this->buf[iband];
-
   /* Read the data */
 
   start[0] = 0;
@@ -469,15 +458,10 @@ bool GetInputPrwv(InputPrwv_t *this, int iband, int *read_buffer)
   nval[0] = this->size.ntime;
   nval[1] = this->size.nlat;
   nval[2] = this->size.nlon;
-  read_size= this->size.ntime * this->size.nlat * this->size.nlon;
 
-  if (SDreaddata(this->sds[iband].id, start, NULL, nval, buf) == HDF_ERROR)
+  if (SDreaddata(this->sds[iband].id, start, NULL, nval, read_buffer) ==
+    HDF_ERROR)
     RETURN_ERROR("reading input", "GetInputPrwvLine", false);
-
-  if (sizeof(int16) != sizeof(int)) {
-    for (is = 0; is < read_size; is++) 
-      read_buffer[is] = (int)this->buf[iband][is];
-  }
 
   return true;
 }
@@ -520,7 +504,8 @@ bool GetInputPrwvMeta(InputPrwv_t *this)
  *     lat/long dimension arrays in the HDF files.
  *
  ***************************************************************************/
-int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, int* data, int index)
+int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, float* data,
+  int index)
 {
   int i,j,jin,osize;
   float *buffer=NULL;
@@ -608,9 +593,14 @@ int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, int* data, int index)
     anc->lonmin -= 180.0;
     anc->lonmax -= 180.0;
   }
+printf ("DEBUG  lonmin: %f\n", anc->lonmin);
+printf ("DEBUG  lonmax: %f\n", anc->lonmax);
 
   /* Set up the data buffer */
   osize= anc->nblayers * anc->nbrows * anc->nbcols;
+printf ("DEBUG  nblayers: %d\n", anc->nblayers);
+printf ("DEBUG  nblrows: %d\n", anc->nbrows);
+printf ("DEBUG  nblcols: %d\n", anc->nbcols);
 
   buffer = (float *)calloc((size_t)(osize),sizeof(float));
   if (buffer == (float *)NULL) 
@@ -820,7 +810,7 @@ InputOzon_t *OpenInputOzon(char *file_name)
 
     attr.name = INPUT_ADDOFF;
     if (!GetAttrDouble(this->sds[ib].id, &attr, dval))
-      RETURN_ERROR("reading add offset", "OpenInputPrwv", false);
+      RETURN_ERROR("reading add offset", "OpenInputOzon", false);
 
     this->add_offset[ib]= dval[0];
   }
