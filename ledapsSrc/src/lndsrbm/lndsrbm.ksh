@@ -15,6 +15,12 @@
 # - modified to utilize the internal ESPA file format
 # - reworked some of the FORTRAN code and converted to C so that the raw
 #   binary products could be utilized in this application
+#
+# Modified on 10/24/2014 by Gail Schmidt, USGS EROS
+# - modifed to handle the no scale factor or add offset for the air temp
+#   value read from the PRWV auxiliary file (for the scene center)
+#   these changes were made as part of the updates NCEP made to their
+#   REANALYSIS data
 ###########################################################################
 lndsr_inp=$1
 echo "Processing lndsr parameter file: '$lndsr_inp'"
@@ -74,8 +80,10 @@ ygrib=`echo $latc | awk '{print int((90.-$1)*73/180.)}'`
 xgrib=`echo $lonc | awk '{print int((180.+$1)*144/360.)}'` 
 echo "ygrib: '$ygrib' xgrib: '$xgrib'"
 
+# Read the air temp values from the PRWV auxiliary file for the center of
+# the scene
 $exe_dir/SDSreader3.0 -f $fileanc -w "$ygrib $xgrib 1 1" -v >tmp.dumpfileanc
-grep SDS tmp.dumpfileanc | grep air | awk '{print $8}' | tr -d "," | awk '{print ($1*0.01)+512.81}' >tmp.airtemp
+grep SDS tmp.dumpfileanc | grep air | awk '{print $8}' | tr -d "," | awk '{print $1}' >tmp.airtemp
 
 sctest=`grep  AcquisitionDate tmp.meta | awk '{print $3}' | awk -F "T" '{print $2}' | tr -d '"'`
 echo "acquisition time: '$sctest'"

@@ -28,6 +28,12 @@
   Modified on 8/5/2014 by Gail Schmidt, USGS/EROS
   Obtain the location of the ESPA schema file from an environment variable
   vs. the ESPA http site.
+
+  Modified on 10/24/2014 by Gail Schmidt, USGS/EROS
+  Modified the handling of PRWV variables to be float values without any
+  scale factor or add offset versus the previous version which was int16
+  with a scale factor and add offset.  The underlying NCEP variables have
+  changed, as delivered from NOAA/NCEP.
 **************************************************************************/
 
 #include <stdio.h>
@@ -153,8 +159,8 @@ int main (int argc, const char **argv) {
   Sr_stats_t sr_stats;
   Ar_stats_t ar_stats;
   Ar_gridcell_t ar_gridcell;
-  int *prwv_in[NBAND_PRWV_MAX];
-  int *prwv_in_buf = NULL;
+  float *prwv_in[NBAND_PRWV_MAX];
+  float *prwv_in_buf = NULL;
   int *ozon_in = NULL;
   float corrected_sun_az;   /* (degrees) sun azimuth angle has been corrected
                                for polar scenes that are ascending or flipped */
@@ -258,7 +264,7 @@ int main (int argc, const char **argv) {
     osize= 3 * 
       (prwv_input->size.ntime*prwv_input->size.nlat*prwv_input->size.nlon);
 
-    prwv_in_buf = (int *)calloc((size_t)(osize),sizeof(int));
+    prwv_in_buf = calloc((size_t)(osize),sizeof(float));
     if (prwv_in_buf == NULL) EXIT_ERROR("allocating input prwv buffer", "main");
     prwv_in[0] = prwv_in_buf;
     for (ib = 1; ib < prwv_input->nband; ib++)
@@ -1261,7 +1267,6 @@ printf ("Acquisition Time: %02d:%02d:%fZ\n", input->meta.acq_date.hour, input->m
   }  /* for il */
   printf("\n");
   fclose(fdtmp);
-  printf ("DEBUG: removing tmpfilename = %s\n", tmpfilename);
   unlink(tmpfilename); 
 	
   /* Print the statistics, skip bands that don't exist */
