@@ -1,18 +1,18 @@
-NCDFINC = /usr/include
-NCDFLIB = /usr/lib
-HDF5INC = /usr/include
-HDF5LIB = /usr/lib
-
-
-
+##############################################################################
+# Makefile for ncep and ozone dataset repackaging.
+# 
+# Note: In order for the netCDF4 NCEP libraries and includes to work correctly
+# with the HDF4 libraries and includes, the HDF4 libraries need to be built
+# with netCDF disabled.  --disable-netcdf
+##############################################################################
 CC = gcc
 EXTRA   = -ansi -Wall
 
-INCDIR  = -I. -I$(NCDFINC) -I$(HDF5INC) -I$(HDFINC) -I$(JPEGINC) 
+INCDIR  = -I. -I$(NCDF4INC) -I$(HDF5INC) -I$(HDFINC) -I$(JPEGINC) 
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
 NCDF_LIBS = \
--L$(NCDFLIB) -lnetcdf -L$(HDF5LIB) -lhdf5_hl -lhdf5
+-L$(NCDF4LIB) -lnetcdf -L$(HDF5LIB) -lhdf5_hl -lhdf5
 
 LIB1 = -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm
 LIB2 = $(NCDF_LIBS) -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm

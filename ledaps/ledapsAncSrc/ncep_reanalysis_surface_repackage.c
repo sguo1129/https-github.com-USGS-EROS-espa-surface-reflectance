@@ -1,26 +1,77 @@
+/******************************************************************************
+FILE: ncep_reanalysis_surface_repackage
+
+PURPOSE: Defines the functions used to repackage the NCEP Reanalysis datasets
+into products used as input by LEDAPS.
+
+PROJECT: Land Satellites Data System Science Research and Development (LSRD)
+at the USGS EROS
+
+LICENSE TYPE: NASA Open Source Agreement Version 1.3
+
+HISTORY:
+Date        Programmer       Reason
+----------  ---------------  -------------------------------------
+10/27/2014  Gail Schmidt     Modified original application to read the new
+                             netCDF4 files (vs. netCDF3 files) from NOAA/NCEP.
+                             Modifications also included the need to handle
+                             new data types for the NCEP variables.
+
+NOTES:
+******************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
 #include <string.h>
 
-/*#include "hdf4_netcdf.h" */
 #include "hdf.h"
 #include "mfhdf.h"
 #include "netcdf.h"
 
+/* Defines for processing */
 #define CLIMATE_NDIMS 3
 #define CLIMATE_NVARS 4
 #define CLIMATE_XDIM_NAME "lon"
 #define CLIMATE_YDIM_NAME "lat"
 #define CLIMATE_TDIM_NAME "time"
 
+/* Prototypes for accessory functions */
 int copy_sds (int ncid, int nvars, size_t dimsizes[], char *var_name,
     int32 first_time_index, int32 sdout_id, int verbose);
 int get_size (nc_type data_type);
 char *get_dt_string (nc_type data_type);
 int32 get_hdf_dt (nc_type data_type);
 
+
+/******************************************************************************
+METHOD: main
+
+PURPOSE: Handles the end to end processing of the annual NCEP input files and
+repackages them to output daily HDF files (for the user-specified DOY),
+containing multiple NCEP variables (air temp, precipitable water,
+surface pressure).  Global attributes are copied to the new HDF file.  The
+lat/long dimensions are also copied, along with their attributes.
+
+RETURN VALUE:
+Type = int
+Value  Description
+-----  -----------
+-1     Error processing
+-99    Error reading the input NCEP file
+0      Successful processing
+
+HISTORY:
+Date        Programmer       Reason
+----------  ---------------  -------------------------------------
+10/27/2014  Gail Schmidt     Modified original application to read the new
+                             netCDF4 files (vs. netCDF3 files) from NOAA/NCEP.
+                             Modifications also included the need to handle
+                             new data types for the NCEP variables.
+
+NOTES:
+******************************************************************************/
 int main(int argc,char **argv) {
     int32 sdout_id;          /* HDF ID for output file */
     int verbose;             /* should status messages be written? */
@@ -313,6 +364,34 @@ int main(int argc,char **argv) {
 }   
 
 
+/******************************************************************************
+METHOD: copy_sds
+
+PURPOSE: Copies the specified netCDF variable to the output HDF file as a
+new SDS.  Copies the attributes to the SDS as well as sets the dimension
+names.
+
+RETURN VALUE:
+Type = int
+Value  Description
+-----  -----------
+-1     Error processing
+0      Successful processing
+
+HISTORY:
+Date        Programmer       Reason
+----------  ---------------  -------------------------------------
+10/27/2014  Gail Schmidt     Modified original application to read the new
+                             netCDF4 files (vs. netCDF3 files) from NOAA/NCEP.
+                             Modifications also included the need to handle
+                             new data types for the NCEP variables.
+
+NOTES:
+1. The NCEP variables are global datasets.  The starting point for the
+   longitudinal values is 0 degrees.  The output HDF files need these variables
+   to start at -180.  So, some minor data manipulation is done after reading
+   the NCEP variables and before writing them to the output HDF file.
+******************************************************************************/
 int copy_sds
 (
     int ncid,                 /* I: netCDF file ID for input */
@@ -353,7 +432,7 @@ int copy_sds
         if (nc_inq_var (ncid, index, varname, &data_type, &var_ndims,
             var_dimids, &var_natts)) {
             fprintf (stderr, "Error inquiring about variable %d\n", index);
-            exit(-1);
+            return (-1);
         }
 
         /* If this variable is the specified variable, then store the index */
@@ -424,7 +503,7 @@ int copy_sds
         /* Write the data to the HDF file */
         if (SDwritedata (sdsout_id, start_hdf, NULL, edge_hdf, buffer) < 0) {
             fprintf (stderr, "Error writing %s data to SDS\n", var_name);
-            return -1;
+            return (-1);
         }
 
         /* Free the memory */
@@ -493,7 +572,7 @@ int copy_sds
             if (SDwritedata (sdsout_id, start_hdf, NULL, edge_hdf, buffer)
                 < 0) {
                 fprintf (stderr, "Error writing %s data to SDS\n", var_name);
-                return -1;
+                return (-1);
             }
 
             /* Increment the start pointers for time dimension */
@@ -513,13 +592,13 @@ int copy_sds
         if (nc_inq_attname (ncid, primary_index, index, name)) {
             fprintf (stderr, "Error inquiring about variable attribute %d "
                 "(0-based)\n", index);
-            exit(-1);
+            return (-1);
         }
 
         if (nc_inq_att (ncid, primary_index, name, &data_type, &count) == -1) {
             fprintf (stderr, "Error inquiring about variable attribute %s\n",
                 name);
-            exit(-1);
+            return (-1);
         }
 
 #ifdef DEBUG
@@ -533,20 +612,20 @@ int copy_sds
         buffer = malloc ((int) count * get_size(data_type));
         if (buffer == NULL) {
             fprintf (stderr, "Error allocating memory for attr %s\n", name);
-            exit(-1);
+            return (-1);
         }
 
         /* Read the attribute data. */
         if (nc_get_att (ncid, primary_index, name, buffer) != NC_NOERR) {
             fprintf (stderr, "Error getting variable attribute %s\n", name);
-            exit(-1);
+            return (-1);
         }
 
         /* Write the attribute data. */
         if (SDsetattr (sdsout_id, name, get_hdf_dt (data_type), (int) count,
             buffer) < 0) {
             fprintf (stderr, "Error writing SDS attribute %s\n", name);
-            exit(-1);
+            return (-1);
         }
 
         /* Free buffer */
@@ -586,8 +665,25 @@ int copy_sds
 }
 
 
-/* Determine the size (in bytes) of the data type specified */
-/* -99 mean the data type isn't supported or it was NAT - Not a Type */
+/******************************************************************************
+METHOD: get_size
+
+PURPOSE: Determine the size (in bytes) of the netCDF data type specified
+
+RETURN VALUE:
+Type = int
+Value  Description
+-----  -----------
+-99    Data type isn't supported or it was NAT (Not a Type)
+Else   Size of the dataype (in bytes)
+
+HISTORY:
+Date        Programmer       Reason
+----------  ---------------  -------------------------------------
+10/27/2014  Gail Schmidt     Original development
+
+NOTES:
+******************************************************************************/
 int get_size
 (
     nc_type data_type       /* I: netCDF data type for each variable */
@@ -624,7 +720,25 @@ int get_size
 }
 
 
-/* Determine the data type string of the data type specified */
+/******************************************************************************
+METHOD: get_size
+
+PURPOSE: Determine the data type string of the netCDF data type specified
+
+RETURN VALUE:
+Type = int
+Value                    Description
+-----                    -----------
+"Unsupported data type"  Data type not supported
+Else                     String for the input data type
+
+HISTORY:
+Date        Programmer       Reason
+----------  ---------------  -------------------------------------
+10/27/2014  Gail Schmidt     Original development
+
+NOTES:
+******************************************************************************/
 char *get_dt_string
 (
     nc_type data_type       /* I: netCDF data type for each variable */
@@ -662,8 +776,25 @@ char *get_dt_string
 }
 
 
-/* Determine the HDF data type for the netCDF data type specified */
-/* -99 mean the data type isn't supported or it was NAT - Not a Type */
+/******************************************************************************
+METHOD: get_size
+
+PURPOSE: Determine the HDF data type for the netCDF data type specified
+
+RETURN VALUE:
+Type = int
+Value  Description
+-----  -----------
+-99    Data type isn't supported or it was NAT (Not a Type)
+Else   HDF data type
+
+HISTORY:
+Date        Programmer       Reason
+----------  ---------------  -------------------------------------
+10/27/2014  Gail Schmidt     Original development
+
+NOTES:
+******************************************************************************/
 int32 get_hdf_dt
 (
     nc_type data_type       /* I: netCDF data type for each variable */
