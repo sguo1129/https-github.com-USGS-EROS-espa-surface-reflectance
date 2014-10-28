@@ -4,6 +4,9 @@
 # Updated on 12/27/2012 by Gail Schmidt, USGS EROS
 #   Modified the wget retrievals to limit the number of retries to 5 in the
 #   case of a download or connection problem.
+# Updated on 10/28/2014 by Gail Schmidt, USGS EROS
+#   Changed the ANC_PATH environment variable to LEDAPS_AUX_DIR to be more
+#   consistent with the Landsat8 auxiliary directory name.
 ############################################################################
 import sys
 import os.path
@@ -326,9 +329,9 @@ for more information"
         return ERROR
 
     # determine the ancillary directory to store the data
-    ancdir = os.environ.get('ANC_PATH')
+    ancdir = os.environ.get('LEDAPS_AUX_DIR')
     if ancdir == None:
-        print "ANC_PATH environment variable not set... exiting"
+        print "LEDAPS_AUX_DIR environment variable not set... exiting"
         return ERROR
 
     # if processing today then process the current year.  if the current
