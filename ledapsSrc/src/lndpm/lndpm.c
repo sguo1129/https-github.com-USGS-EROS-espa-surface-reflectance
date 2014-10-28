@@ -27,6 +27,9 @@ Date         Programmer       Reason
 2/3/2014     Gail Schmidt     Reflective, thermal input and surface reflectance
                               output files are no longer needed as parameters
                               in the lndsr*.txt file, since inputs and outputs
+10/28/2014   Gail Schmidt     Changed the ANC_PATH environment variable to
+                              LEDAPS_AUX_DIR to be more consistent with the
+                              Landsat8 auxiliary directory name.
 
 NOTES:
   1. The XML metadata format written via this library follows the ESPA internal
@@ -56,7 +59,7 @@ int main (int argc, char *argv[])
     char ozone[STR_SIZE];          /* name of ozone file */
     char reanalysis[STR_SIZE];     /* name of NCEP file */
     char path_buf[DIR_BUF_SIZE];   /* path to the auxillary/cal file */
-    char *anc_path = NULL;         /* path for LEDAPS ancillary data */
+    char *aux_path = NULL;         /* path for LEDAPS auxiliary data */
     char *token_ptr = NULL;        /* pointer used for obtaining scene name */
     char *file_ptr = NULL;         /* pointer used for obtaining file name */
     int year, month, day;          /* year, month, day of acquisition date */
@@ -124,16 +127,16 @@ int main (int argc, char *argv[])
         return (ERROR);
     }
 
-    /* Get the path for the LEDAPS auxillary products (NCEP, TOMS, DEM, etc.)
-       from the ANC_PATH environment variable.  If it isn't defined, then
+    /* Get the path for the LEDAPS auxiliary products (NCEP, TOMS, DEM, etc.)
+       from the LEDAPS_AUX_DIR environment variable.  If it isn't defined, then
        assume the products are in the local directory. */
-    anc_path = getenv ("ANC_PATH");
-    if (anc_path == NULL)
+    aux_path = getenv ("LEDAPS_AUX_DIR");
+    if (aux_path == NULL)
     {
-        anc_path = ".";
-        sprintf (errmsg, "ANC_PATH environment variable isn't defined. It is "
-            "assumed the LEDAPS ancillary products will be available from "
-            "the local directory.");
+        aux_path = ".";
+        sprintf (errmsg, "LEDAPS_AUX_DIR environment variable isn't defined. "
+            "It is assumed the LEDAPS auxiliary products will be available "
+            "from the local directory.");
         error_handler (false, FUNC_NAME, errmsg);
     }
 
@@ -164,7 +167,7 @@ int main (int argc, char *argv[])
     /* Find and prepare auxillary files */
     /* DEM file */
     strcpy (dem, "CMGDEM.hdf");
-    strcpy (path_buf, anc_path);
+    strcpy (path_buf, aux_path);
     if (find_file (path_buf, dem))
     {
         strcpy (dem, path_buf);
@@ -172,15 +175,15 @@ int main (int argc, char *argv[])
     }
     else
     {
-        sprintf (errmsg, "Could not find DEM auxillary data: %s\n  Check "
-            "ANC_PATH environment variable.", dem);
+        sprintf (errmsg, "Could not find DEM auxiliary data: %s\n  Check "
+            "LEDAPS_AUX_DIR environment variable.", dem);
         error_handler (false, FUNC_NAME, errmsg);
         anc_missing = true;
     }
 
     /* TOMS ozone file */
     sprintf (ozone, "TOMS_%d%03d.hdf", year, day);
-    strcpy (path_buf, anc_path);
+    strcpy (path_buf, aux_path);
     if (find_file (path_buf, ozone))
     {
         strcpy (ozone, path_buf);
@@ -189,14 +192,14 @@ int main (int argc, char *argv[])
     else
     {
         sprintf (errmsg, "Could not find TOMS auxillary data: %s\n  Check "
-            "ANC_PATH environment variable.", ozone);
+            "LEDAPS_AUX_DIR environment variable.", ozone);
         error_handler (false, FUNC_NAME, errmsg);
         anc_missing = true;
     }
     
     /* NCEP file */
     sprintf (reanalysis, "REANALYSIS_%d%03d.hdf", year, day);
-    strcpy (path_buf, anc_path);
+    strcpy (path_buf, aux_path);
     if (find_file (path_buf, reanalysis))
     {
         strcpy (reanalysis, path_buf);
@@ -205,7 +208,7 @@ int main (int argc, char *argv[])
     else
     {
         sprintf (errmsg, "Could not find NCEP REANALYSIS auxillary data: %s\n"
-            "  Check ANC_PATH environment variable.", reanalysis);
+            "  Check LEDAPS_AUX_DIR environment variable.", reanalysis);
         error_handler (false, FUNC_NAME, errmsg);
         anc_missing = true;
     }
