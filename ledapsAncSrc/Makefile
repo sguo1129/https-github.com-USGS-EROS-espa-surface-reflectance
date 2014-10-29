@@ -11,8 +11,7 @@ EXTRA   = -ansi -Wall
 INCDIR  = -I. -I$(NCDF4INC) -I$(HDF5INC) -I$(HDFINC) -I$(JPEGINC) 
 NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
 
-NCDF_LIBS = \
--L$(NCDF4LIB) -lnetcdf -L$(HDF5LIB) -lhdf5_hl -lhdf5
+NCDF_LIBS = -L$(NCDF4LIB) -lnetcdf -L$(HDF5LIB) -lhdf5_hl -lhdf5
 
 LIB1 = -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm
 LIB2 = $(NCDF_LIBS) -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg -lz -lm
