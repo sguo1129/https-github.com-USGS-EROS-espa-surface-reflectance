@@ -26,9 +26,9 @@ NOTES:
 #include <ctype.h>
 #include <string.h>
 
+#include "netcdf.h"
 #include "hdf.h"
 #include "mfhdf.h"
-#include "netcdf.h"
 
 /* Defines for processing */
 #define CLIMATE_NDIMS 3
