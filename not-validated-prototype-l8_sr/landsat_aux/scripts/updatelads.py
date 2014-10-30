@@ -37,10 +37,35 @@ class DatasourceResolver:
     AQUA_CMG = '/allData/22/MYD09CMG/'
 
     def __init__(self):
+        # determine the auxiliary directory to store the data
+        xmlrpc = os.environ.get('ESPA_XMLRPC')
+        if xmlrpc is None:
+            msg = "ESPA_XMLRPC environment variable not set... exiting"
+            logger.error(msg)
+            return ERROR
+
         # get the LADS username and password
-        server = xmlrpclib.ServerProxy(os.environ.get('ESPA_XMLRPC'))
-        self.user = server.get_configuration('ladsftp.username')
-        self.password = server.get_configuration('ladsftp.password')
+        try:
+            server = xmlrpclib.ServerProxy(xmlrpc)
+            self.user = server.get_configuration('ladsftp.username')
+            self.password = server.get_configuration('ladsftp.password')
+        except xmlrpclib.ProtocolError, e:
+            msg = "Error connecting to XMLRPC service to fetch credentials: " \
+                "%s" % e
+            logger.error(msg)
+            return ERROR
+        print "LADSFTP username: " + self.user
+        print "LADSFTP password: " + self.password
+
+        # verify that the XMLRPC service returned valid information and
+        # the username and password were set in the configuration
+        if len(self.user) <= 0 or len(self.password) <= 0:
+            msg = "Received invalid sized credentials for LADS FTP from " \
+                "XMLRPC service. Make sure ladsftp.username and " \
+                "ladsftp.password are set in the ESPA_XMLRPC."
+            logger.error(msg)
+            return ERROR
+
 
     #######################################################################
     # Description: buildURL builds the URLs for the Terra and Aqua CMG and
@@ -162,7 +187,7 @@ def downloadLads (year, doy, destination):
     # obtain the list of URL(s) for our particular date.  this includes the
     # locations for the Aqua and Terra CMG/CMA files.
     urlList = DatasourceResolver().buildURLs(year, doy)
-    if urlList == None:
+    if urlList is None:
         msg = "LADS URLs could not be resolved for year %d and DOY %d." % \
             (year, doy)
         logger.error(msg)
@@ -445,7 +470,7 @@ def main ():
 
     # determine the auxiliary directory to store the data
     auxdir = os.environ.get('L8_AUX_DIR')
-    if auxdir == None:
+    if auxdir is None:
         msg = "L8_AUX_DIR environment variable not set... exiting"
         logger.error(msg)
         return ERROR
