@@ -35,6 +35,10 @@ Date         Programmer       Reason
                               atmcorlamb, local_csalbr, fintexp3, fintexp1,
                               comptransray).
 8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
+11/4/2014    Gail Schmidt     Instead of recalculating the xmus and xmuv values
+                              over and over again, just pass them in from the
+                              main calling routine.  Same goes for the cosine
+                              of azimuthal difference between sun and obs angles
 
 NOTES:
 *****************************************************************************/
@@ -67,8 +71,11 @@ int atmcorlamb2
 (
     float xts,                       /* I: solar zenith angle (deg) */
     float xtv,                       /* I: observation zenith angle (deg) */
+    float xmus,                      /* I: cosine of solar zenith angle */
+    float xmuv,                      /* I: cosine of observation zenith angle */
     float xfi,                       /* I: azimuthal difference between sun and
                                            observation (deg) */
+    float cosxfi,                    /* I: cosine of azimuthal difference */
     float raot550nm,                 /* I: nearest value of AOT */
     int iband,                       /* I: band index (0-based) */
     float pres,                      /* I: surface pressure */
@@ -129,13 +136,11 @@ int atmcorlamb2
     float tgwvhalf;  /* water vapor transmission, half content */
     float xtaur;   /* rayleigh optical depth for surface pressure */
     float xphi;    /* azimuthal difference between sun and observation (deg) */
-    float xmus;    /* cosine of solar zenith angle */
-    float xmuv;    /* cosine of observation zenith angle */
 
     /* This routine returns variables for calculating roslamb */
-    retval = comproatm (xts, xtv, xfi, raot550nm, iband, pres, tpres,
-        aot550nm, rolutt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv, xtsstep,
-        xtsmin, xtvstep, xtvmin, roatm);
+    retval = comproatm (xts, xtv, xmus, xmuv, cosxfi, raot550nm, iband, pres,
+        tpres, aot550nm, rolutt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
+        xtsstep, xtsmin, xtvstep, xtvmin, roatm);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Computing atmospheric reflectance.");
@@ -168,13 +173,12 @@ int atmcorlamb2
     compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, normext, satm,
         next);
 
-    comptg (iband, xts, xtv, uoz, uwv, pres, ogtransa1, ogtransb0, ogtransb1,
-        wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf, &tgog);
+    comptg (iband, xts, xtv, xmus, xmuv, uoz, uwv, pres, ogtransa1, ogtransb0,
+        ogtransb1, wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf,
+        &tgog);
 
     /* Compute rayleigh component (intrinsic reflectance, at p0) */
     xphi = xfi;
-    xmus = cos (xts * DEG2RAD);
-    xmuv = cos (xtv * DEG2RAD);
 
     /* Compute rayleigh component (intrinsic reflectance, at p=pres).
        Pressure in the atmosphere is pres / 1013. */
@@ -320,6 +324,8 @@ void comptg
     int iband,                   /* I: band index (0-based) */
     float xts,                   /* I: solar zenith angle */
     float xtv,                   /* I: observation zenith angle */
+    float xmus,                  /* I: cosine of solar zenith angle */
+    float xmuv,                  /* I: cosine of observation zenith angle */
     float uoz,                   /* I: total column ozone */
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
@@ -343,7 +349,7 @@ void comptg
     float p;                /* pressure in atmosphere */
 
     /* Compute ozone transmission */
-    m = 1.0 / cos(xts * DEG2RAD) + 1.0 / cos(xtv * DEG2RAD);
+    m = 1.0 / xmus + 1.0 / xmuv;
     *tgoz = exp(oztransa[iband] * m * uoz);
 
     /* Compute water vapor transmission */
@@ -602,8 +608,9 @@ int comproatm
 (
     float xts,                       /* I: solar zenith angle (deg) */
     float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
+    float xmus,                      /* I: cosine of solar zenith angle */
+    float xmuv,                      /* I: cosine of observation zenith angle */
+    float cosxfi,                    /* I: cosine of azimuthal difference */
     float raot550nm,                 /* I: nearest value of AOT */
     int iband,                       /* I: band index (0-based) */
     float pres,                      /* I: surface pressure */
@@ -642,8 +649,6 @@ int comproatm
     float nbfic1, nbfic2, nbfic3, nbfic4;
     float nbfi1, nbfi2, nbfi3, nbfi4;
     float ro, rop1, rop2;           /* reflectance at p1 and p2 */
-    float xmus;    /* cosine of solar zenith angle */
-    float xmuv;    /* cosine of observation zenith angle */
     float xtsmax;
     float cscaa;
     float scaa;                     /* scattering angle */
@@ -666,7 +671,7 @@ int comproatm
           1.252762969, 1.386294361, 1.504077397,
           1.609437912};
 
-
+    /* Look for the appropriate pressure index in the surface pressure table */
     ip1 = 0;
     for (ip = 0; ip < 7; ip++)
     {
@@ -677,11 +682,14 @@ int comproatm
         ip1 = 5;
     ip2 = ip1 + 1;
 
+/**** Never changes if xtv and xts never change ****/
+    /* Determine the index in the view angle table */
     if (xtv <= xtvmin)
         itv = 0;
     else
         itv = (int) ((xtv - xtvmin) / xtvstep + 1.0);
 
+    /* Determine the index in the sun angle table */
     if (xts <= xtsmin) 
         its = 0;
     else
@@ -693,13 +701,21 @@ int comproatm
         return (ERROR);
     }
 
-    xmuv = cos(xtv * DEG2RAD);
-    xmus = cos(xts * DEG2RAD);
-    cscaa = -xmus * xmuv - cos(xfi * DEG2RAD) * sqrt(1.0 - xmus * xmus) *
+    cscaa = -xmus * xmuv - cosxfi * sqrt(1.0 - xmus * xmus) *
         sqrt(1.0 - xmuv * xmuv);
     scaa = acos(cscaa) * RAD2DEG;    /* vs / DEG2RAD */
 
-    /* Determine lower and uper limit in aot */
+    nbfic1 = nbfic[itv][its];
+    nbfi1 = nbfi[itv][its];
+    nbfic2 = nbfic[itv][its+1];
+    nbfi2 = nbfi[itv][its+1];
+    nbfic3 = nbfic[itv+1][its];
+    nbfi3 = nbfi[itv+1][its];
+    nbfic4 = nbfic[itv+1][its+1];
+    nbfi4 = nbfi[itv+1][its+1];
+/***************************************************/
+
+    /* Determine lower and upper limit in aot */
     iaot1 = 0;
     for (iaot = 0; iaot < 22; iaot++)
     {
@@ -710,15 +726,6 @@ int comproatm
         iaot1 = 20;
     iaot2 = iaot1 + 1;
 
-    nbfic1 = nbfic[itv][its];
-    nbfi1 = nbfi[itv][its];
-    nbfic2 = nbfic[itv][its+1];
-    nbfi2 = nbfi[itv][its+1];
-    nbfic3 = nbfic[itv+1][its];
-    nbfi3 = nbfi[itv+1][its];
-    nbfic4 = nbfic[itv+1][its+1];
-    nbfi4 = nbfi[itv+1][its+1];
-
     /* Compute for ip1, iaot1 */
     /* Interpolate point 1 (its,itv) vs scattering angle */
     xtsmax = tsmax[itv][its];
@@ -727,14 +734,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its])
+        if (isca + 1 < nbfi1)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its] - 1;
+ 	        isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -761,14 +768,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its+1])
+        if (isca + 1 < nbfi2)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its+1] - 1;
+ 	        isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -795,14 +802,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv+1][its])
+        if (isca + 1 < nbfi3)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv+1][its] - 1;
+ 	        isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -827,14 +834,14 @@ int comproatm
     isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
     if (isca <= 0)
         isca = 1;
-    if ((isca + 1) < nbfi[itv+1][its+1])
+    if (isca + 1 < nbfi4)
     {
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = xtsmax - isca * 4.0;
     }
     else
     {
-        isca = nbfi[itv+1][its+1] - 1;
+        isca = nbfi4 - 1;
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = tsmin[itv+1][its+1];
     }
@@ -857,14 +864,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its])
+        if (isca + 1 < nbfi1)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its] - 1;
+ 	        isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -891,14 +898,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its+1])
+        if (isca + 1 < nbfi2)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its+1] - 1;
+ 	        isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -925,14 +932,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv+1][its])
+        if (isca + 1 < nbfi3)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv+1][its] - 1;
+ 	        isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -957,14 +964,14 @@ int comproatm
     isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
     if (isca <= 0)
         isca = 1;
-    if ((isca + 1) < nbfi[itv+1][its+1])
+    if (isca + 1 < nbfi4)
     {
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = xtsmax - isca * 4.0;
     }
     else
     {
-        isca = nbfi[itv+1][its+1] - 1;
+        isca = nbfi4 - 1;
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = tsmin[itv+1][its+1];
     }
@@ -993,14 +1000,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its])
+        if (isca + 1 < nbfi1)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its] - 1;
+ 	        isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -1027,14 +1034,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its+1])
+        if (isca + 1 < nbfi2)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its+1] - 1;
+ 	        isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -1061,14 +1068,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv+1][its])
+        if (isca + 1 < nbfi3)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv+1][its] - 1;
+ 	        isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -1093,14 +1100,14 @@ int comproatm
     isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
     if (isca <= 0)
         isca = 1;
-    if ((isca + 1) < nbfi[itv+1][its+1])
+    if (isca + 1 < nbfi4)
     {
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = xtsmax - isca * 4.0;
     }
     else
     {
-        isca = nbfi[itv+1][its+1] - 1;
+        isca = nbfi4 - 1;
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = tsmin[itv+1][its+1];
     }
@@ -1123,14 +1130,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its])
+        if (isca + 1 < nbfi1)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its] - 1;
+ 	        isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -1157,14 +1164,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv][its+1])
+        if (isca + 1 < nbfi2)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv][its+1] - 1;
+ 	        isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -1191,14 +1198,14 @@ int comproatm
         isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
         if (isca <= 0)
             isca = 1;
-        if ((isca + 1) < nbfi[itv+1][its])
+        if (isca + 1 < nbfi3)
         {
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = xtsmax - isca * 4.0;
         }
         else
         {
- 	        isca = nbfi[itv+1][its] - 1;
+ 	        isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -1223,14 +1230,14 @@ int comproatm
     isca = (int) ((xtsmax - scaa) * 0.25 + 1);   /* * 0.25 vs / 4.0 */
     if (isca <= 0)
         isca = 1;
-    if ((isca + 1) < nbfi[itv+1][its+1])
+    if (isca + 1 < nbfi4)
     {
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = xtsmax - isca * 4.0;
     }
     else
     {
-        isca = nbfi[itv+1][its+1] - 1;
+        isca = nbfi4 - 1;
         sca1 = xtsmax - (isca - 1) * 4.0;
         sca2 = tsmin[itv+1][its+1];
     }

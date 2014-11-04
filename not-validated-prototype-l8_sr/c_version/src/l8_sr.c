@@ -54,6 +54,11 @@ Date          Programmer       Reason
 8/25/2014    Gail Schmidt      Split the main application into smaller modules
                                for allocating memory and reading the auxiliary
                                data files.
+11/4/2014    Gail Schmidt      Instead of recalculating the xmus and xmuv values
+                               over and over again, just pass them in from the
+                               main calling routine.  Same goes for the cosine
+                               of azimuthal difference between sun and obs
+                               angles.
 
 NOTES:
 1. Bands 1-7 are corrected to surface reflectance.  Band 8 (pand band) is not
@@ -67,6 +72,8 @@ NOTES:
 4. Conversion algorithms for TOA reflectance and at-sensor brightness
    temperature are available from
    http://landsat.usgs.gov/Landsat8_Using_Product.php
+5. Solar zenith and azimuth angles are pulled from the scene center.  The
+   view zenith angle is set to 0.0.  None of these change on a per pixel basis.
 ******************************************************************************/
 int main (int argc, char *argv[])
 {
@@ -159,9 +166,13 @@ int main (int argc, char *argv[])
     float xndwi;         /* calculated NDWI value */
     float xts;           /* solar zenith angle (deg) */
     float xfs;           /* solar azimuth angle (deg) */
-    float xtv;           /* observation zenith angle (deg) */
+    float xtv;           /* observation zenith angle (deg) -- NOTE: set to 0.0
+                            and never changes */
+    float xmus;          /* cosine of solar zenith angle */
+    float xmuv;          /* cosine of observation zenith angle */
     float xfi;           /* azimuthal difference between the sun and
                             observation angle (deg) */
+    float cosxfi;        /* cosine of azimuthal difference */
     float xtsstep;       /* solar zenith step value */
     float xtsmin;        /* minimum solar zenith value */
     float xtvstep;       /* observation step value */
@@ -262,7 +273,6 @@ int main (int argc, char *argv[])
     float raot;
     float residual;     /* model residual */
     float rsurf;
-    float xmus;         /* cosine of solar zenith */
     float corf;
     float tmpf;         /* temporary floating point value */
 
@@ -501,11 +511,14 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    /* Initialization for look up tables */
+    /* Initialization for look up tables.  NOTE: the view angle is set to
+       0.0 and this never changes. */
     if (verbose)
         printf ("Initializing the look-up tables ...\n");
     xtv = 0.0;
+    xmuv = cos (xtv * DEG2RAD);
     xfi = 0.0;
+    cosxfi = cos (xfi * DEG2RAD);
     xtsmin = 0;
     xtsstep = 4.0;
     xtvmin = 2.84090;
@@ -559,8 +572,6 @@ int main (int argc, char *argv[])
     pres = 1013.0;
     uoz = 0.30;
     uwv = 0.5;
-    xtv = 0.0;
-    xfi = 0.0;
 
     /* Read the QA band */
     if (get_input_qa_lines (input, 0, 0, nlines, qaband) != SUCCESS)
@@ -890,12 +901,12 @@ int main (int argc, char *argv[])
                roslamb value is not valid upon output. Just set it to 0.0 to
                be consistent. */
             rotoa = 0.0;
-            retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, ib, pres, tpres,
-                aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep, xtvmin,
-                sphalbt, normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-                uoz, uwv, tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
-                wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm, &ttatmg,
-                &satm, &xrorayp, &next);
+            retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
+                raot550nm, ib, pres, tpres, aot550nm, rolutt, transt, xtsstep,
+                xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax, tsmin, nbfic,
+                nbfi, tts, indts, ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                ogtransb1, wvtransa, wvtransb, oztransa, rotoa, &roslamb,
+                &tgo, &roatm, &ttatmg, &satm, &xrorayp, &next);
             if (retval != SUCCESS)
             {
                 sprintf (errmsg, "Performing lambertian atmospheric correction "
@@ -1131,12 +1142,13 @@ int main (int argc, char *argv[])
            
                     iband1 = DN_BAND4;
                     iband3 = DN_BAND1;
-                    retval = subaeroret (iband1, iband3, xts, xtv, xfi, pres,
-                        uoz, uwv, erelc, troatm, tpres, aot550nm, rolutt,
-                        transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-                        normext, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-                        tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
-                        wvtransb, oztransa, &raot, &residual, &next);
+                    retval = subaeroret (iband1, iband3, xts, xtv, xmus, xmuv,
+                        xfi, cosxfi, pres, uoz, uwv, erelc, troatm, tpres,
+                        aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
+                        xtvmin, sphalbt, normext, tsmax, tsmin, nbfic, nbfi,
+                        tts, indts, ttv, tauray, ogtransa1, ogtransb0,
+                        ogtransb1, wvtransa, wvtransb, oztransa, &raot,
+                        &residual, &next);
                     if (retval != SUCCESS)
                     {
                         sprintf (errmsg, "Performing atmospheric correction.");
@@ -1150,13 +1162,14 @@ int main (int argc, char *argv[])
                         iband = DN_BAND5;
                         rotoa = aerob5[curr_pix] * SCALE_FACTOR;
                         raot550nm = raot;
-                        retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband,
-                            pres, tpres, aot550nm, rolutt, transt, xtsstep,
-                            xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax,
-                            tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-                            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
-                            wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
-                            &ttatmg, &satm, &xrorayp, &next);
+                        retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
+                            raot550nm, iband, pres, tpres, aot550nm, rolutt,
+                            transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+                            normext, tsmax, tsmin, nbfic, nbfi, tts, indts,
+                            ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                            ogtransb1, wvtransa, wvtransb, oztransa, rotoa,
+                            &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp,
+                            &next);
                         if (retval != SUCCESS)
                         {
                             sprintf (errmsg, "Performing lambertian "
@@ -1169,13 +1182,14 @@ int main (int argc, char *argv[])
                         iband = DN_BAND4;
                         rotoa = aerob4[curr_pix] * SCALE_FACTOR;
                         raot550nm = raot;
-                        retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, iband,
-                            pres, tpres, aot550nm, rolutt, transt, xtsstep,
-                            xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax,
-                            tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-                            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
-                            wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
-                            &ttatmg, &satm, &xrorayp, &next);
+                        retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
+                            raot550nm, iband, pres, tpres, aot550nm, rolutt,
+                            transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+                            normext, tsmax, tsmin, nbfic, nbfi, tts, indts,
+                            ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                            ogtransb1, wvtransa, wvtransb, oztransa, rotoa,
+                            &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp,
+                            &next);
                         if (retval != SUCCESS)
                         {
                             sprintf (errmsg, "Performing lambertian "
@@ -1605,13 +1619,14 @@ int main (int argc, char *argv[])
                         pres = tp[i];
                         uwv = twvi[i];
                         uoz = tozi[i];
-                        retval = atmcorlamb2 (xts, xtv, xfi, raot550nm, ib,
-                            pres, tpres, aot550nm, rolutt, transt, xtsstep,
-                            xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax,
-                            tsmin, nbfic, nbfi, tts, indts, ttv, uoz, uwv,
-                            tauray, ogtransa1, ogtransb0, ogtransb1, wvtransa,
-                            wvtransb, oztransa, rotoa, &roslamb, &tgo, &roatm,
-                            &ttatmg, &satm, &xrorayp, &next);
+                        retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
+                            raot550nm, ib, pres, tpres, aot550nm, rolutt,
+                            transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
+                            normext, tsmax, tsmin, nbfic, nbfi, tts, indts,
+                            ttv, uoz, uwv, tauray, ogtransa1, ogtransb0,
+                            ogtransb1, wvtransa, wvtransb, oztransa, rotoa,
+                            &roslamb, &tgo, &roatm, &ttatmg, &satm, &xrorayp,
+                            &next);
                         if (retval != SUCCESS)
                         {
                             sprintf (errmsg, "Performing lambertian "
@@ -1628,17 +1643,15 @@ int main (int argc, char *argv[])
                             {
                                 taero[i] = 0.05;
                                 raot550nm = 0.05;
-                                pres = tp[i];
-                                uwv = twvi[i];
-                                uoz = tozi[i];
-                                retval = atmcorlamb2 (xts, xtv, xfi, raot550nm,
-                                    ib, pres, tpres, aot550nm, rolutt, transt,
-                                    xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
-                                    normext, tsmax, tsmin, nbfic, nbfi, tts,
-                                    indts, ttv, uoz, uwv, tauray, ogtransa1,
-                                    ogtransb0, ogtransb1, wvtransa, wvtransb,
-                                    oztransa, rotoa, &roslamb, &tgo, &roatm,
-                                    &ttatmg, &satm, &xrorayp, &next);
+                                retval = atmcorlamb2 (xts, xtv, xmus, xmuv,
+                                    xfi, cosxfi, raot550nm, ib, pres, tpres,
+                                    aot550nm, rolutt, transt, xtsstep, xtsmin,
+                                    xtvstep, xtvmin, sphalbt, normext, tsmax,
+                                    tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
+                                    uwv, tauray, ogtransa1, ogtransb0,
+                                    ogtransb1, wvtransa, wvtransb, oztransa,
+                                    rotoa, &roslamb, &tgo, &roatm, &ttatmg,
+                                    &satm, &xrorayp, &next);
                                 if (retval != SUCCESS)
                                 {
                                     sprintf (errmsg, "Performing lambertian "

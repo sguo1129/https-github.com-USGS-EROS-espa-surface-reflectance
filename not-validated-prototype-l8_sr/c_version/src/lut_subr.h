@@ -15,8 +15,11 @@ int atmcorlamb2
 (
     float xts,                       /* I: solar zenith angle (deg) */
     float xtv,                       /* I: observation zenith angle (deg) */
+    float xmus,                      /* I: cosine of solar zenith angle */
+    float xmuv,                      /* I: cosine of observation zenith angle */
     float xfi,                       /* I: azimuthal difference between sun and
                                            observation (deg) */
+    float cosxfi,                    /* I: cosine of azimuthal difference */
     float raot550nm,                 /* I: nearest value of AOT */
     int iband,                       /* I: band index (0-based) */
     float pres,                      /* I: surface pressure */
@@ -79,6 +82,8 @@ void comptg
     int iband,                   /* I: band index (0-based) */
     float xts,                   /* I: solar zenith angle */
     float xtv,                   /* I: observation zenith angle */
+    float xmus,                  /* I: cosine of solar zenith angle */
+    float xmuv,                  /* I: cosine of observation zenith angle */
     float uoz,                   /* I: total column ozone */
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
@@ -130,8 +135,9 @@ int comproatm
 (
     float xts,                       /* I: solar zenith angle (deg) */
     float xtv,                       /* I: observation zenith angle (deg) */
-    float xfi,                       /* I: azimuthal difference between sun and
-                                           observation (deg) */
+    float xmus,                      /* I: cosine of solar zenith angle */
+    float xmuv,                      /* I: cosine of observation zenith angle */
+    float cosxfi,                    /* I: cosine of azimuthal difference */
     float raot550nm,                 /* I: nearest value of AOT */
     int iband,                       /* I: band index (0-based) */
     float pres,                      /* I: surface pressure */
@@ -188,8 +194,11 @@ int subaeroret
     int iband3,                      /* I: band 3 index (0-based) */
     float xts,                       /* I: solar zenith angle (deg) */
     float xtv,                       /* I: observation zenith angle (deg) */
+    float xmus,                      /* I: cosine of solar zenith angle */
+    float xmuv,                      /* I: cosine of observation zenith angle */
     float xfi,                       /* I: azimuthal difference between sun and
                                            observation (deg) */
+    float cosxfi,                    /* I: cosine of azimuthal difference */
     float pres,                      /* I: surface pressure */
     float uoz,                       /* I: total column ozone */
     float uwv,                       /* I: total column water vapor (precipital
@@ -245,8 +254,11 @@ int subaeroret_residual
 
     float xts,                       /* I: solar zenith angle (deg) */
     float xtv,                       /* I: observation zenith angle (deg) */
+    float xmus,                      /* I: cosine of solar zenith angle */
+    float xmuv,                      /* I: cosine of observation zenith angle */
     float xfi,                       /* I: azimuthal difference between sun and
                                            observation (deg) */
+    float cosxfi,                    /* I: cosine of azimuthal difference */
     float pres,                      /* I: surface pressure */
     float uoz,                       /* I: total column ozone */
     float uwv,                       /* I: total column water vapor (precipital
