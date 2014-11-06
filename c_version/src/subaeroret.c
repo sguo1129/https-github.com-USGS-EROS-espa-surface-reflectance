@@ -149,17 +149,16 @@ int subaeroret
     flagn = false;
     th1 = 0.01;
     th3 = 0.01;
-    nit = 0;
     pros1 = 0.0;
     pros3 = 0.0;
 
     /* The ratio decreases as the AOT increases.  The exit conditions in this
        loop are when two values of AOT can be found that bracket the predicted
        ratio (pratio). */
+    nit = 0;
     while ((iaot < 22) && (aratio1 > pratio) && (ros1 > th1) && (ros3 > th3) &&
         ((aratio1 - 0.01) < aratio2) && (nit < 30))
     {
-        nit++;
         ros1 = -1.0;
         ros3 = -1.0;
 
@@ -254,6 +253,9 @@ int subaeroret
             raot1 = raot550nm;
             aratio1 = ros3 / ros1;
         }
+
+        /* Increment the number of iterations */
+        nit++;
     }  /* end while */
 
     /* Once the two values of AOT (raot2 and raot1) that gives ratios that
