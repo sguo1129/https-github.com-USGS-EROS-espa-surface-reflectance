@@ -1511,8 +1511,8 @@ int main (int argc, char *argv[])
             if (btest (cloud[i], CLDT_QA))
             {
                 /* Remove the temporary bit and set the cloud shadow bit */
-                cloud[i] += 8;
-                cloud[i] -= 16;
+                /* ==> cloud[i] += 8; cloud[i] -= 16; */
+                cloud[i] -= 8;
             }
         }  /* end for i */
 

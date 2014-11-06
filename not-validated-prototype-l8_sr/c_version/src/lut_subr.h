@@ -102,64 +102,75 @@ void comptg
 
 void compsalb
 (
-    float raot550nm,                 /* I: nearest value of AOT */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ***sphalbt,                /* I: spherical albedo table
-                                           [NSR_BANDS][7][22] */
-    float ***normext,                /* I: ?????
-                                           [NSR_BANDS][7][22] */
-    float *satm,                     /* O: spherical albedo */
-    float *next                      /* O: ????? */
+    int ip1,            /* I: index variable for surface pressure */
+    int ip2,            /* I: index variable for surface pressure */
+    int iaot1,          /* I: index variable for AOT */
+    int iaot2,          /* I: index variable for AOT */
+    float raot550nm,    /* I: nearest value of AOT */
+    int iband,          /* I: band index (0-based) */
+    float pres,         /* I: surface pressure */
+    float tpres[7],     /* I: surface pressure table */
+    float aot550nm[22], /* I: AOT look-up table */
+    float ***sphalbt,   /* I: spherical albedo table [NSR_BANDS][7][22] */
+    float ***normext,   /* I: aerosol extinction coefficient at the current
+                              wavelength (normalized at 550nm)
+                              [NSR_BANDS][7][22] */
+    float *satm,        /* O: spherical albedo */
+    float *next         /* O: ????? */
 );
 
-int comptrans
+void comptrans
 (
-    float xts,                       /* I: solar zenith */
-    float raot550nm,                 /* I: nearest value of AOT */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****transt,                /* I: transmission table
-                                           [NSR_BANDS][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float tts[22],                   /* I: sun angle table */
-    float *xtts                      /* O: downward transmittance */
+    int ip1,            /* I: index variable for surface pressure */
+    int ip2,            /* I: index variable for surface pressure */
+    int iaot1,          /* I: index variable for AOT */
+    int iaot2,          /* I: index variable for AOT */
+    float xts,          /* I: zenith angle */
+    float raot550nm,    /* I: nearest value of AOT */
+    int iband,          /* I: band index (0-based) */
+    float pres,         /* I: surface pressure */
+    float tpres[7],     /* I: surface pressure table */
+    float aot550nm[22], /* I: AOT look-up table */
+    float ****transt,   /* I: transmission table
+                              [NSR_BANDS][7][22][22] */
+    float xtsstep,      /* I: zenith angle step value */
+    float xtsmin,       /* I: minimum zenith angle value */
+    float tts[22],      /* I: sun angle table */
+    float *xtts         /* O: downward transmittance */
 );
 
-int comproatm
+void comproatm
 (
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xmus,                      /* I: cosine of solar zenith angle */
-    float xmuv,                      /* I: cosine of observation zenith angle */
-    float cosxfi,                    /* I: cosine of azimuthal difference */
-    float raot550nm,                 /* I: nearest value of AOT */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /* I: intrinsic reflectance table
-                                           [NSR_BANDS][7][22][8000] */
-    float **tsmax,                   /* I: maximum scattering angle table
-                                           [20][22] */
-    float **tsmin,                   /* I: minimum scattering angle table
-                                           [20][22] */
-    float **nbfic,                   /* I: communitive number of azimuth angles
-                                           [20][22] */
-    float **nbfi,                    /* I: number of azimuth angles [20][22] */
-    float tts[22],                   /* I: sun angle table */
+    int ip1,            /* I: index variable for surface pressure */
+    int ip2,            /* I: index variable for surface pressure */
+    int iaot1,          /* I: index variable for AOT */
+    int iaot2,          /* I: index variable for AOT */
+    float xts,          /* I: solar zenith angle (deg) */
+    float xtv,          /* I: observation zenith angle (deg) */
+    float xmus,         /* I: cosine of solar zenith angle */
+    float xmuv,         /* I: cosine of observation zenith angle */
+    float cosxfi,       /* I: cosine of azimuthal difference */
+    float raot550nm,    /* I: nearest value of AOT */
+    int iband,          /* I: band index (0-based) */
+    float pres,         /* I: surface pressure */
+    float tpres[7],     /* I: surface pressure table */
+    float aot550nm[22], /* I: AOT look-up table */
+    float ****rolutt,   /* I: intrinsic reflectance table
+                              [NSR_BANDS][7][22][8000] */
+    float **tsmax,      /* I: maximum scattering angle table [20][22] */
+    float **tsmin,      /* I: minimum scattering angle table [20][22] */
+    float **nbfic,      /* I: communitive number of azimuth angles [20][22] */
+    float **nbfi,       /* I: number of azimuth angles [20][22] */
+    float tts[22],      /* I: sun angle table */
     int32 indts[22],
-    float **ttv,                     /* I: view angle table [20][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float *roatm                     /* O: atmospheric reflectance */
+    float **ttv,        /* I: view angle table [20][22] */
+    float xtsstep,      /* I: solar zenith step value */
+    float xtsmin,       /* I: minimum solar zenith value */
+    float xtvstep,      /* I: observation step value */
+    float xtvmin,       /* I: minimum observation value */
+    int its,            /* I: index for the sun angle table */
+    int itv,            /* I: index for the view angle table */
+    float *roatm        /* O: atmospheric reflectance */
 );
 
 int readluts

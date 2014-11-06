@@ -39,6 +39,12 @@ Date         Programmer       Reason
                               over and over again, just pass them in from the
                               main calling routine.  Same goes for the cosine
                               of azimuthal difference between sun and obs angles
+11/5/2014    Gail Schmidt     Calculated index variables for surface pressure
+                              and AOT within atmcorlamb2 and pass to the lower
+                              functions vs. recalculating in each function
+11/5/2014    Gail Schmidt     Calculated index variables for solar zenith and
+                              observation zenith angle and pass to the lower
+                              functions vs. recalculating in each function
 
 NOTES:
 *****************************************************************************/
@@ -126,52 +132,86 @@ int atmcorlamb2
 {
     char FUNC_NAME[] = "atmcorlamb2";   /* function name */
     char errmsg[STR_SIZE];  /* error message */
-    int retval;             /* function return value */
-    float xttv;    /* upward transmittance */
-    float xtts;    /* downward transmittance */
-    float ttatm;   /* total transmission of the atmosphere */
-    float tgog;    /* other gases transmission */
-    float tgoz;    /* ozone transmission */
-    float tgwv;    /* water vapor transmission */
-    float tgwvhalf;  /* water vapor transmission, half content */
-    float xtaur;   /* rayleigh optical depth for surface pressure */
-    float xphi;    /* azimuthal difference between sun and observation (deg) */
+    float xttv;         /* upward transmittance */
+    float xtts;         /* downward transmittance */
+    float ttatm;        /* total transmission of the atmosphere */
+    float tgog;         /* other gases transmission */
+    float tgoz;         /* ozone transmission */
+    float tgwv;         /* water vapor transmission */
+    float tgwvhalf;     /* water vapor transmission, half content */
+    float xtaur;        /* rayleigh optical depth for surface pressure */
+    float xphi;         /* azimuthal difference between sun and observation
+                           angles (deg) */
+    int ip;             /* surface pressure looping variable */
+    int ip1, ip2;       /* index variables for the surface pressure */
+    int iaot;           /* aerosol optical thickness (AOT) looping variable */
+    int iaot1, iaot2;   /* index variables for the AOT and spherical albedo
+                           arrays */
+    int its;            /* index for the sun angle table */
+    int itv;            /* index for the view angle table */
+
+    /* Get the pressure and AOT related values for the current surface pressure
+       and AOT.  These indices are passed into several functions. */
+    /* Look for the appropriate pressure index in the surface pressure table */
+    ip1 = 0;
+    for (ip = 0; ip < 7; ip++)
+    {
+        if (pres < tpres[ip])
+            ip1 = ip;
+    }
+    if (ip1 == 6)
+        ip1 = 5;
+    ip2 = ip1 + 1;
+      
+    /* Look for the appropriate AOT index in the AOT table */
+    iaot1 = 0;
+    for (iaot = 0; iaot < 22; iaot++)
+    {
+        if (raot550nm > aot550nm[iaot])
+            iaot1 = iaot;
+    }
+    if (iaot1 == 21)
+        iaot1 = 20;
+    iaot2 = iaot1 + 1;
+
+    /* Determine the index in the view angle table */
+    if (xtv <= xtvmin)
+        itv = 0;
+    else
+        itv = (int) ((xtv - xtvmin) / xtvstep + 1.0);
+
+    /* Determine the index in the sun angle table */
+    if (xts <= xtsmin) 
+        its = 0;
+    else
+        its = (int) ((xts - xtsmin) / xtsstep);
+    if (its > 19)
+    {
+        sprintf (errmsg, "Solar zenith (xts) is too large: %f", xts);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
 
     /* This routine returns variables for calculating roslamb */
-    retval = comproatm (xts, xtv, xmus, xmuv, cosxfi, raot550nm, iband, pres,
-        tpres, aot550nm, rolutt, tsmax, tsmin, nbfic, nbfi, tts, indts, ttv,
-        xtsstep, xtsmin, xtvstep, xtvmin, roatm);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing atmospheric reflectance.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
+    comproatm (ip1, ip2, iaot1, iaot2, xts, xtv, xmus, xmuv, cosxfi,
+        raot550nm, iband, pres, tpres, aot550nm, rolutt, tsmax, tsmin, nbfic,
+        nbfi, tts, indts, ttv, xtsstep, xtsmin, xtvstep, xtvmin, its, itv,
+        roatm);
 
-    retval = comptrans (xts, raot550nm, iband, pres, tpres, aot550nm, transt,
-        xtsstep, xtsmin, tts, &xtts);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing transmission.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
+    /* Compute the transmission for the solar zenith angle */
+    comptrans (ip1, ip2, iaot1, iaot2, xts, raot550nm, iband, pres, tpres,
+        aot550nm, transt, xtsstep, xtsmin, tts, &xtts);
 
-    retval = comptrans (xtv, raot550nm, iband, pres, tpres, aot550nm, transt,
-        xtvstep, xtvmin, tts, &xttv);
-    if (retval != SUCCESS)
-    {
-        sprintf (errmsg, "Computing transmission.");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
+    /* Compute the transmission for the observation zenith angle */
+    comptrans (ip1, ip2, iaot1, iaot2, xtv, raot550nm, iband, pres, tpres,
+        aot550nm, transt, xtvstep, xtvmin, tts, &xttv);
 
     /* Compute total transmission (product downward by  upward) */
     ttatm = xtts * xttv;
     
     /* Compute spherical albedo */
-    compsalb (raot550nm, iband, pres, tpres, aot550nm, sphalbt, normext, satm,
-        next);
+    compsalb (ip1, ip2, iaot1, iaot2, raot550nm, iband, pres, tpres, aot550nm,
+        sphalbt, normext, satm, next);
 
     comptg (iband, xts, xtv, xmus, xmuv, uoz, uwv, pres, ogtransa1, ogtransb0,
         ogtransb1, wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf,
@@ -213,6 +253,9 @@ Date         Programmer       Reason
 ---------    ---------------  -------------------------------------
 6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
                               by Eric Vermote, NASA GSFC
+11/5/2014    Gail Schmidt     xfd is based on xdep, which is a constant; might
+                              as well calculate xfd and make it a constant vs
+                              recomputing it every time
 
 NOTES:
 ******************************************************************************/
@@ -227,19 +270,27 @@ void local_chand
 )
 {
     int i;                             /* looping variable */
-    static float xdep = 0.0279;        /* depolarization factor */
+    float xfd = 0.958725777;           /* static value */
+/*                      xdep = 0.0279  // depolarization factor
+                        xfd = xdep / (2.0 - xdep)
+                            = 0.014147355
+                        xfd = (1.0 - xfd) / (1.0 + 2.0 * xfd)
+                            = .985852645 / 1.02829471
+                            = .958725777
+*/
+
     float pl[10];
     float fs0, fs1, fs2;
     float phios;
     float xcosf1, xcosf2, xcosf3;
     float xbeta2;
-    float xfd;
     float xph1, xph2, xph3;
     float xitm;
     float xp1, xp2, xp3;
     float cfonc1, cfonc2, cfonc3;
     float xlntau;                      /* log molecular optical depth */
     float xitot1, xitot2, xitot3;
+    float xmus2, xmuv2;                /* square of xmus and xmuv */
     float as0[10] = {0.33243832, -6.777104e-02, 0.16285370, 1.577425e-03,
         -0.30924818, -1.240906e-02, -0.10324388, 3.241678e-02, 0.11493334,
         -3.503695e-02};
@@ -252,15 +303,14 @@ void local_chand
     xcosf3 = cos (2.0 * phios * DEG2RAD);
     xbeta2 = 0.5;
 
-    /***** GAIL -- these are actually static .... so compute ahead of time ***/
-    xfd = xdep / (2.0 - xdep);
-    xfd = (1.0 - xfd) / (1.0 + 2.0 * xfd);
+    /* xmus and xmuv squared is used frequently */
+    xmus2 = xmus * xmus;
+    xmuv2 = xmuv * xmuv;
 
-    xph1 = 1.0 + (3.0 * xmus * xmus -1.0) * (3.0 * xmuv * xmuv - 1.0) *
-        xfd * 0.125;   /* vs / 8.0 */
-    xph2 = -xmus * xmuv * sqrt(1.0 - xmus * xmus) * sqrt(1.0 - xmuv * xmuv);
+    xph1 = 1.0 + (3.0 * xmus2 - 1.0) * (3.0 * xmuv2 - 1.0) * xfd * 0.125;
+    xph2 = -xmus * xmuv * sqrt(1.0 - xmus2) * sqrt(1.0 - xmuv2);
     xph2 = xph2 * xfd * xbeta2 * 1.5;
-    xph3 = (1.0 - xmus * xmus) * (1.0 - xmuv * xmuv);
+    xph3 = (1.0 - xmus2) * (1.0 - xmuv2);
     xph3 = xph3 * xfd * xbeta2 * 0.375;
 
     xitm = (1.0 - exp(-xtau * (1.0 / xmus + 1.0 / xmuv))) *
@@ -281,9 +331,9 @@ void local_chand
     pl[3] = xlntau * pl[2];
     pl[4] = xmus * xmuv;
     pl[5] = xlntau * pl[4];
-    pl[6] = xmus * xmus + xmuv * xmuv;
+    pl[6] = xmus2 + xmuv2;
     pl[7] = xlntau * pl[6];
-    pl[8] = xmus * xmus * xmuv * xmuv;
+    pl[8] = xmus2 * xmuv2;
     pl[9] = xlntau * pl[8];
 
     fs0 = 0.0;
@@ -317,15 +367,15 @@ Date         Programmer       Reason
                               by Eric Vermote, NASA GSFC
 
 NOTES:
-    1. Standard sea level pressure is 1013 millibars.
+1. Standard sea level pressure is 1013 millibars.
 ******************************************************************************/
 void comptg
 (
     int iband,                   /* I: band index (0-based) */
     float xts,                   /* I: solar zenith angle */
-    float xtv,                   /* I: observation zenith angle */
+    float xtv,                   /* I: view zenith angle */
     float xmus,                  /* I: cosine of solar zenith angle */
-    float xmuv,                  /* I: cosine of observation zenith angle */
+    float xmuv,                  /* I: cosine of view zenith angle */
     float uoz,                   /* I: total column ozone */
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
@@ -398,50 +448,28 @@ NOTES:
 ******************************************************************************/
 void compsalb
 (
-    float raot550nm,                 /* I: nearest value of AOT */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ***sphalbt,                /* I: spherical albedo table
-                                           [NSR_BANDS][7][22] */
-    float ***normext,                /* I: aerosol extinction coefficient at
-                                           the current wavelength (normalized
-                                           at 550nm) [NSR_BANDS][7][22] */
-    float *satm,                     /* O: spherical albedo */
-    float *next                      /* O: ????? */
+    int ip1,            /* I: index variable for surface pressure */
+    int ip2,            /* I: index variable for surface pressure */
+    int iaot1,          /* I: index variable for AOT */
+    int iaot2,          /* I: index variable for AOT */
+    float raot550nm,    /* I: nearest value of AOT */
+    int iband,          /* I: band index (0-based) */
+    float pres,         /* I: surface pressure */
+    float tpres[7],     /* I: surface pressure table */
+    float aot550nm[22], /* I: AOT look-up table */
+    float ***sphalbt,   /* I: spherical albedo table [NSR_BANDS][7][22] */
+    float ***normext,   /* I: aerosol extinction coefficient at the current
+                              wavelength (normalized at 550nm)
+                              [NSR_BANDS][7][22] */
+    float *satm,        /* O: spherical albedo */
+    float *next         /* O: ????? */
 )
 {
-    int ip1, ip2, ip;               /* index variables for the pressure,
-                                       AOT, and spherical albedo arrays */
-    int iaot;                       /* aerosol optical thickness (AOT) index */
-    int iaot1, iaot2;               /* index variables for the AOT and
-                                       spherical albedo arrays */
     float xtiaot1, xtiaot2;         /* spherical albedo trans value */
     float satm1, satm2;             /* spherical albedo value */
     float next1, next2;             /* ???? */
     float dpres;                    /* pressure ratio */
     float deltaaot;                 /* AOT ratio */
-
-    ip1 = 0;
-    for (ip = 0; ip < 7; ip++)
-    {
-        if (pres < tpres[ip])
-            ip1 = ip;
-    }
-    if (ip1 == 6)
-        ip1 = 5;
-    ip2 = ip1 + 1;
-      
-    iaot1 = 0;
-    for (iaot = 0; iaot < 22; iaot++)
-    {
-        if (raot550nm > aot550nm[iaot])
-            iaot1 = iaot;
-    }
-    if (iaot1 == 21)
-        iaot1 = 20;
-    iaot2 = iaot1 + 1;
 
     /* Compute the delta AOT */
     deltaaot = raot550nm - aot550nm[iaot1];
@@ -479,11 +507,7 @@ MODULE:  comptrans
 PURPOSE:  Compute transmission
 
 RETURN VALUE:
-Type = int
-Value          Description
------          -----------
-ERROR          Error occurred computing transmission
-SUCCESS        Successful completion
+Type = none
 
 HISTORY:
 Date         Programmer       Reason
@@ -492,57 +516,47 @@ Date         Programmer       Reason
                               by Eric Vermote, NASA GSFC
 
 NOTES:
+1. This is called by subaeroret for both the solar zenith angle and the
+   observation zenith angle.  Thus, xts is not specific to the solar zenith
+   angle in this case.
+2. This function is heavily dependent upon the input solar zenith and
+   observation zenith angles.  At the current time, these are static values
+   in the overall application.  Knowing that, speedup is achievable in this
+   routine if these values never change.  However, the long-term goal is to
+   change the main function to compute the solar zenith angle on a per-pixel
+   basis.  Therefore we will leave this routine as-is.
+3. This function is also dependent upon surface pressure and AOT.
 ******************************************************************************/
-int comptrans
+void comptrans
 (
-    float xts,                       /* I: solar zenith */
-    float raot550nm,                 /* I: nearest value of AOT */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****transt,                /* I: transmission table
-                                           [NSR_BANDS][7][22][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float tts[22],                   /* I: sun angle table */
-    float *xtts                      /* O: downward transmittance */
+    int ip1,            /* I: index variable for surface pressure */
+    int ip2,            /* I: index variable for surface pressure */
+    int iaot1,          /* I: index variable for AOT */
+    int iaot2,          /* I: index variable for AOT */
+    float xts,          /* I: zenith angle */
+    float raot550nm,    /* I: nearest value of AOT */
+    int iband,          /* I: band index (0-based) */
+    float pres,         /* I: surface pressure */
+    float tpres[7],     /* I: surface pressure table */
+    float aot550nm[22], /* I: AOT look-up table */
+    float ****transt,   /* I: transmission table
+                              [NSR_BANDS][7][22][22] */
+    float xtsstep,      /* I: zenith angle step value */
+    float xtsmin,       /* I: minimum zenith angle value */
+    float tts[22],      /* I: sun angle table */
+    float *xtts         /* O: downward transmittance */
 )
 {
     char FUNC_NAME[] = "comptrans";   /* function name */
     char errmsg[STR_SIZE];            /* error message */
-    int its;                        /* index for the sun angle table */
-    int ip1, ip2, ip;               /* index variables for the pressure,
-                                       AOT, and spherical albedo arrays */
-    int iaot;                       /* aerosol optical thickness (AOT) index */
-    int iaot1, iaot2;               /* index variables for the AOT and
-                                       spherical albedo arrays */
     float xtiaot1, xtiaot2;         /* spherical albedo trans value */
     float xtts1, xtts2;
     float xmts, xtranst;
     float dpres;                    /* pressure ratio */
     float deltaaot;                 /* AOT ratio */
+    int its;                        /* index for the sun angle table */
 
-    ip1 = 0;
-    for (ip = 0; ip < 7; ip++)
-    {
-        if (pres < tpres[ip])
-            ip1 = ip;
-    }
-    if (ip1 == 6)
-        ip1 = 5;
-    ip2 = ip1 + 1;
-      
-    iaot1 = 0;
-    for (iaot = 0; iaot < 22; iaot++)
-    {
-        if (raot550nm > aot550nm[iaot])
-            iaot1 = iaot;
-    }
-    if (iaot1 == 21)
-        iaot1 = 20;
-    iaot2 = iaot1 + 1;
-
+    /* Determine the index in the sun angle table */
     if (xts <= xtsmin) 
         its = 0;
     else
@@ -551,10 +565,10 @@ int comptrans
     {
         sprintf (errmsg, "Solar zenith (xts) is too large: %f", xts);
         error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
+        return;
     }
 
-    xmts = (xts - tts[its]) * 0.25;    /* vs / 4.0 */
+    xmts = (xts - tts[its]) * 0.25;
     xtranst = transt[iband][ip1][iaot1][its];
     xtiaot1 = xtranst + (transt[iband][ip1][iaot1][its+1] - xtranst) * xmts;
 
@@ -574,9 +588,6 @@ int comptrans
 
     dpres = (pres - tpres[ip1]) / (tpres[ip2] - tpres[ip1]);
     *xtts = xtts1 + (xtts2 - xtts1) * dpres;
-
-    /* Successful completion */
-    return (SUCCESS);
 }
 
 
@@ -586,11 +597,7 @@ MODULE:  comproatm
 PURPOSE:  Computes the atmospheric reflectance
 
 RETURN VALUE:
-Type = int
-Value          Description
------          -----------
-ERROR          Error occurred computing the atmospheric reflectance
-SUCCESS        Successful completion
+Type = none
 
 HISTORY:
 Date         Programmer       Reason
@@ -602,48 +609,48 @@ Date         Programmer       Reason
                               then duplicated here.
 
 NOTES:
-  1. GAIL -- this is likely the major time hog in the overall interpolation
+1. This function is heavily dependent upon the solar zenith and observation
+   zenith angles.  At the current time, these are static values in the
+   overall application.  Knowing that, speedup is achievable in this routine
+   if these values never change.  However, the long-term goal is to change
+   the main function to compute the solar zenith angle on a per-pixel basis.
+   Therefore we will leave this routine as-is.
+2. This function is also dependent upon surface pressure and AOT.
 ******************************************************************************/
-int comproatm
+void comproatm
 (
-    float xts,                       /* I: solar zenith angle (deg) */
-    float xtv,                       /* I: observation zenith angle (deg) */
-    float xmus,                      /* I: cosine of solar zenith angle */
-    float xmuv,                      /* I: cosine of observation zenith angle */
-    float cosxfi,                    /* I: cosine of azimuthal difference */
-    float raot550nm,                 /* I: nearest value of AOT */
-    int iband,                       /* I: band index (0-based) */
-    float pres,                      /* I: surface pressure */
-    float tpres[7],                  /* I: surface pressure table */
-    float aot550nm[22],              /* I: AOT look-up table */
-    float ****rolutt,                /* I: intrinsic reflectance table
-                                           [NSR_BANDS][7][22][8000] */
-    float **tsmax,                   /* I: maximum scattering angle table
-                                           [20][22] */
-    float **tsmin,                   /* I: minimum scattering angle table
-                                           [20][22] */
-    float **nbfic,                   /* I: communitive number of azimuth angles
-                                           [20][22] */
-    float **nbfi,                    /* I: number of azimuth angles [20][22] */
-    float tts[22],                   /* I: sun angle table */
+    int ip1,            /* I: index variable for surface pressure */
+    int ip2,            /* I: index variable for surface pressure */
+    int iaot1,          /* I: index variable for AOT */
+    int iaot2,          /* I: index variable for AOT */
+    float xts,          /* I: solar zenith angle (deg) */
+    float xtv,          /* I: observation zenith angle (deg) */
+    float xmus,         /* I: cosine of solar zenith angle */
+    float xmuv,         /* I: cosine of observation zenith angle */
+    float cosxfi,       /* I: cosine of azimuthal difference */
+    float raot550nm,    /* I: nearest value of AOT */
+    int iband,          /* I: band index (0-based) */
+    float pres,         /* I: surface pressure */
+    float tpres[7],     /* I: surface pressure table */
+    float aot550nm[22], /* I: AOT look-up table */
+    float ****rolutt,   /* I: intrinsic reflectance table
+                              [NSR_BANDS][7][22][8000] */
+    float **tsmax,      /* I: maximum scattering angle table [20][22] */
+    float **tsmin,      /* I: minimum scattering angle table [20][22] */
+    float **nbfic,      /* I: communitive number of azimuth angles [20][22] */
+    float **nbfi,       /* I: number of azimuth angles [20][22] */
+    float tts[22],      /* I: sun angle table */
     int32 indts[22],
-    float **ttv,                     /* I: view angle table [20][22] */
-    float xtsstep,                   /* I: solar zenith step value */
-    float xtsmin,                    /* I: minimum solar zenith value */
-    float xtvstep,                   /* I: observation step value */
-    float xtvmin,                    /* I: minimum observation value */
-    float *roatm                     /* O: atmospheric reflectance */
+    float **ttv,        /* I: view angle table [20][22] */
+    float xtsstep,      /* I: solar zenith step value */
+    float xtsmin,       /* I: minimum solar zenith value */
+    float xtvstep,      /* I: observation step value */
+    float xtvmin,       /* I: minimum observation value */
+    int its,            /* I: index for the sun angle table */
+    int itv,            /* I: index for the view angle table */
+    float *roatm        /* O: atmospheric reflectance */
 )
 {
-    char FUNC_NAME[] = "comproatm";   /* function name */
-    char errmsg[STR_SIZE];            /* error message */
-    int ip1, ip2, ip;               /* index variables for the pressure,
-                                       AOT, and spherical albedo arrays */
-    int iaot1, iaot2;               /* index variables for the AOT and
-                                       spherical albedo arrays */
-    int its;                        /* index for the sun angle table */
-    int itv;                        /* index for the view angle table */
-    int iaot;                       /* aerosol optical thickness (AOT) index */
     int isca;
     int iindex;
     float nbfic1, nbfic2, nbfic3, nbfic4;
@@ -671,36 +678,6 @@ int comproatm
           1.252762969, 1.386294361, 1.504077397,
           1.609437912};
 
-    /* Look for the appropriate pressure index in the surface pressure table */
-    ip1 = 0;
-    for (ip = 0; ip < 7; ip++)
-    {
-        if (pres < tpres[ip])
-            ip1 = ip;
-    }
-    if (ip1 == 6)
-        ip1 = 5;
-    ip2 = ip1 + 1;
-
-/**** Never changes if xtv and xts never change ****/
-    /* Determine the index in the view angle table */
-    if (xtv <= xtvmin)
-        itv = 0;
-    else
-        itv = (int) ((xtv - xtvmin) / xtvstep + 1.0);
-
-    /* Determine the index in the sun angle table */
-    if (xts <= xtsmin) 
-        its = 0;
-    else
-        its = (int) ((xts - xtsmin) / xtsstep);
-    if (its > 19)
-    {
-        sprintf (errmsg, "Solar zenith (xts) is too large: %f", xts);
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
     cscaa = -xmus * xmuv - cosxfi * sqrt(1.0 - xmus * xmus) *
         sqrt(1.0 - xmuv * xmuv);
     scaa = acos(cscaa) * RAD2DEG;    /* vs / DEG2RAD */
@@ -713,18 +690,6 @@ int comproatm
     nbfi3 = nbfi[itv+1][its];
     nbfic4 = nbfic[itv+1][its+1];
     nbfi4 = nbfi[itv+1][its+1];
-/***************************************************/
-
-    /* Determine lower and upper limit in aot */
-    iaot1 = 0;
-    for (iaot = 0; iaot < 22; iaot++)
-    {
-        if (raot550nm > aot550nm[iaot])
-            iaot1 = iaot;
-    }
-    if (iaot1 == 21)
-        iaot1 = 20;
-    iaot2 = iaot1 + 1;
 
     /* Compute for ip1, iaot1 */
     /* Interpolate point 1 (its,itv) vs scattering angle */
@@ -1260,9 +1225,6 @@ int comproatm
 
     dpres = (pres - tpres[ip1]) / (tpres[ip2] - tpres[ip1]);
     *roatm = rop1 + (rop2 - rop1) * dpres;
-       
-    /* Successful completion */
-    return (SUCCESS);
 }
 
 
@@ -1386,10 +1348,10 @@ int readluts
         return (ERROR);
     }
 
+    edges[0] = 1;   /* number of lines */
     for (i = 0; i < 20; i++)
     {
         start[0] = i;   /* lines */
-        edges[0] = 1;   /* number of lines */
         status = SDreaddata (sds_id, start, NULL, edges, tsmax[i]);
         if (status == -1)
         {
@@ -1426,10 +1388,10 @@ int readluts
         return (ERROR);
     }
 
+    edges[0] = 1;   /* number of lines */
     for (i = 0; i < 20; i++)
     {
         start[0] = i;   /* lines */
-        edges[0] = 1;   /* number of lines */
         status = SDreaddata (sds_id, start, NULL, edges, tsmin[i]);
         if (status == -1)
         {
@@ -1466,10 +1428,10 @@ int readluts
         return (ERROR);
     }
 
+    edges[0] = 1;   /* number of lines */
     for (i = 0; i < 20; i++)
     {
         start[0] = i;   /* lines */
-        edges[0] = 1;   /* number of lines */
         status = SDreaddata (sds_id, start, NULL, edges, ttv[i]);
         if (status == -1)
         {
@@ -1506,10 +1468,10 @@ int readluts
         return (ERROR);
     }
 
+    edges[0] = 1;   /* number of lines */
     for (i = 0; i < 20; i++)
     {
         start[0] = i;   /* lines */
-        edges[0] = 1;   /* number of lines */
         status = SDreaddata (sds_id, start, NULL, edges, nbfi[i]);
         if (status == -1)
         {
@@ -1546,10 +1508,10 @@ int readluts
         return (ERROR);
     }
 
+    edges[0] = 1;   /* number of lines */
     for (i = 0; i < 20; i++)
     {
         start[0] = i;   /* lines */
-        edges[0] = 1;   /* number of lines */
         status = SDreaddata (sds_id, start, NULL, edges, nbfic[i]);
         if (status == -1)
         {
