@@ -385,6 +385,9 @@ Date        Programmer       Reason
                              netCDF4 files (vs. netCDF3 files) from NOAA/NCEP.
                              Modifications also included the need to handle
                              new data types for the NCEP variables.
+11/13/2014  Gail Schmidt     Added a check to the variable data type to make
+                             sure it is a floating point, just to make sure the
+                             old NCEP int16 products aren't being processed.
 
 NOTES:
 1. The NCEP variables are global datasets.  The starting point for the
@@ -447,6 +450,19 @@ int copy_sds
         fprintf (stderr, "%s variable was not found in the netCDF "
             "dataset.\n", var_name);
         return (-1);
+    }
+
+    /* If this is not one of the lat/long dimensions, then it's our NCEP
+       variable.  In that case, we need to make sure this is a floating point
+       data type and not int16 as the previous NCEP products were. */
+    if (strcmp (var_name, CLIMATE_XDIM_NAME) &&
+        strcmp (var_name, CLIMATE_YDIM_NAME) && 
+        strcmp (var_name, CLIMATE_TDIM_NAME)) {
+        if (data_type != NC_FLOAT) {
+            fprintf (stderr, "Error: Non-dimensional variable (%s) should be "
+                "floating point.\n", var_name);
+            return -1;
+        }
     }
 
     /* Set up the dimensions of the output HDF SDS */
