@@ -93,8 +93,16 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
  (returns)      'output' data structure or NULL when an error occurs
 
 !Revision:
-revision 2.0.0 1/27/2014
+revision on 1/27/2014 by Gail Schmidt, USGS/EROS
  - modified to utilize the ESPA internal raw binary structure
+
+revision on 11/13/2014 by Gail Schmidt, USGS/EROS
+ - modified to not write a fill_value for the output surface reflectance QA
+   bands.  These are either on/off for that quality item, so technically there
+   isn't a fill value.  The user will need to refer to the fill QA band.  Also
+   ENVI doesn't include the fill value as part of the histogram, so you have
+   to play weird games with the histograms in ENVI to be able to see both the
+   0 and 255 when one of the values is flagged as fill.
 
 !END****************************************************************************
 */
@@ -247,39 +255,32 @@ revision 2.0.0 1/27/2014
       bmeta[ib].class_values[1].class = 255;
       switch (ib - nband_out_extra + 2) {
         case (FILL):
-          bmeta[ib].fill_value = 0;
           strcpy (bmeta[ib].class_values[0].description, "fill");
           strcpy (bmeta[ib].class_values[1].description, "not fill");
           break;
         case (DDV):
-          bmeta[ib].fill_value = 255; /* clear and fill are the same value */
           strcpy (bmeta[ib].class_values[0].description,
             "dark dense vegetation");
           strcpy (bmeta[ib].class_values[1].description,
             "not dark dense vegetation");
           break;
         case (CLOUD):
-          bmeta[ib].fill_value = 255; /* clear and fill are the same value */
           strcpy (bmeta[ib].class_values[0].description, "cloud");
           strcpy (bmeta[ib].class_values[1].description, "not cloud");
           break;
         case (CLOUD_SHADOW):
-          bmeta[ib].fill_value = 255; /* clear and fill are the same value */
           strcpy (bmeta[ib].class_values[0].description, "cloud shadow");
           strcpy (bmeta[ib].class_values[1].description, "not cloud shadow");
           break;
         case (SNOW):
-          bmeta[ib].fill_value = 255; /* clear and fill are the same value */
           strcpy (bmeta[ib].class_values[0].description, "snow");
           strcpy (bmeta[ib].class_values[1].description, "not snow");
           break;
         case (LAND_WATER):
-          bmeta[ib].fill_value = 255; /* clear and fill are the same value */
           strcpy (bmeta[ib].class_values[0].description, "land");
           strcpy (bmeta[ib].class_values[1].description, "water");
           break;
         case (ADJ_CLOUD):
-          bmeta[ib].fill_value = 255; /* clear and fill are the same value */
           strcpy (bmeta[ib].class_values[0].description, "adjacent cloud");
           strcpy (bmeta[ib].class_values[1].description, "not adjacent cloud");
           break;
