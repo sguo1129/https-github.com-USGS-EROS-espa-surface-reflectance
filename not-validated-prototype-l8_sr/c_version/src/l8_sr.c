@@ -50,15 +50,17 @@ Date          Programmer       Reason
                                written.  Also added flag to allow the user to
                                specify TOA reflectance bands (bands 1-7) should
                                be written in addition to SR bands.
-8/14/2014    Gail Schmidt      Updated for v1.3 delivered by Eric Vermote
-8/25/2014    Gail Schmidt      Split the main application into smaller modules
+8/14/2014     Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
+8/25/2014     Gail Schmidt     Split the main application into smaller modules
                                for allocating memory and reading the auxiliary
                                data files.
-11/4/2014    Gail Schmidt      Instead of recalculating the xmus and xmuv values
+11/4/2014     Gail Schmidt     Instead of recalculating the xmus and xmuv values
                                over and over again, just pass them in from the
                                main calling routine.  Same goes for the cosine
                                of azimuthal difference between sun and obs
                                angles.
+11/17/2014    Gail Schmidt     If this is an OLI-only scene, then surface
+                               reflectance corrections will not be applied.
 
 NOTES:
 1. Bands 1-7 are corrected to surface reflectance.  Band 8 (pand band) is not
@@ -369,21 +371,24 @@ int main (int argc, char *argv[])
     /* Output some information from the input files if verbose */
     if (verbose)
     {
+        printf ("  Nband: %d\n", input->nband);
         printf ("  Number of lines/samples: %d/%d\n", input->size.nlines,
             input->size.nsamps);
-        printf ("  Nband: %d\n", input->nband);
-        printf ("  Pixsize: %f,%f\n", input->size.pixsize[0],
+        printf ("  Pixsize: %f,%f\n\n", input->size.pixsize[0],
             input->size.pixsize[1]);
+
+        printf ("  Nband thermal: %d\n", input->nband_th);
         printf ("  Number of thermal lines/samples: %d/%d\n",
             input->size_th.nlines, input->size_th.nsamps);
-        printf ("  Nband thermal: %d\n", input->nband_th);
-        printf ("  Pixsize: %f,%f\n", input->size_th.pixsize[0],
+        printf ("  Pixsize: %f,%f\n\n", input->size_th.pixsize[0],
             input->size_th.pixsize[1]);
+
+        printf ("  Nband QA: %d\n", input->nband_qa);
         printf ("  Number of qa lines/samples: %d/%d\n",
             input->size_qa.nlines, input->size_qa.nsamps);
-        printf ("  Nband QA: %d\n", input->nband_qa);
-        printf ("  Pixsize: %f,%f\n", input->size_qa.pixsize[0],
+        printf ("  Pixsize: %f,%f\n\n", input->size_qa.pixsize[0],
             input->size_qa.pixsize[1]);
+
         printf ("  Fill value: %d\n", input->meta.fill);
         printf ("  Solar zenith: %f\n", xml_metadata.global.solar_zenith);
         printf ("  Solar azimuth: %f\n", xml_metadata.global.solar_azimuth);
@@ -407,6 +412,17 @@ int main (int argc, char *argv[])
         sprintf (errmsg, "Solar zenith angle is too large to allow for surface "
             "reflectance processing.  Corrections will be limited to top of "
             "atmosphere and at-sensor brightness temperature corrections.");
+        error_handler (false, FUNC_NAME, errmsg);
+    }
+
+    /* If this is OLI-only data, then surface reflectance will not be
+       processed */
+    if (input->meta.inst == INST_OLI)
+    {
+        process_sr = false;
+        sprintf (errmsg, "This is an OLI-only scene vs. an OLI-TIRS scene. "
+            "Corrections will be limited to top of atmosphere and at-sensor "
+            "brightness temperature corrections.");
         error_handler (false, FUNC_NAME, errmsg);
     }
 
@@ -688,8 +704,9 @@ int main (int argc, char *argv[])
             }
         }  /* end if band <= band 9 */
 
-        /* Read the current band and calibrate thermal bands */
-        else if (ib == DN_BAND10)
+        /* Read the current band and calibrate thermal bands.  Not available
+           for OLI-only scenes. */
+        else if (ib == DN_BAND10 && strcmp (gmeta->instrument, "OLI"))
         {
             if (get_input_th_lines (input, 0, 0, nlines, uband) != SUCCESS)
             {
@@ -727,7 +744,7 @@ int main (int argc, char *argv[])
             }
         }  /* end if band 10 */
 
-        else if (ib == DN_BAND11)
+        else if (ib == DN_BAND11 && strcmp (gmeta->instrument, "OLI"))
         {
             if (get_input_th_lines (input, 1, 0, nlines, uband) != SUCCESS)
             {
@@ -833,6 +850,11 @@ int main (int argc, char *argv[])
        processing. */
     for (ib = SR_BAND9; ib <= SR_BAND11; ib++)
     {
+        /* If processing OLI-only, then bands 10 and 11 don't exist */
+        if (!strcmp (gmeta->instrument, "OLI") &&
+            (ib == SR_BAND10 || ib == SR_BAND11))
+            continue;
+        
         printf ("  Band %d: %s\n", ib+2,
             toa_output->metadata.band[ib].file_name);
         if (put_output_lines (toa_output, sband[ib], ib, 0, nlines,
@@ -1903,7 +1925,9 @@ void usage ()
             "top of atmosphere correction is applied and written for bands "
             "1-7.  Top of atmosphere and at-sensor corrections are applied "
             "and written for bands 9 (cirrus), 10 (thermal), and 11 "
-            "(thermal).\n\n");
+            "(thermal).  Surface reflectance corrections are available for "
+            "OLI_TIRS products.  OLI-only scenes are corrected up through TOA "
+            "and not surface reflectance.\n\n");
     printf ("usage: l8_sr "
             "--xml=input_xml_filename "
             "--aux=input_auxiliary_filename "

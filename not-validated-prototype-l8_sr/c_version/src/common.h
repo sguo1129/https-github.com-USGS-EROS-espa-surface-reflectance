@@ -79,6 +79,7 @@ typedef enum {
 typedef enum {
   INST_NULL = -1,
   INST_OLI_TIRS = 0, 
+  INST_OLI, 
   INST_MAX
 } Inst_t;
 

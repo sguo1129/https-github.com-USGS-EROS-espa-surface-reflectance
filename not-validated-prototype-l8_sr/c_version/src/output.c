@@ -42,6 +42,7 @@ Date         Programmer       Reason
                               to be flexible with the setup of the TOA
                               reflectance bands
 10/22/2014   Gail Schmidt     Band 10 and 11 need to be of product type toa_bt
+11/17/2014   Gail Schmidt     Modified to handle OLI-only scenes
 
 NOTES:
 ******************************************************************************/
@@ -104,6 +105,9 @@ Output_t *open_output
        metadata won't be updated, however the band metadata will be updated
        and used later for appending to the original XML file. */
     init_metadata_struct (&this->metadata);
+
+    /* Copy the instrument type */
+    this->inst = input->meta.inst;
 
     /* Allocate memory for the total bands */
     if (allocate_band_metadata (&this->metadata, nband) != SUCCESS)
@@ -265,15 +269,20 @@ Output_t *open_output
         }
 
         /* Set up the filename with the scene name and band name and open the
-           file for read/write access */
-        sprintf (bmeta[ib].file_name, "%s_%s.img", scene_name, bmeta[ib].name);
-        this->fp_bin[ib] = open_raw_binary (bmeta[ib].file_name, "w+");
-        if (this->fp_bin[ib] == NULL)
+           file for read/write access.  Don't open if this is OLI-only and
+           these are the thermal bands. */
+        if ((ib != SR_BAND10 && ib != SR_BAND11) || this->inst != INST_OLI)
         {
-            sprintf (errmsg, "Unable to open output band %d file: %s", ib,
-                bmeta[ib].file_name);
-            error_handler (true, FUNC_NAME, errmsg);
-            return (NULL);
+            sprintf (bmeta[ib].file_name, "%s_%s.img", scene_name,
+                bmeta[ib].name);
+            this->fp_bin[ib] = open_raw_binary (bmeta[ib].file_name, "w+");
+            if (this->fp_bin[ib] == NULL)
+            {
+                sprintf (errmsg, "Unable to open output band %d file: %s", ib,
+                    bmeta[ib].file_name);
+                error_handler (true, FUNC_NAME, errmsg);
+                return (NULL);
+            }
         }
 
         /* Free the memory for the upper-case string */
@@ -302,6 +311,7 @@ HISTORY:
 Date         Programmer       Reason
 ---------    ---------------  -------------------------------------
 6/24/2014    Gail Schmidt     Original Development
+11/17/2014   Gail Schmidt     Modified to handle OLI-only scenes
 
 NOTES:
 ******************************************************************************/
@@ -331,7 +341,11 @@ int close_output
             ((ib == SR_BAND9) || (ib == SR_BAND10) || (ib == SR_BAND11)))
             continue;
         else
-            close_raw_binary (this->fp_bin[ib]);
+        {
+            /* No thermal bands are open for OLI-only scenes */
+            if ((ib != SR_BAND10 && ib != SR_BAND11) || this->inst != INST_OLI)
+                close_raw_binary (this->fp_bin[ib]);
+        }
     }
     this->open = false;
 

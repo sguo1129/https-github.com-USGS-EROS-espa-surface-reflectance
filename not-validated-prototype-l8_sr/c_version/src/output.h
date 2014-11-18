@@ -21,6 +21,7 @@
 typedef struct {
   bool open;            /* Flag to indicate whether output file is open;
                            'true' = open, 'false' = not open */
+  Inst_t inst;          /* instrument */
   int nband;            /* Number of output bands */
   int nlines;           /* Number of output lines */
   int nsamps;           /* Number of output samples */
