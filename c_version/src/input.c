@@ -35,8 +35,9 @@ non-NULL   Successful completion
 
 HISTORY:
 Date         Programmer       Reason
----------    ---------------  -------------------------------------
+----------   ---------------  -------------------------------------
 6/20/2014    Gail Schmidt     Original Development
+11/17/2014   Gail Schmidt     Modified to support OLI-only scenes
 
 NOTES:
   1. This routine opens the input L8 files.  It also allocates memory for
@@ -91,7 +92,7 @@ Input_t *open_input
     }
 
     for (ib = 0; ib < this->nband_th; ib++)
-    {
+    {  /* NOTE: nband_th will be 0 for OLI-only scenes */
         this->fp_bin_th[ib] = open_raw_binary (this->file_name_th[ib], "rb");
         if (this->fp_bin_th[ib] == NULL)
         {
@@ -600,8 +601,9 @@ SUCCESS      Successful completion
 
 HISTORY:
 Date         Programmer       Reason
----------    ---------------  -------------------------------------
+----------   ---------------  -------------------------------------
 6/20/2014    Gail Schmidt     Original Development
+11/17/2014   Gail Schmidt     Modified to support OLI-only scenes
 
 NOTES:
 ******************************************************************************/
@@ -696,6 +698,8 @@ int get_xml_input
 
     if (!strcmp (gmeta->instrument, "OLI_TIRS"))
         this->meta.inst = INST_OLI_TIRS;
+    else if (!strcmp (gmeta->instrument, "OLI"))
+        this->meta.inst = INST_OLI;
     else
     {
         sprintf (errmsg, "Unsupported instrument: %s", gmeta->instrument);
@@ -761,6 +765,21 @@ int get_xml_input
         this->nband_qa = 1;     /* number of QA bands */
         this->meta.iband_pan[0] = 12;
     }
+    else if (this->meta.inst == INST_OLI)
+    {
+        this->nband = 8;        /* number of reflectance bands */
+        for (ib = 0; ib < this->nband-1; ib++)
+            this->meta.iband[ib] = ib+1;
+        this->meta.iband[7] = 9;
+
+        this->nband_th = 0;     /* number of thermal bands */
+
+        this->nband_pan = 1;    /* number of pan bands */
+        this->meta.iband_pan[0] = 8;
+
+        this->nband_qa = 1;     /* number of QA bands */
+        this->meta.iband_pan[0] = 12;
+    }
 
     /* Find band 1, band 10, and band 8 in the input XML file to obtain
        band-related information for the reflectance, thermal, and pan bands */
@@ -776,7 +795,8 @@ int get_xml_input
             this->meta.bias[0] = metadata->band[i].toa_bias;
             this->file_name[0] = strdup (metadata->band[i].file_name);
 
-            /* get the production date but only the date portion (yyyy-mm-dd) */
+            /* get the production date but only the date portion
+               (yyyy-mm-dd) */
             strncpy (prod_date, metadata->band[i].production_date, 10);
             prod_date[10] = '\0';
         }
@@ -841,6 +861,7 @@ int get_xml_input
             this->file_name_pan[0] = strdup (metadata->band[i].file_name);
         }
 
+        /* NOTE: band10 and band11 won't exist in the input XML file */
         else if (!strcmp (metadata->band[i].name, "band10"))
         {
             /* this is the index we'll use for thermal band info */
@@ -877,11 +898,14 @@ int get_xml_input
     this->size.pixsize[1] = metadata->band[refl_indx].pixel_size[1];
     this->scale_factor = metadata->band[refl_indx].scale_factor;
 
-    this->size_th.nsamps = metadata->band[th_indx].nsamps;
-    this->size_th.nlines = metadata->band[th_indx].nlines;
-    this->size_th.pixsize[0] = metadata->band[th_indx].pixel_size[0];
-    this->size_th.pixsize[1] = metadata->band[th_indx].pixel_size[1];
-    this->scale_factor_th = metadata->band[th_indx].scale_factor;
+    if (this->meta.inst == INST_OLI_TIRS)
+    {  /* skip for OLI */
+        this->size_th.nsamps = metadata->band[th_indx].nsamps;
+        this->size_th.nlines = metadata->band[th_indx].nlines;
+        this->size_th.pixsize[0] = metadata->band[th_indx].pixel_size[0];
+        this->size_th.pixsize[1] = metadata->band[th_indx].pixel_size[1];
+        this->scale_factor_th = metadata->band[th_indx].scale_factor;
+    }
 
     this->size_pan.nsamps = metadata->band[pan_indx].nsamps;
     this->size_pan.nlines = metadata->band[pan_indx].nlines;
@@ -931,7 +955,8 @@ int get_xml_input
     }
 
     /* Check satellite/instrument combination */
-    if (this->meta.inst == INST_OLI_TIRS)
+    if (this->meta.inst == INST_OLI_TIRS ||
+        this->meta.inst == INST_OLI)
     {
         if (this->meta.sat != SAT_LANDSAT_8)
         {
