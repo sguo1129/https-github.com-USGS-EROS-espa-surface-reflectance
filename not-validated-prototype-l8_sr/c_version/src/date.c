@@ -245,9 +245,9 @@ bool date_init
             for (this->month = 0; this->month < 12; this->month++)
             {
                 idoy_nonleap = idoy[this->month];
-  	            if (this->month > 1)
+                if (this->month > 1)
                     idoy_nonleap--;
-  	            if (this->doy < idoy_nonleap)
+                if (this->doy < idoy_nonleap)
                     break;
             }
         }
@@ -469,7 +469,7 @@ bool format_date
     else if (iformat == DATE_FORMAT_DATEB_TIME)
     {
         if (sprintf (s, "%4d-%03dT%02d:%02d:%09.6fZ", this->year, this->doy, 
-  		    this->hour, this->minute, this->second) < 0) 
+            this->hour, this->minute, this->second) < 0) 
         {
             strcpy (errmsg, "Formatting the date and time");
             error_handler (true, FUNC_NAME, errmsg);

@@ -24,9 +24,9 @@ Date          Programmer       Reason
 7/1/2014      Gail Schmidt     Original Development
 
 NOTES:
-  1. Memory is allocated for the input file.  This should be character a
-     pointer set to NULL on input.  The caller is responsible for freeing the
-     allocated memory upon successful return.
+  1. The input files should be character a pointer set to NULL on input. Memory
+     for these pointers is allocated by this routine. The caller is responsible
+     for freeing the allocated memory upon successful return.
 ******************************************************************************/
 int get_args
 (
@@ -119,11 +119,6 @@ int get_args
         }
     }
 
-if (*process_sr)
-    printf ("DEBUG: process_sr is true!\n");
-else
-    printf ("DEBUG: process_sr is false!\n");
-
     /* Make sure the XML file was specified */
     if (*xml_infile == NULL)
     {
@@ -148,11 +143,6 @@ else
         *verbose = true;
     if (write_toa_flag)
         *write_toa = true;
-
-if (*write_toa)
-    printf ("DEBUG: write_toa is true!\n");
-else
-    printf ("DEBUG: write_toa is false!\n");
 
     return (SUCCESS);
 }

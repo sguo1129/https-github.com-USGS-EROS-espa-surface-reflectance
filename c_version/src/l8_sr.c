@@ -61,6 +61,7 @@ Date          Programmer       Reason
                                angles.
 11/17/2014    Gail Schmidt     If this is an OLI-only scene, then surface
                                reflectance corrections will not be applied.
+12/1/2014     Gail Schmidt     Removed unused code for true north adjustment
 
 NOTES:
 1. Bands 1-7 are corrected to surface reflectance.  Band 8 (pand band) is not
@@ -259,8 +260,6 @@ int main (int argc, char *argv[])
     float pixsize;      /* pixel size for the reflectance files */
     int nlines, nsamps; /* number of lines and samples in the reflectance and
                            thermal bands */
-    int row, col;       /* pixel row, column (line, sample) location */
-    int colp, rowp;     /* row/col for true north adjustment */
     int uoz11, uoz21, uoz12, uoz22;  /* ozone at line,samp; line, samp+1;
                            line+1, samp; and line+1, samp+1 */
     float pres11, pres12, pres21, pres22;  /* pressure at line,samp;
@@ -291,8 +290,6 @@ int main (int argc, char *argv[])
     const float k2b10 = 1321.08;     /* temperature constant for band 10 */
     const float k2b11 = 1201.14;     /* temperature constant for band 11 */
 
-    float dy, dx;                    /* delta x/y for true north adjustment */
-    float ang;                       /* angle for true north adjustment */
     long nbclear;                    /* count of the clear (non-cloud) pixels */
     long nbval;                      /* count of the non-fill pixels */
     double anom;                     /* band 3 and 5 combination */
@@ -313,8 +310,9 @@ int main (int argc, char *argv[])
     int nbaot;
     int step;
     int hole;
-    float ros4, ros5;    /* surface reflectance for band 4 and band 5 */
-    int tmp_percent;     /* current percentage for printing status */
+    float ros4, ros5;     /* surface reflectance for band 4 and band 5 */
+    int tmp_percent;      /* current percentage for printing status */
+    int curr_tmp_percent; /* percentage for current line */
 
     printf ("Starting TOA and surface reflectance processing ...\n");
 
@@ -613,7 +611,7 @@ int main (int argc, char *argv[])
     printf ("Scene center line/sample: %f, %f\n", img.l, img.s);
     printf ("Scene center lat/long: %f, %f\n", center_lat, center_lon);
 
-    /* Use that lat/long to determine the line/sample in the
+    /* Use the scene center lat/long to determine the line/sample in the
        CMG-related lookup tables, using the center of the UL pixel */
     ycmg = (89.975 - center_lat) * 20.0;    /* vs / 0.05 */
     xcmg = (179.975 + center_lon) * 20.0;   /* vs / 0.05 */
@@ -989,9 +987,10 @@ int main (int argc, char *argv[])
         for (i = 0; i < nlines; i++)
         {
             /* update status? */
-            if (100 * i / nlines > tmp_percent)
+            curr_tmp_percent = 100 * i / nlines;
+            if (curr_tmp_percent > tmp_percent)
             {
-                tmp_percent = 100 * i / nlines;
+                tmp_percent = curr_tmp_percent;
                 if (tmp_percent % 10 == 0)
                 {
                     printf ("%d%% ", tmp_percent);
@@ -1366,57 +1365,6 @@ int main (int argc, char *argv[])
                 }  /* if btest */
             }  /* for j */
         }  /* for i */
-
-#ifdef NOT_USED
-        /* Compute adjustment to true North */
-        /* Use scene center */
-        img.l = (int) (nlines * 0.5);
-        img.s = (int) (nsamps * 0.5);
-        img.is_fill = false;
-        row = img.l;
-        col = img.s;
-        printf ("Scene center line, sample: %d, %d\n", row, col);
-        if (!from_space (space, &img, &geo))
-        {
-            sprintf (errmsg, "Mapping scene center to geolocation coords");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-        center_lat = geo.lat * RAD2DEG;
-        center_lon = geo.lon * RAD2DEG;
-        printf ("Scene center lat/long: %f, %f\n", center_lat, center_lon);
-
-        /* Move 100 pixels to the north */
-        img.l -= 100;
-        if (!from_space (space, &img, &geo))
-        {
-            sprintf (errmsg, "Mapping 100 lines north of scene center to "
-                "geolocation coords");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-        lat = geo.lat * RAD2DEG;
-        lon = geo.lon * RAD2DEG;
-        printf ("100 lines north of scene center lat/long: %f, %f\n", lat, lon);
-
-        /* Use the longitude from the scene center and the latitude from the
-           point 100 lines north to compute the line, sample */
-        geo.lon = center_lon * DEG2RAD;
-        geo.lat = lat * DEG2RAD;
-        if (!to_space (space, &geo, &img))
-        {
-            sprintf (errmsg, "Mapping geolocation coords to line/sample space");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
-        }
-        rowp = (int) img.l;
-        colp = (int) img.s;
-        printf ("Line, sample true north adj: %d, %d\n", rowp, colp);
-        dy = row - rowp;
-        dx = colp - col;
-        ang = atan (dx / dy) * RAD2DEG;
-        printf ("Adjustment to true North: %f\n", ang);
-#endif
 
         /* Compute the cloud shadow */
         printf ("Determining cloud shadow ...\n");

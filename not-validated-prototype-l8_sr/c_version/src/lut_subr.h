@@ -87,7 +87,7 @@ void comptg
     float uoz,                   /* I: total column ozone */
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
-    float pres,                  /* I: surface pressure */
+    float atm_pres,              /* I: pressure at sea level */
     double ogtransa1[NSR_BANDS], /* I: other gases transmission coeff */
     double ogtransb0[NSR_BANDS], /* I: other gases transmission coeff */
     double ogtransb1[NSR_BANDS], /* I: other gases transmission coeff */
