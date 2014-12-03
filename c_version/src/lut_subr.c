@@ -127,7 +127,7 @@ int atmcorlamb2
     float *ttatmg,
     float *satm,                     /* O: spherical albedo */
     float *xrorayp,                  /* O: molecular reflectance */
-    float *next                      /* O: ???? */
+    float *next                      /* O: */
 )
 {
     char FUNC_NAME[] = "atmcorlamb2";   /* function name */
@@ -140,8 +140,7 @@ int atmcorlamb2
     float tgwv;         /* water vapor transmission */
     float tgwvhalf;     /* water vapor transmission, half content */
     float xtaur;        /* rayleigh optical depth for surface pressure */
-    float xphi;         /* azimuthal difference between sun and observation
-                           angles (deg) */
+    float atm_pres;     /* atmospheric pressure at sea level */
     int ip;             /* surface pressure looping variable */
     int ip1, ip2;       /* index variables for the surface pressure */
     int iaot;           /* aerosol optical thickness (AOT) looping variable */
@@ -152,26 +151,26 @@ int atmcorlamb2
 
     /* Get the pressure and AOT related values for the current surface pressure
        and AOT.  These indices are passed into several functions. */
-    /* Look for the appropriate pressure index in the surface pressure table */
+    /* Look for the appropriate pressure index in the surface pressure table.
+       Stop at the second to last item in the table, so that we have the last
+       two elements to use as ip1 and ip2, if needed. */
     ip1 = 0;
-    for (ip = 0; ip < 7; ip++)
+    for (ip = 0; ip < 6; ip++)  /* 7 elements in the array, stop one short */
     {
         if (pres < tpres[ip])
             ip1 = ip;
     }
-    if (ip1 == 6)
-        ip1 = 5;
     ip2 = ip1 + 1;
       
-    /* Look for the appropriate AOT index in the AOT table */
+    /* Look for the appropriate AOT index in the AOT table.
+       Stop at the second to last item in the table, so that we have the last
+       two elements to use as iaot1 and iaot2, if needed. */
     iaot1 = 0;
-    for (iaot = 0; iaot < 22; iaot++)
+    for (iaot = 0; iaot < 21; iaot++) /* 22 elements in table, stop one short */
     {
         if (raot550nm > aot550nm[iaot])
             iaot1 = iaot;
     }
-    if (iaot1 == 21)
-        iaot1 = 20;
     iaot2 = iaot1 + 1;
 
     /* Determine the index in the view angle table */
@@ -213,17 +212,15 @@ int atmcorlamb2
     compsalb (ip1, ip2, iaot1, iaot2, raot550nm, iband, pres, tpres, aot550nm,
         sphalbt, normext, satm, next);
 
-    comptg (iband, xts, xtv, xmus, xmuv, uoz, uwv, pres, ogtransa1, ogtransb0,
-        ogtransb1, wvtransa, wvtransb, oztransa, &tgoz, &tgwv, &tgwvhalf,
-        &tgog);
-
-    /* Compute rayleigh component (intrinsic reflectance, at p0) */
-    xphi = xfi;
+    atm_pres = pres * ONE_DIV_1013;
+    comptg (iband, xts, xtv, xmus, xmuv, uoz, uwv, atm_pres, ogtransa1,
+        ogtransb0, ogtransb1, wvtransa, wvtransb, oztransa, &tgoz, &tgwv,
+        &tgwvhalf, &tgog);
 
     /* Compute rayleigh component (intrinsic reflectance, at p=pres).
        Pressure in the atmosphere is pres / 1013. */
-    xtaur = tauray[iband] * pres * ONE_DIV_1013;  /* vs / 1013.0 */
-    local_chand (xphi, xmuv, xmus, xtaur, xrorayp);
+    xtaur = tauray[iband] * atm_pres;
+    local_chand (xfi, xmuv, xmus, xtaur, xrorayp);
 
     /* Perform atmospheric correction */
     *roslamb = rotoa / (tgog * tgoz);
@@ -258,6 +255,14 @@ Date         Programmer       Reason
                               recomputing it every time
 
 NOTES:
+ 1. Here's how the xfd value was originally calculated. Given that these
+    are static values, the xfd itself can really be static.
+    xdep = 0.0279  // depolarization factor
+    xfd = xdep / (2.0 - xdep)
+        = 0.014147355
+    xfd = (1.0 - xfd) / (1.0 + 2.0 * xfd)
+        = .985852645 / 1.02829471
+        = .958725777
 ******************************************************************************/
 void local_chand
 (
@@ -270,20 +275,10 @@ void local_chand
 )
 {
     int i;                             /* looping variable */
-    float xfd = 0.958725777;           /* static value */
-/*                      xdep = 0.0279  // depolarization factor
-                        xfd = xdep / (2.0 - xdep)
-                            = 0.014147355
-                        xfd = (1.0 - xfd) / (1.0 + 2.0 * xfd)
-                            = .985852645 / 1.02829471
-                            = .958725777
-*/
-
     float pl[10];
     float fs0, fs1, fs2;
     float phios;
-    float xcosf1, xcosf2, xcosf3;
-    float xbeta2;
+    float xcosf2, xcosf3;
     float xph1, xph2, xph3;
     float xitm;
     float xp1, xp2, xp3;
@@ -291,17 +286,19 @@ void local_chand
     float xlntau;                      /* log molecular optical depth */
     float xitot1, xitot2, xitot3;
     float xmus2, xmuv2;                /* square of xmus and xmuv */
-    float as0[10] = {0.33243832, -6.777104e-02, 0.16285370, 1.577425e-03,
+
+    /* constant vars */
+    const float xfd = 0.958725777;
+    const float as0[10] = {
+         0.33243832, -6.777104e-02, 0.16285370, 1.577425e-03,
         -0.30924818, -1.240906e-02, -0.10324388, 3.241678e-02, 0.11493334,
         -3.503695e-02};
-    float as1[2] = {0.19666292, -5.439061e-02};
-    float as2[2] = {0.14545937, -2.910845e-02};
+    const float as1[2] = {0.19666292, -5.439061e-02};
+    const float as2[2] = {0.14545937, -2.910845e-02};
 
-    phios = 180.0 - xphi;
-    xcosf1 = 1.0;
-    xcosf2 = cos (phios * DEG2RAD);
-    xcosf3 = cos (2.0 * phios * DEG2RAD);
-    xbeta2 = 0.5;
+    phios = (180.0 - xphi) * DEG2RAD;
+    xcosf2 = cos (phios);
+    xcosf3 = cos (2.0 * phios);
 
     /* xmus and xmuv squared is used frequently */
     xmus2 = xmus * xmus;
@@ -309,9 +306,9 @@ void local_chand
 
     xph1 = 1.0 + (3.0 * xmus2 - 1.0) * (3.0 * xmuv2 - 1.0) * xfd * 0.125;
     xph2 = -xmus * xmuv * sqrt(1.0 - xmus2) * sqrt(1.0 - xmuv2);
-    xph2 = xph2 * xfd * xbeta2 * 1.5;
+    xph2 = xph2 * xfd * 0.5 * 1.5;
     xph3 = (1.0 - xmus2) * (1.0 - xmuv2);
-    xph3 = xph3 * xfd * xbeta2 * 0.375;
+    xph3 = xph3 * xfd * 0.5 * 0.375;
 
     xitm = (1.0 - exp(-xtau * (1.0 / xmus + 1.0 / xmuv))) *
         xmus / (4.0 * (xmus + xmuv));
@@ -345,7 +342,7 @@ void local_chand
     xitot2 = xp2 + cfonc2 * fs1 * xmus;
     xitot3 = xp3 + cfonc3 * fs2 * xmus;
 
-    *xrray = xitot1 * xcosf1;
+    *xrray = xitot1;
     *xrray += xitot2 * xcosf2 * 2.0;
     *xrray += xitot3 * xcosf3 * 2.0;
     *xrray /= xmus;
@@ -365,6 +362,8 @@ Date         Programmer       Reason
 ---------    ---------------  -------------------------------------
 6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
                               by Eric Vermote, NASA GSFC
+12/1/2014    Gail Schmidt     Pass in the pressure at sea level vs.
+                              recalculating it
 
 NOTES:
 1. Standard sea level pressure is 1013 millibars.
@@ -379,7 +378,7 @@ void comptg
     float uoz,                   /* I: total column ozone */
     float uwv,                   /* I: total column water vapor (precipital
                                        water vapor) */
-    float pres,                  /* I: surface pressure */
+    float atm_pres,              /* I: pressure at sea level */
     double ogtransa1[NSR_BANDS], /* I: other gases transmission coeff */
     double ogtransb0[NSR_BANDS], /* I: other gases transmission coeff */
     double ogtransb1[NSR_BANDS], /* I: other gases transmission coeff */
@@ -392,11 +391,9 @@ void comptg
     float *tgog                  /* O: other gases transmission */
 )
 {
-    float a, b;
-    float a1, b0, b1;
-    float m;
-    float x;
-    float p;                /* pressure in atmosphere */
+    float a, b;  /* water vapor transmission coefficient */
+    float m;     /* ozone transmission coefficient */
+    float x;     /* water vapor transmission coefficient */
 
     /* Compute ozone transmission */
     m = 1.0 / xmus + 1.0 / xmuv;
@@ -413,18 +410,15 @@ void comptg
         *tgwv = 1.0;
 
     /* Compute water vapor transmission half the content */
-    x = m * uwv * 0.5;
+    x *= 0.5;
     if (x > 1.0E-06)
         *tgwvhalf = exp(-a * exp(log(x) * b));
     else
         *tgwvhalf = 1.0;
 
     /* Compute other gases transmission */
-    a1 = ogtransa1[iband];
-    b0 = ogtransb0[iband];
-    b1 = ogtransb1[iband];
-    p = pres * ONE_DIV_1013;   /* vs / 1013.0 */
-    *tgog = -(a1 * p) * pow(m, exp(-(b0 + b1 * p)));
+    *tgog = -(ogtransa1[iband] * atm_pres) *
+        pow(m, exp(-(ogtransb0[iband] + ogtransb1[iband] * atm_pres)));
     *tgog = exp(*tgog);
 }
 
@@ -462,12 +456,12 @@ void compsalb
                               wavelength (normalized at 550nm)
                               [NSR_BANDS][7][22] */
     float *satm,        /* O: spherical albedo */
-    float *next         /* O: ????? */
+    float *next         /* O: */
 )
 {
     float xtiaot1, xtiaot2;         /* spherical albedo trans value */
     float satm1, satm2;             /* spherical albedo value */
-    float next1, next2;             /* ???? */
+    float next1, next2;
     float dpres;                    /* pressure ratio */
     float deltaaot;                 /* AOT ratio */
 
@@ -563,7 +557,7 @@ void comptrans
         its = (int) ((xts - xtsmin) / xtsstep);
     if (its > 19)
     {
-        sprintf (errmsg, "Solar zenith (xts) is too large: %f", xts);
+        sprintf (errmsg, "Zenith angle (xts) is too large: %f", xts);
         error_handler (true, FUNC_NAME, errmsg);
         return;
     }
@@ -607,6 +601,10 @@ Date         Programmer       Reason
 7/1/2014     Gail Schmidt     Passed in xtsstep, xtsmin, xtvstep, and xtvmin
                               since they are defined in the main routine and
                               then duplicated here.
+12/2/2014    Gail Schmidt     The calculations for t, u, and deltaaot are
+                              made several times.  Removed the duplicate
+                              calculations for these variables and simply
+                              reused the previous values.
 
 NOTES:
 1. This function is heavily dependent upon the solar zenith and observation
@@ -706,7 +704,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi1 - 1;
+            isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -740,7 +738,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi2 - 1;
+            isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -774,7 +772,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi3 - 1;
+            isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -816,6 +814,7 @@ void comproatm
     rosup = rolutt[iband][ip1][iaot1][iindex+1];
     ro4 = roinf + (rosup - roinf) * (scaa - sca1) / (sca2 - sca1);
 
+    /* Note: t and u are used elsewhere through this function */
     t = (tts[its+1] - xts) / (tts[its+1] - tts[its]);
     u = (ttv[itv+1][its] - xtv) / (ttv[itv+1][its] - ttv[itv][its]);
     roiaot1 = ro1 * t * u + ro2 * u * (1.0 - t) + ro3 * (1.0 - u) * t +
@@ -836,7 +835,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi1 - 1;
+            isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -870,7 +869,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi2 - 1;
+            isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -904,7 +903,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi3 - 1;
+            isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -946,12 +945,11 @@ void comproatm
     rosup = rolutt[iband][ip1][iaot2][iindex+1];
     ro4 = roinf + (rosup - roinf) * (scaa - sca1) / (sca2 - sca1);
 
-    t = (tts[its+1] - xts) / (tts[its+1] - tts[its]);
-    u = (ttv[itv+1][its] - xtv) / (ttv[itv+1][its] - ttv[itv][its]);
     roiaot2 = ro1 * t * u + ro2 * u * (1.0 - t) + ro3 * (1.0 - u) * t +
         ro4 * (1.0 - u) * (1.0 - t);
 
     /* Interpolation as log of tau */
+    /* Note: delaaot is calculated here and used later in this function */
     deltaaot = logaot550nm[iaot2] - logaot550nm[iaot1];
     deltaaot = (log (raot550nm) - logaot550nm[iaot1]) / deltaaot;
     ro = roiaot1 + (roiaot2 - roiaot1) * deltaaot;
@@ -972,7 +970,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi1 - 1;
+            isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -1006,7 +1004,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi2 - 1;
+            isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -1040,7 +1038,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi3 - 1;
+            isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -1082,8 +1080,6 @@ void comproatm
     rosup = rolutt[iband][ip2][iaot1][iindex+1];
     ro4 = roinf + (rosup - roinf) * (scaa - sca1) / (sca2 - sca1);
 
-    t = (tts[its+1] - xts) / (tts[its+1] - tts[its]);
-    u = (ttv[itv+1][its] - xtv) / (ttv[itv+1][its] - ttv[itv][its]);
     roiaot1 = ro1 * t * u + ro2 * u * (1.0 - t) + ro3 * (1.0 - u) * t +
         ro4 * (1.0 - u) * (1.0 - t);
 
@@ -1102,7 +1098,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi1 - 1;
+            isca = nbfi1 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its];
         }
@@ -1136,7 +1132,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi2 - 1;
+            isca = nbfi2 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv][its+1];
         }
@@ -1170,7 +1166,7 @@ void comproatm
         }
         else
         {
- 	        isca = nbfi3 - 1;
+            isca = nbfi3 - 1;
             sca1 = xtsmax - (isca - 1) * 4.0;
             sca2 = tsmin[itv+1][its];
         }
@@ -1212,14 +1208,10 @@ void comproatm
     rosup = rolutt[iband][ip2][iaot2][iindex+1];
     ro4 = roinf + (rosup - roinf) * (scaa - sca1) / (sca2 - sca1);
 
-    t = (tts[its+1] - xts) / (tts[its+1] - tts[its]);
-    u = (ttv[itv+1][its] - xtv) / (ttv[itv+1][its] - ttv[itv][its]);
     roiaot2 = ro1 * t * u + ro2 * u * (1.0 - t) + ro3 * (1.0 - u) * t +
         ro4 * (1.0 - u) * (1.0 - t);
 
     /* Interpolation as log of tau */
-    deltaaot = logaot550nm[iaot2] - logaot550nm[iaot1];
-    deltaaot = (log (raot550nm) - logaot550nm[iaot1]) / deltaaot;
     ro = roiaot1 + (roiaot2 - roiaot1) * deltaaot;
     rop2 = ro;
 
