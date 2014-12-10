@@ -5,8 +5,8 @@
 # Set up compile options
 CC = gcc
 RM = rm -f
-EXTRA = -Wall -O2
-//EXTRA = -Wall -g
+//EXTRA = -Wall -O2
+EXTRA = -Wall -g
 
 # Define the include files
 INC = common.h date.h input.h output.h lut_subr.h l8_sr.h
@@ -15,7 +15,8 @@ INCDIR = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) \
 NCFLAGS  = $(EXTRA) $(INCDIR)
 
 # Define the source code and object files
-SRC = date.c              \
+SRC = compute_refl.c      \
+      date.c              \
       get_args.c          \
       input.c             \
       lut_subr.c          \

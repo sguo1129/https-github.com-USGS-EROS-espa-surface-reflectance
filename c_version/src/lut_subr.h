@@ -311,7 +311,7 @@ int subaeroret_residual
     float *snext                     /* O: ????? */
 );
 
-int memory_allocation
+int memory_allocation_main
 (
     int nlines,          /* I: number of lines in the scene */
     int nsamps,          /* I: number of samples in the scene */
@@ -342,9 +342,15 @@ int memory_allocation
     float ***nbfic,      /* O: communitive number of azimuth angles [20][22] */
     float ***nbfi,       /* O: number of azimuth angles [20][22] */
     float ***ttv,        /* O: view angle table [20][22] */
-    uint16 **uband,      /* O: array of input image data for a current band,
-                               nlines x nsamps */
     uint16 **qaband,     /* O: QA band for the input image, nlines x nsamps */
+    int16 ***sband       /* O: output surface reflectance and brightness temp
+                               bands */
+);
+
+int memory_allocation_sr
+(
+    int nlines,          /* I: number of lines in the scene */
+    int nsamps,          /* I: number of samples in the scene */
     int16 **aerob1,      /* O: atmospherically corrected band 1 data
                                (TOA refl), nlines x nsamps */
     int16 **aerob2,      /* O: atmospherically corrected band 2 data
@@ -355,8 +361,6 @@ int memory_allocation
                                (TOA refl), nlines x nsamps */
     int16 **aerob7,      /* O: atmospherically corrected band 7 data
                                (TOA refl), nlines x nsamps */
-    int16 ***sband,      /* O: output surface reflectance and brightness temp
-                               bands */
     uint8 **cloud,       /* O: bit-packed value that represent clouds,
                                nlines x nsamps */
     float **twvi,        /* O: interpolated water vapor value,

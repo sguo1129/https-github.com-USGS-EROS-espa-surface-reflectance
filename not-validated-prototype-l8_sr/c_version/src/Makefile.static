@@ -14,7 +14,8 @@ INCDIR = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) \
 NCFLAGS  = $(EXTRA) $(INCDIR)
 
 # Define the source code and object files
-SRC = date.c              \
+SRC = compute_refl.c      \
+      date.c              \
       get_args.c          \
       input.c             \
       lut_subr.c          \
