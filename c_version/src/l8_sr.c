@@ -41,10 +41,6 @@ Date          Programmer       Reason
                                variables that refer to the surface reflectance
                                band-related bands (ogtrans, wvtrans, tauray,
                                erelc, etc.)  These previously were of size 16.
-8/1/2014      Gail Schmidt     Add check on the solar zenith to make sure the
-                               scene can be processed for surface reflectance.
-                               If solar zenith is too large, then only process
-                               TOA reflectance.
 8/1/2014      Gail Schmidt     Added flag to allow user to specify only TOA
                                reflectance corrections to be completed and
                                written.  Also added flag to allow the user to
@@ -59,9 +55,15 @@ Date          Programmer       Reason
                                main calling routine.  Same goes for the cosine
                                of azimuthal difference between sun and obs
                                angles.
-11/17/2014    Gail Schmidt     If this is an OLI-only scene, then surface
-                               reflectance corrections will not be applied.
 12/1/2014     Gail Schmidt     Removed unused code for true north adjustment
+12/10/2014    Gail Schmidt     Add check on the solar zenith to make sure the
+                               scene can be processed for surface reflectance.
+                               If solar zenith is too large and process_sr is
+                               true, then exit with an error.  Only TOA and BT
+                               corrections can be made.
+12/10/2014    Gail Schmidt     If this is an OLI-only scene and process_sr is
+                               true, then exit with an error.  Only TOA and BT
+                               corrections can be made.
 
 NOTES:
 1. Bands 1-7 are corrected to surface reflectance.  Band 8 (pand band) is not
@@ -404,24 +406,28 @@ int main (int argc, char *argv[])
     /* The surface reflectance algorithm cannot be implemented for solar
        zenith angles greater than 76 degrees.  Need to flag if the current
        scene falls into that category. */
-    if (xts > 76.0)
+    if (xts > 76.0 && process_sr)
     {
-        process_sr = false;
         sprintf (errmsg, "Solar zenith angle is too large to allow for surface "
-            "reflectance processing.  Corrections will be limited to top of "
-            "atmosphere and at-sensor brightness temperature corrections.");
-        error_handler (false, FUNC_NAME, errmsg);
+            "reflectance processing.  Corrections must be limited to top of "
+            "atmosphere and at-sensor brightness temperature corrections. "
+            "Use the --process_sr=false command-line argument. "
+            "(solar zenith angle out of range)");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
     }
 
-    /* If this is OLI-only data, then surface reflectance will not be
+    /* If this is OLI-only data, then surface reflectance can not be
        processed */
-    if (input->meta.inst == INST_OLI)
+    if (input->meta.inst == INST_OLI && process_sr)
     {
-        process_sr = false;
         sprintf (errmsg, "This is an OLI-only scene vs. an OLI-TIRS scene. "
-            "Corrections will be limited to top of atmosphere and at-sensor "
-            "brightness temperature corrections.");
-        error_handler (false, FUNC_NAME, errmsg);
+            "Corrections must be limited to top of atmosphere and at-sensor "
+            "brightness temperature corrections. Use the --process_sr=false "
+            "command-line argument to process. (oli-only cannot be corrected "
+            "to surface reflectance)");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
     }
 
     /* Allocate memory for all the data arrays */
