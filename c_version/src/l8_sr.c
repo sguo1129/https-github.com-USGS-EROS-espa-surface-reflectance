@@ -403,6 +403,19 @@ int main (int argc, char *argv[])
     nlines = input->size.nlines;
     nsamps = input->size.nsamps;
 
+    /* If this is OLI-only data, then surface reflectance can not be
+       processed */
+    if (input->meta.inst == INST_OLI && process_sr)
+    {
+        sprintf (errmsg, "This is an OLI-only scene vs. an OLI-TIRS scene. "
+            "Corrections must be limited to top of atmosphere and at-sensor "
+            "brightness temperature corrections. Use the --process_sr=false "
+            "command-line argument to process. (oli-only cannot be corrected "
+            "to surface reflectance)");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
     /* The surface reflectance algorithm cannot be implemented for solar
        zenith angles greater than 76 degrees.  Need to flag if the current
        scene falls into that category. */
@@ -413,19 +426,6 @@ int main (int argc, char *argv[])
             "atmosphere and at-sensor brightness temperature corrections. "
             "Use the --process_sr=false command-line argument. "
             "(solar zenith angle out of range)");
-        error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    /* If this is OLI-only data, then surface reflectance can not be
-       processed */
-    if (input->meta.inst == INST_OLI && process_sr)
-    {
-        sprintf (errmsg, "This is an OLI-only scene vs. an OLI-TIRS scene. "
-            "Corrections must be limited to top of atmosphere and at-sensor "
-            "brightness temperature corrections. Use the --process_sr=false "
-            "command-line argument to process. (oli-only cannot be corrected "
-            "to surface reflectance)");
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
