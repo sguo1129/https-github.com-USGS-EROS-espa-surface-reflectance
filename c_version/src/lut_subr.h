@@ -315,33 +315,6 @@ int memory_allocation_main
 (
     int nlines,          /* I: number of lines in the scene */
     int nsamps,          /* I: number of samples in the scene */
-    int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***intratiob1, /* O: band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***intratiob2, /* O: band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***intratiob7, /* O: band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 ***wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 ***oz,         /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
-    float *****rolutt,   /* O: intrinsic reflectance table
-                               [NSR_BANDS][7][22][8000] */
-    float *****transt,   /* O: transmission table
-                               [NSR_BANDS][7][22][22] */
-    float ****sphalbt,   /* O: spherical albedo table [NSR_BANDS][7][22] */
-    float ****normext,   /* O: aerosol extinction coefficient at the current
-                               wavelength (normalized at 550nm)
-                               [NSR_BANDS][7][22] */
-    float ***tsmax,      /* O: maximum scattering angle table [20][22] */
-    float ***tsmin,      /* O: minimum scattering angle table [20][22] */
-    float ***nbfic,      /* O: communitive number of azimuth angles [20][22] */
-    float ***nbfi,       /* O: number of azimuth angles [20][22] */
-    float ***ttv,        /* O: view angle table [20][22] */
     uint16 **qaband,     /* O: QA band for the input image, nlines x nsamps */
     int16 ***sband       /* O: output surface reflectance and brightness temp
                                bands */
@@ -368,7 +341,34 @@ int memory_allocation_sr
     float **tozi,        /* O: interpolated ozone value, nlines x nsamps */
     float **tp,          /* O: interpolated pressure value, nlines x nsamps */
     float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
-    float **taero        /* O: aerosol values for each pixel, nlines x nsamps */
+    float **taero,       /* O: aerosol values for each pixel, nlines x nsamps */
+    int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
+    int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***intratiob1, /* O: band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***intratiob2, /* O: band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***intratiob7, /* O: band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 ***slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    uint16 ***wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
+    uint8 ***oz,         /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+    float *****rolutt,   /* O: intrinsic reflectance table
+                               [NSR_BANDS][7][22][8000] */
+    float *****transt,   /* O: transmission table
+                               [NSR_BANDS][7][22][22] */
+    float ****sphalbt,   /* O: spherical albedo table [NSR_BANDS][7][22] */
+    float ****normext,   /* O: aerosol extinction coefficient at the current
+                               wavelength (normalized at 550nm)
+                               [NSR_BANDS][7][22] */
+    float ***tsmax,      /* O: maximum scattering angle table [20][22] */
+    float ***tsmin,      /* O: minimum scattering angle table [20][22] */
+    float ***nbfic,      /* O: communitive number of azimuth angles [20][22] */
+    float ***nbfi,       /* O: number of azimuth angles [20][22] */
+    float ***ttv         /* O: view angle table [20][22] */
 );
 
 int read_auxiliary_files

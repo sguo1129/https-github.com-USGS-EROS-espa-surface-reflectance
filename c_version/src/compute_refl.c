@@ -240,6 +240,8 @@ Date          Programmer       Reason
                                modularize the source code in the main routine
 
 NOTES:
+1. Initializes the variables and data arrays from the lookup table and
+   auxiliary files.
 ******************************************************************************/
 int compute_sr_refl
 (
@@ -252,53 +254,16 @@ int compute_sr_refl
     int nsamps,         /* I: number of samps in reflectance, thermal bands */
     float pixsize,      /* I: pixel size for the reflectance bands */
     int16 **sband,      /* I/O: input TOA and output surface reflectance */
-    Geoloc_t *space,    /* I: structure for geolocation information */
-    Space_def_t *space_def, /* I: structure to define the space mapping */
     float xts,          /* I: solar zenith angle (deg) */
     float xfs,          /* I: solar azimuth angle (deg) */
-    float xtv,          /* I: observation zenith angle (deg) */
     float xmus,         /* I: cosine of solar zenith angle */
-    float xmuv,         /* I: cosine of observation zenith angle */
-    float xfi,          /* I: azimuthal difference between sun and
-                              observation (deg) */
-    float cosxfi,       /* I: cosine of azimuthal difference */
-    float raot550nm,    /* I: nearest value of AOT */
-    float pres,         /* I: surface pressure */
-    float uoz,          /* I: total column ozone */
-    float uwv,          /* I: total column water vapor (precipital water
-                              vapor) */
-    float **tsmax,      /* I: maximum scattering angle table [20][22] */
-    float **tsmin,      /* I: minimum scattering angle table [20][22] */
-    float xtsstep,      /* I: solar zenith step value */
-    float xtsmin,       /* I: minimum solar zenith value */
-    float xtvstep,      /* I: observation step value */
-    float xtvmin,       /* I: minimum observation value */
-    float tts[22],      /* I: sun angle table */
-    float **ttv,        /* I: view angle table [20][22] */
-    int32 indts[22],    /* I: index for the sun angle table */
-    float ****rolutt,   /* I: intrinsic reflectance table
-                              [NSR_BANDS][7][22][8000] */
-    float ****transt,   /* I: transmission table [NSR_BANDS][7][22][22] */
-    float ***sphalbt,   /* I: spherical albedo table [NSR_BANDS][7][22] */
-    float ***normext,   /* I: aerosol extinction coefficient at the current
-                              wavelength (normalized at 550nm)
-                              [NSR_BANDS][7][22] */
-    float **nbfic,      /* I: communitive number of azimuth angles [20][22] */
-    float **nbfi,       /* I: number of azimuth angles [20][22] */
-    int16 **dem,        /* I: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 **andwi,      /* I: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **sndwi,      /* I: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob1,    /* I: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob2,    /* I: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob7,    /* I: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1, /* I: integer band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2, /* I: integer band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7, /* I: integer band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob1, /* I: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob2, /* I: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob7, /* I: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 **wv,        /* I: water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 **oz          /* I: ozone values [CMG_NBLAT][CMG_NBLON] */
+    char *anglehdf,     /* I: angle HDF filename */
+    char *intrefnm,     /* I: intrinsic reflectance filename */
+    char *transmnm,     /* I: transmission filename */
+    char *spheranm,     /* I: spherical albedo filename */
+    char *cmgdemnm,     /* I: climate modeling grid DEM filename */
+    char *rationm,      /* I: ratio averages filename */
+    char *auxnm         /* I: auxiliary filename for ozone and water vapor */
 )
 {
     char errmsg[STR_SIZE];                   /* error message */
@@ -383,8 +348,64 @@ int compute_sr_refl
                              (TOA refl), nlines x nsamps */
 
     /* Vars for forward/inverse mapping space */
+    Geoloc_t *space = NULL;       /* structure for geolocation information */
+    Space_def_t space_def;        /* structure to define the space mapping */
     Img_coord_float_t img;        /* coordinate in line/sample space */
     Geo_coord_t geo;              /* coordinate in lat/long space */
+
+    /* Lookup table variables */
+    float xtv;           /* observation zenith angle (deg) -- NOTE: set to 0.0
+                            and never changes */
+    float xmuv;          /* cosine of observation zenith angle */
+    float xfi;           /* azimuthal difference between the sun and
+                            observation angle (deg) */
+    float cosxfi;        /* cosine of azimuthal difference */
+    float xtsstep;       /* solar zenith step value */
+    float xtsmin;        /* minimum solar zenith value */
+    float xtvstep;       /* observation step value */
+    float xtvmin;        /* minimum observation value */
+    float ****rolutt = NULL;    /* intrinsic reflectance table
+                                   [NSR_BANDS][7][22][8000] */
+    float ****transt = NULL;    /* transmission table
+                                   [NSR_BANDS][7][22][22] */
+    float ***sphalbt = NULL;    /* spherical albedo table [NSR_BANDS][7][22] */
+    float ***normext = NULL;    /* aerosol extinction coefficient at the
+                                   current wavelength (normalized at 550nm)
+                                   [NSR_BANDS][7][22] */
+    float **tsmax = NULL;       /* maximum scattering angle table [20][22] */
+    float **tsmin = NULL;       /* minimum scattering angle table [20][22] */
+    float **nbfi = NULL;        /* number of azimuth angles [20][22] */
+    float **nbfic = NULL;       /* communitive number of azimuth angles
+                                   [20][22] */
+    float **ttv = NULL;         /* view angle table [20][22] */
+    float tts[22];              /* sun angle table */
+    int32 indts[22];
+
+    /* Auxiliary file variables */
+    int16 **dem = NULL;       /* CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
+    int16 **andwi = NULL;     /* avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **sndwi = NULL;     /* standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob2 = NULL;   /* mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob7 = NULL;   /* mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob1 = NULL;   /* ??? band1 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob2 = NULL;   /* ??? band2 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob7 = NULL;   /* ??? band7 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob1 = NULL;   /* slope band1 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob2 = NULL;   /* slope band2 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob7 = NULL;   /* slope band7 ratio
+                                    [RATIO_NBLAT][RATIO_NBLON] */
+    uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
+    uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
+    float raot550nm;    /* nearest input value of AOT */
+    float uoz;          /* total column ozone */
+    float uwv;          /* total column water vapor (precipital water vapor) */
+    float pres;         /* surface pressure */
 
     /* Output file info */
     Output_t *sr_output = NULL;  /* output structure and metadata for the SR
@@ -427,14 +448,50 @@ int compute_sr_refl
     /* Allocate memory for the many arrays needed to do the surface reflectance
        computations */
     retval = memory_allocation_sr (nlines, nsamps, &aerob1, &aerob2, &aerob4,
-        &aerob5, &aerob7, &cloud, &twvi, &tozi, &tp, &tresi, &taero);
+        &aerob5, &aerob7, &cloud, &twvi, &tozi, &tp, &tresi, &taero, &dem,
+        &andwi, &sndwi, &ratiob1, &ratiob2, &ratiob7, &intratiob1, &intratiob2,
+        &intratiob7, &slpratiob1, &slpratiob2, &slpratiob7, &wv, &oz, &rolutt,
+        &transt, &sphalbt, &normext, &tsmax, &tsmin, &nbfic, &nbfi, &ttv);
     if (retval != SUCCESS)
-    {   /* get_args already printed the error message */
+    {
         sprintf (errmsg, "Error allocating memory for the data arrays needed "
             "for surface reflectance calculations.");
         error_handler (false, FUNC_NAME, errmsg);
         return (ERROR);
     }
+
+    /* Initialize the geolocation space applications */
+    if (!get_geoloc_info (xml_metadata, &space_def))
+    {
+        sprintf (errmsg, "Getting the space definition from the XML file");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    space = setup_mapping (&space_def);
+    if (space == NULL)
+    {
+        sprintf (errmsg, "Setting up the geolocation mapping");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Initialize the look up tables and atmospheric correction variables */
+    retval = init_sr_refl (nlines, nsamps, input, space, anglehdf, intrefnm,
+        transmnm, spheranm, cmgdemnm, rationm, auxnm, &xtv, &xmuv, &xfi,
+        &cosxfi, &raot550nm, &pres, &uoz, &uwv, &xtsstep, &xtsmin, &xtvstep,
+        &xtvmin, tsmax, tsmin, tts, ttv, indts, rolutt, transt, sphalbt,
+        normext, nbfic, nbfi, dem, andwi, sndwi, ratiob1, ratiob2, ratiob7,
+        intratiob1, intratiob2, intratiob7, slpratiob1, slpratiob2, slpratiob7,
+        wv, oz);
+    if (retval != SUCCESS)
+    {
+        sprintf (errmsg, "Error initializing the lookup tables and "
+            "atmospheric correction variables.");
+        error_handler (false, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
 
     /* Loop through all the reflectance bands and perform atmospheric
        corrections */
@@ -1275,7 +1332,274 @@ int compute_sr_refl
     close_output (sr_output, false /*sr products*/);
     free_output (sr_output);
 
+    /* Free the spatial mapping pointer */
+    free (space);
+
+    /* Done with the ratiob* arrays */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        free (andwi[i]);
+        free (sndwi[i]);
+        free (ratiob1[i]);
+        free (ratiob2[i]);
+        free (ratiob7[i]);
+        free (intratiob1[i]);
+        free (intratiob2[i]);
+        free (intratiob7[i]);
+        free (slpratiob1[i]);
+        free (slpratiob2[i]);
+        free (slpratiob7[i]);
+    }
+    free (andwi);  andwi = NULL;
+    free (sndwi);  sndwi = NULL;
+    free (ratiob1);  ratiob1 = NULL;
+    free (ratiob2);  ratiob2 = NULL;
+    free (ratiob7);  ratiob7 = NULL;
+    free (intratiob1);  intratiob1 = NULL;
+    free (intratiob2);  intratiob2 = NULL;
+    free (intratiob7);  intratiob7 = NULL;
+    free (slpratiob1);  slpratiob1 = NULL;
+    free (slpratiob2);  slpratiob2 = NULL;
+    free (slpratiob7);  slpratiob7 = NULL;
+
+    /* Free the data arrays */
+    for (i = 0; i < DEM_NBLAT; i++)
+        free (dem[i]);
+    free (dem);
+
+    for (i = 0; i < CMG_NBLAT; i++)
+    {
+        free (wv[i]);
+        free (oz[i]);
+    }
+    free (wv);
+    free (oz);
+
+    for (i = 0; i < NSR_BANDS; i++)
+    {
+        for (j = 0; j < 7; j++)
+        {
+            for (k = 0; k < 22; k++)
+            {
+                free (rolutt[i][j][k]);
+                free (transt[i][j][k]);
+            }
+            free (rolutt[i][j]);
+            free (transt[i][j]);
+            free (sphalbt[i][j]);
+        }
+        free (rolutt[i]);
+        free (transt[i]);
+        free (sphalbt[i]);
+    }
+    free (rolutt);
+    free (transt);
+    free (sphalbt);
+
+    /* tsmax[20][22] and float tsmin[20][22] and float nbfic[20][22] and
+       nbfi[20][22] and float ttv[20][22] */
+    for (i = 0; i < 20; i++)
+    {
+        free (tsmax[i]);
+        free (tsmin[i]);
+        free (nbfic[i]);
+        free (nbfi[i]);
+        free (ttv[i]);
+    }
+    free (tsmax);
+    free (tsmin);
+    free (nbfic);
+    free (nbfi);
+    free (ttv);
+
     /* Successful completion */
     return (SUCCESS);
 }
 
+
+/******************************************************************************
+MODULE:  init_sr_refl
+
+PURPOSE:  Initialization for the atmospheric corrections.  Initialization for
+look up tables, auxiliary data, mapping, and geolocation information is used
+for the surface reflectance correction.
+
+RETURN VALUE:
+Type = int
+Value           Description
+-----           -----------
+ERROR           Error initializing the atmospheric parameters
+SUCCESS         No errors encountered
+
+PROJECT:  Land Satellites Data System Science Research and Development (LSRD)
+at the USGS EROS
+
+HISTORY:
+Date          Programmer       Reason
+----------    ---------------  -------------------------------------
+12/15/2014    Gail Schmidt     Broke the source code into a function to
+                               modularize the source code in the main routine
+
+NOTES:
+1. The view angle is set to 0.0 and this never changes.
+******************************************************************************/
+int init_sr_refl
+(
+    int nlines,         /* I: number of lines in reflectance, thermal bands */
+    int nsamps,         /* I: number of samps in reflectance, thermal bands */
+    Input_t *input,     /* I: input structure for the Landsat product */
+    Geoloc_t *space,    /* I: structure for geolocation information */
+    char *anglehdf,     /* I: angle HDF filename */
+    char *intrefnm,     /* I: intrinsic reflectance filename */
+    char *transmnm,     /* I: transmission filename */
+    char *spheranm,     /* I: spherical albedo filename */
+    char *cmgdemnm,     /* I: climate modeling grid DEM filename */
+    char *rationm,      /* I: ratio averages filename */
+    char *auxnm,        /* I: auxiliary filename for ozone and water vapor */
+    float *xtv,         /* O: observation zenith angle (deg) */
+    float *xmuv,        /* O: cosine of observation zenith angle */
+    float *xfi,         /* O: azimuthal difference between sun and
+                              observation (deg) */
+    float *cosxfi,      /* O: cosine of azimuthal difference */
+    float *raot550nm,   /* O: nearest value of AOT */
+    float *pres,        /* O: surface pressure */
+    float *uoz,         /* O: total column ozone */
+    float *uwv,         /* O: total column water vapor (precipital water
+                              vapor) */
+    float *xtsstep,     /* O: solar zenith step value */
+    float *xtsmin,      /* O: minimum solar zenith value */
+    float *xtvstep,     /* O: observation step value */
+    float *xtvmin,      /* O: minimum observation value */
+    float **tsmax,      /* O: maximum scattering angle table [20][22] */
+    float **tsmin,      /* O: minimum scattering angle table [20][22] */
+    float tts[22],      /* O: sun angle table */
+    float **ttv,        /* O: view angle table [20][22] */
+    int32 indts[22],    /* O: index for the sun angle table */
+    float ****rolutt,   /* O: intrinsic reflectance table
+                              [NSR_BANDS][7][22][8000] */
+    float ****transt,   /* O: transmission table [NSR_BANDS][7][22][22] */
+    float ***sphalbt,   /* O: spherical albedo table [NSR_BANDS][7][22] */
+    float ***normext,   /* O: aerosol extinction coefficient at the current
+                              wavelength (normalized at 550nm)
+                              [NSR_BANDS][7][22] */
+    float **nbfic,      /* O: communitive number of azimuth angles [20][22] */
+    float **nbfi,       /* O: number of azimuth angles [20][22] */
+    int16 **dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
+    int16 **andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob1, /* O: integer band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob2, /* O: integer band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **intratiob7, /* O: integer band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    int16 **slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
+    uint16 **wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
+    uint8 **oz          /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+)
+{
+    char errmsg[STR_SIZE];                   /* error message */
+    char FUNC_NAME[] = "init_sr_refl";       /* function name */
+    int retval;          /* return status */
+    int lcmg, scmg;      /* line/sample index for the CMG */
+    float xcmg, ycmg;    /* x/y location for CMG */
+
+    /* Vars for forward/inverse mapping space */
+    Img_coord_float_t img;        /* coordinate in line/sample space */
+    Geo_coord_t geo;              /* coordinate in lat/long space */
+    float center_lat, center_lon; /* lat/long for scene center */
+
+    /* Initialize the look up tables */
+    *xtv = 0.0;
+    *xmuv = cos (*xtv * DEG2RAD);
+    *xfi = 0.0;
+    *cosxfi = cos (*xfi * DEG2RAD);
+    *xtsmin = 0;
+    *xtsstep = 4.0;
+    *xtvmin = 2.84090;
+    *xtvstep = 6.52107 - 2.84090;
+    retval = readluts (tsmax, tsmin, ttv, tts, nbfi, nbfic, indts, rolutt,
+        transt, sphalbt, normext, *xtsstep, *xtsmin, anglehdf, intrefnm,
+        transmnm, spheranm);
+    if (retval != SUCCESS)
+    {
+        sprintf (errmsg, "Reading the LUTs");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+    printf ("The LUTs for urban clean case v2.0 have been read.  We can "
+        "now perform atmospheric correction.\n");
+
+    /* Read the auxiliary data files used as input to the reflectance
+       calculations */
+    retval = read_auxiliary_files (anglehdf, intrefnm, transmnm, spheranm,
+        cmgdemnm, rationm, auxnm, dem, andwi, sndwi, ratiob1, ratiob2,
+        ratiob7, intratiob1, intratiob2, intratiob7, slpratiob1,
+        slpratiob2, slpratiob7, wv, oz);
+    if (retval != SUCCESS)
+    {
+        sprintf (errmsg, "Reading the auxiliary files");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Getting parameters for atmospheric correction */
+    /* Update to get the parameter of the scene center */
+    *raot550nm = 0.12;
+    *pres = 1013.0;
+    *uoz = 0.30;
+    *uwv = 0.5;
+
+    /* Use scene center (and center of the pixel) to compute atmospheric
+       parameters */
+    img.l = (int) (nlines * 0.5) - 0.5;
+    img.s = (int) (nsamps * 0.5) + 0.5;
+    img.is_fill = false;
+    if (!from_space (space, &img, &geo))
+    {
+        sprintf (errmsg, "Mapping scene center to geolocation coords");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+    center_lat = geo.lat * RAD2DEG;
+    center_lon = geo.lon * RAD2DEG;
+    printf ("Scene center line/sample: %f, %f\n", img.l, img.s);
+    printf ("Scene center lat/long: %f, %f\n", center_lat, center_lon);
+
+    /* Use the scene center lat/long to determine the line/sample in the
+       CMG-related lookup tables, using the center of the UL pixel */
+    ycmg = (89.975 - center_lat) * 20.0;    /* vs / 0.05 */
+    xcmg = (179.975 + center_lon) * 20.0;   /* vs / 0.05 */
+    lcmg = (int) (ycmg + 0.5);
+    scmg = (int) (xcmg + 0.5);
+    if ((lcmg < 0 || lcmg >= CMG_NBLAT) || (scmg < 0 || scmg >= CMG_NBLON))
+    {
+        sprintf (errmsg, "Invalid line/sample combination for the "
+            "CMG-related lookup tables - line %d, sample %d (0-based).  "
+            "CMG-based tables are %d lines x %d samples.", lcmg, scmg,
+            CMG_NBLAT, CMG_NBLON);
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    if (wv[lcmg][scmg] != 0)
+        *uwv = wv[lcmg][scmg] / 200.0;
+    else
+        *uwv = 0.5;
+
+    if (oz[lcmg][scmg] != 0)
+        *uoz = oz[lcmg][scmg] / 400.0;
+    else
+        *uoz = 0.3;
+
+    if (dem[lcmg][scmg] != -9999)
+        *pres = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
+    else
+        *pres = 1013.0;
+    *raot550nm = 0.05;
+
+    /* Successful completion */
+    return (SUCCESS);
+}
