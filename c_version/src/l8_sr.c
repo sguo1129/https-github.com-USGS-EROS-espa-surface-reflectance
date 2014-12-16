@@ -41,10 +41,6 @@ Date          Programmer       Reason
                                variables that refer to the surface reflectance
                                band-related bands (ogtrans, wvtrans, tauray,
                                erelc, etc.)  These previously were of size 16.
-8/1/2014      Gail Schmidt     Add check on the solar zenith to make sure the
-                               scene can be processed for surface reflectance.
-                               If solar zenith is too large, then only process
-                               TOA reflectance.
 8/1/2014      Gail Schmidt     Added flag to allow user to specify only TOA
                                reflectance corrections to be completed and
                                written.  Also added flag to allow the user to
@@ -59,11 +55,17 @@ Date          Programmer       Reason
                                main calling routine.  Same goes for the cosine
                                of azimuthal difference between sun and obs
                                angles.
-11/17/2014    Gail Schmidt     If this is an OLI-only scene, then surface
-                               reflectance corrections will not be applied.
 12/1/2014     Gail Schmidt     Removed unused code for true north adjustment
 12/9/2014     Gail Schmidt     Created TOA reflectance and surface reflectance
                                functions to modularize the overall source code
+12/10/2014    Gail Schmidt     Add check on the solar zenith to make sure the
+                               scene can be processed for surface reflectance.
+                               If solar zenith is too large and process_sr is
+                               true, then exit with an error.  Only TOA and BT
+                               corrections can be made.
+12/10/2014    Gail Schmidt     If this is an OLI-only scene and process_sr is
+                               true, then exit with an error.  Only TOA and BT
+                               corrections can be made.
 
 NOTES:
 1. Bands 1-7 are corrected to surface reflectance.  Band 8 (pand band) is not
@@ -95,61 +97,21 @@ int main (int argc, char *argv[])
 
     int retval;              /* return status */
     int ib;                  /* looping variable for input bands */
+    int i;                   /* looping variables */
     Input_t *input = NULL;       /* input structure for the Landsat product */
     Output_t *toa_output = NULL; /* output structure and metadata for the TOA
                                     product */
     Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
     Espa_global_meta_t *gmeta = NULL;   /* pointer to global meta */
     Envi_header_t envi_hdr;      /* output ENVI header information */
-
-    /* Vars for forward/inverse mapping space */
-    Geoloc_t *space = NULL;       /* structure for geolocation information */
-    Space_def_t space_def;        /* structure to define the space mapping */
-    Img_coord_float_t img;        /* coordinate in line/sample space */
-    Geo_coord_t geo;              /* coordinate in lat/long space */
-    float center_lat, center_lon; /* lat/long for scene center */
-
     struct stat statbuf;      /* buffer for the file stat function */
+
     uint16 *qaband = NULL;    /* QA band for the input image, nlines x nsamps */
     int16 **sband = NULL;     /* output surface reflectance and brightness
                                  temp bands, qa band is separate as a uint16 */
-    int16 **dem = NULL;       /* CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 **andwi = NULL;     /* avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **sndwi = NULL;     /* standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob2 = NULL;   /* mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob7 = NULL;   /* mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1 = NULL;   /* ??? band1 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2 = NULL;   /* ??? band2 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7 = NULL;   /* ??? band7 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob1 = NULL;   /* slope band1 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob2 = NULL;   /* slope band2 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob7 = NULL;   /* slope band7 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
-
-    int i, j, k;         /* looping variables */
-    int lcmg, scmg;      /* line/sample index for the CMG */
-    float xcmg, ycmg;    /* x/y location for CMG */
     float xts;           /* solar zenith angle (deg) */
     float xfs;           /* solar azimuth angle (deg) */
-    float xtv;           /* observation zenith angle (deg) -- NOTE: set to 0.0
-                            and never changes */
     float xmus;          /* cosine of solar zenith angle */
-    float xmuv;          /* cosine of observation zenith angle */
-    float xfi;           /* azimuthal difference between the sun and
-                            observation angle (deg) */
-    float cosxfi;        /* cosine of azimuthal difference */
-    float xtsstep;       /* solar zenith step value */
-    float xtsmin;        /* minimum solar zenith value */
-    float xtvstep;       /* observation step value */
-    float xtvmin;        /* minimum observation value */
     bool process_sr = true;  /* this is set to false if the solar zenith
                                 is too large and the surface reflectance
                                 cannot be calculated or if the user specifies
@@ -158,6 +120,10 @@ int main (int argc, char *argv[])
                                 done */
     bool write_toa = false;  /* this is set to true if the user specifies
                                 TOA products should be output for delivery */
+    float pixsize;      /* pixel size for the reflectance bands */
+    int nlines, nsamps; /* number of lines and samples in the reflectance and
+                           thermal bands */
+
 
     /* The following arguments are all names of the LUTs */
     char anglehdf[STR_SIZE];  /* angle HDF filename */
@@ -167,31 +133,6 @@ int main (int argc, char *argv[])
     char cmgdemnm[STR_SIZE];  /* climate modeling grid DEM filename */
     char rationm[STR_SIZE];   /* ratio averages filename */
     char auxnm[STR_SIZE];     /* auxiliary filename for ozone and water vapor*/
-
-    float ****rolutt = NULL;    /* intrinsic reflectance table
-                                   [NSR_BANDS][7][22][8000] */
-    float ****transt = NULL;    /* transmission table
-                                   [NSR_BANDS][7][22][22] */
-    float ***sphalbt = NULL;    /* spherical albedo table [NSR_BANDS][7][22] */
-    float ***normext = NULL;    /* aerosol extinction coefficient at the
-                                   current wavelength (normalized at 550nm)
-                                   [NSR_BANDS][7][22] */
-    float **tsmax = NULL;       /* maximum scattering angle table [20][22] */
-    float **tsmin = NULL;       /* minimum scattering angle table [20][22] */
-    float **nbfic = NULL;       /* communitive number of azimuth angles
-                                   [20][22] */
-    float **nbfi = NULL;        /* number of azimuth angles [20][22] */
-    float **ttv = NULL;         /* view angle table [20][22] */
-    float tts[22];              /* sun angle table */
-    int32 indts[22];
-    float raot550nm;    /* nearest input value of AOT */
-    float uoz;          /* total column ozone */
-    float uwv;          /* total column water vapor (precipital water vapor) */
-    float pres;         /* surface pressure */
-
-    float pixsize;      /* pixel size for the reflectance bands */
-    int nlines, nsamps; /* number of lines and samples in the reflectance and
-                           thermal bands */
 
     printf ("Starting TOA and surface reflectance processing ...\n");
 
@@ -275,42 +216,41 @@ int main (int argc, char *argv[])
     xts = gmeta->solar_zenith;
     xfs = gmeta->solar_azimuth;
     pixsize = (float) input->size.pixsize[0];
-    raot550nm = 0.06;
     xmus = cos (xts * DEG2RAD);
     nlines = input->size.nlines;
     nsamps = input->size.nsamps;
 
+    /* If this is OLI-only data, then surface reflectance can not be
+       processed */
+    if (input->meta.inst == INST_OLI && process_sr)
+    {
+        sprintf (errmsg, "This is an OLI-only scene vs. an OLI-TIRS scene. "
+            "Corrections must be limited to top of atmosphere and at-sensor "
+            "brightness temperature corrections. Use the --process_sr=false "
+            "command-line argument to process. (oli-only cannot be corrected "
+            "to surface reflectance)");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
     /* The surface reflectance algorithm cannot be implemented for solar
        zenith angles greater than 76 degrees.  Need to flag if the current
        scene falls into that category. */
-    if (xts > 76.0)
+    if (xts > 76.0 && process_sr)
     {
-        process_sr = false;
         sprintf (errmsg, "Solar zenith angle is too large to allow for surface "
-            "reflectance processing.  Corrections will be limited to top of "
-            "atmosphere and at-sensor brightness temperature corrections.");
-        error_handler (false, FUNC_NAME, errmsg);
-    }
-
-    /* If this is OLI-only data, then surface reflectance will not be
-       processed */
-    if (input->meta.inst == INST_OLI)
-    {
-        process_sr = false;
-        sprintf (errmsg, "This is an OLI-only scene vs. an OLI-TIRS scene. "
-            "Corrections will be limited to top of atmosphere and at-sensor "
-            "brightness temperature corrections.");
-        error_handler (false, FUNC_NAME, errmsg);
+            "reflectance processing.  Corrections must be limited to top of "
+            "atmosphere and at-sensor brightness temperature corrections. "
+            "Use the --process_sr=false command-line argument. "
+            "(solar zenith angle out of range)");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
     }
 
     /* Allocate memory for all the data arrays */
     if (verbose)
         printf ("Allocating memory for the data arrays ...\n");
-    retval = memory_allocation_main (nlines, nsamps, &dem, &andwi, &sndwi,
-        &ratiob1, &ratiob2, &ratiob7, &intratiob1, &intratiob2, &intratiob7,
-        &slpratiob1, &slpratiob2, &slpratiob7, &wv, &oz, &rolutt, &transt,
-        &sphalbt, &normext, &tsmax, &tsmin, &nbfic, &nbfi, &ttv, &qaband,
-        &sband);
+    retval = memory_allocation_main (nlines, nsamps, &qaband, &sband);
     if (retval != SUCCESS)
     {   /* get_args already printed the error message */
         sprintf (errmsg, "Error allocating memory for the data arrays from "
@@ -319,214 +259,104 @@ int main (int argc, char *argv[])
         exit (ERROR);
     }
 
-    /* Get the path for the auxiliary products from the L8_AUX_DIR environment
-       variable.  If it isn't defined, then assume the products are in the
-       local directory. */
-    aux_path = getenv ("L8_AUX_DIR");
-    if (aux_path == NULL)
+    /* Read the QA band */
+    if (get_input_qa_lines (input, 0, 0, nlines, qaband) != SUCCESS)
     {
-        aux_path = ".";
-        sprintf (errmsg, "L8_AUX_DIR environment variable isn't defined. It is "
-            "assumed the auxiliary products will be available from the local "
-            "directory.");
-        error_handler (false, FUNC_NAME, errmsg);
-    }
-
-    /* Grab the year of the auxiliary input file to be used for the correct
-       location of the auxiliary file in the auxliary directory */
-    strncpy (aux_year, &aux_infile[5], 4);
-    aux_year[4] = '\0';
-
-    /* Set up the look-up table files and make sure they exist */
-    sprintf (anglehdf, "%s/LDCMLUT/ANGLE_NEW.hdf", aux_path);
-    sprintf (intrefnm, "%s/LDCMLUT/RES_LUT_V3.0-URBANCLEAN-V2.0.hdf", aux_path);
-    sprintf (transmnm, "%s/LDCMLUT/TRANS_LUT_V3.0-URBANCLEAN-V2.0.ASCII",
-        aux_path);
-    sprintf (spheranm, "%s/LDCMLUT/AERO_LUT_V3.0-URBANCLEAN-V2.0.ASCII",
-        aux_path);
-    sprintf (cmgdemnm, "%s/CMGDEM.hdf", aux_path);
-    sprintf (rationm, "%s/ratiomapndwiexp.hdf", aux_path);
-    sprintf (auxnm, "%s/LADS/%s/%s", aux_path, aux_year, aux_infile);
-
-    if (stat (anglehdf, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find anglehdf data file: %s\n  Check "
-            "L8_AUX_DIR environment variable.", anglehdf);
-        error_handler (false, FUNC_NAME, errmsg);
+        sprintf (errmsg, "Reading QA band");
+        error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
 
-    if (stat (intrefnm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find intrefnm data file: %s\n  Check "
-            "L8_AUX_DIR environment variable.", intrefnm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    if (stat (transmnm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find transmnm data file: %s\n  Check "
-            "L8_AUX_DIR environment variable.", transmnm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    if (stat (spheranm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find spheranm data file: %s\n  Check "
-            "L8_AUX_DIR environment variable.", spheranm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    if (stat (cmgdemnm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find cmgdemnm data file: %s\n  Check "
-            "L8_AUX_DIR environment variable.", cmgdemnm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    if (stat (rationm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find rationm data file: %s\n  Check "
-            "L8_AUX_DIR environment variable.", rationm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    if (stat (auxnm, &statbuf) == -1)
-    {
-        sprintf (errmsg, "Could not find auxnm data file: %s\n  Check "
-            "L8_AUX_DIR environment variable.", auxnm);
-        error_handler (false, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    /* Initialization for look up tables, auxiliary data, mapping, and
-       geolocation information is used for the surface reflectance correction.
-       NOTE: the view angle is set to 0.0 and this never changes. */
+    /* Get the L8 auxiliary directory and the full pathname of the auxiliary
+       files to be read if processing surface reflectance */
     if (process_sr)
     {
-        /* Initialize the look up tables */
-        if (verbose)
-            printf ("Initializing the look-up tables ...\n");
-        xtv = 0.0;
-        xmuv = cos (xtv * DEG2RAD);
-        xfi = 0.0;
-        cosxfi = cos (xfi * DEG2RAD);
-        xtsmin = 0;
-        xtsstep = 4.0;
-        xtvmin = 2.84090;
-        xtvstep = 6.52107 - 2.84090;
-        retval = readluts (tsmax, tsmin, ttv, tts, nbfi, nbfic, indts, rolutt,
-            transt, sphalbt, normext, xtsstep, xtsmin, anglehdf, intrefnm,
-            transmnm, spheranm);
-        if (retval != SUCCESS)
+        /* Get the path for the auxiliary products from the L8_AUX_DIR
+           environment variable.  If it isn't defined, then assume the products
+           are in the local directory. */
+        aux_path = getenv ("L8_AUX_DIR");
+        if (aux_path == NULL)
         {
-            sprintf (errmsg, "Reading the LUTs");
-            error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
+            aux_path = ".";
+            sprintf (errmsg, "L8_AUX_DIR environment variable isn't defined. "
+                "It is assumed the auxiliary products will be available from "
+                "the local directory.");
+            error_handler (false, FUNC_NAME, errmsg);
         }
-        printf ("The LUTs for urban clean case v2.0 have been read.  We can "
-            "now perform atmospheric correction.\n");
 
-        /* Read the auxiliary data files used as input to the reflectance
-           calculations */
-        if (verbose)
-            printf ("Reading the auxiliary files ...\n");
-        retval = read_auxiliary_files (anglehdf, intrefnm, transmnm, spheranm,
-            cmgdemnm, rationm, auxnm, dem, andwi, sndwi, ratiob1, ratiob2,
-            ratiob7, intratiob1, intratiob2, intratiob7, slpratiob1,
-            slpratiob2, slpratiob7, wv, oz);
-        if (retval != SUCCESS)
+        /* Grab the year of the auxiliary input file to be used for the correct
+           location of the auxiliary file in the auxliary directory */
+        strncpy (aux_year, &aux_infile[5], 4);
+        aux_year[4] = '\0';
+
+        /* Set up the look-up table files and make sure they exist */
+        sprintf (anglehdf, "%s/LDCMLUT/ANGLE_NEW.hdf", aux_path);
+        sprintf (intrefnm, "%s/LDCMLUT/RES_LUT_V3.0-URBANCLEAN-V2.0.hdf",
+            aux_path);
+        sprintf (transmnm, "%s/LDCMLUT/TRANS_LUT_V3.0-URBANCLEAN-V2.0.ASCII",
+            aux_path);
+        sprintf (spheranm, "%s/LDCMLUT/AERO_LUT_V3.0-URBANCLEAN-V2.0.ASCII",
+            aux_path);
+        sprintf (cmgdemnm, "%s/CMGDEM.hdf", aux_path);
+        sprintf (rationm, "%s/ratiomapndwiexp.hdf", aux_path);
+        sprintf (auxnm, "%s/LADS/%s/%s", aux_path, aux_year, aux_infile);
+
+        if (stat (anglehdf, &statbuf) == -1)
         {
-            sprintf (errmsg, "Reading the auxiliary files");
-            error_handler (true, FUNC_NAME, errmsg);
+            sprintf (errmsg, "Could not find anglehdf data file: %s\n  Check "
+                "L8_AUX_DIR environment variable.", anglehdf);
+            error_handler (false, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
-        /* Initialize the geolocation space applications */
-        if (!get_geoloc_info (&xml_metadata, &space_def))
+
+        if (stat (intrefnm, &statbuf) == -1)
         {
-            sprintf (errmsg, "Getting the space definition from the XML file");
-            error_handler (true, FUNC_NAME, errmsg);
+            sprintf (errmsg, "Could not find intrefnm data file: %s\n  Check "
+                "L8_AUX_DIR environment variable.", intrefnm);
+            error_handler (false, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
-        space = setup_mapping (&space_def);
-        if (space == NULL)
+
+        if (stat (transmnm, &statbuf) == -1)
         {
-            sprintf (errmsg, "Setting up the geolocation mapping");
-            error_handler (true, FUNC_NAME, errmsg);
+            sprintf (errmsg, "Could not find transmnm data file: %s\n  Check "
+                "L8_AUX_DIR environment variable.", transmnm);
+            error_handler (false, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
-        /* Getting parameters for atmospheric correction */
-        /* Update to get the parameter of the scene center */
-        raot550nm = 0.12;
-        pres = 1013.0;
-        uoz = 0.30;
-        uwv = 0.5;
-    
-        /* Read the QA band */
-        if (get_input_qa_lines (input, 0, 0, nlines, qaband) != SUCCESS)
+
+        if (stat (spheranm, &statbuf) == -1)
         {
-            sprintf (errmsg, "Reading QA band");
-            error_handler (true, FUNC_NAME, errmsg);
+            sprintf (errmsg, "Could not find spheranm data file: %s\n  Check "
+                "L8_AUX_DIR environment variable.", spheranm);
+            error_handler (false, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
-        /* Use scene center (and center of the pixel) to compute atmospheric
-           parameters */
-        img.l = (int) (nlines * 0.5) - 0.5;
-        img.s = (int) (nsamps * 0.5) + 0.5;
-        img.is_fill = false;
-        if (!from_space (space, &img, &geo))
+
+        if (stat (cmgdemnm, &statbuf) == -1)
         {
-            sprintf (errmsg, "Mapping scene center to geolocation coords");
-            error_handler (true, FUNC_NAME, errmsg);
+            sprintf (errmsg, "Could not find cmgdemnm data file: %s\n  Check "
+                "L8_AUX_DIR environment variable.", cmgdemnm);
+            error_handler (false, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-        center_lat = geo.lat * RAD2DEG;
-        center_lon = geo.lon * RAD2DEG;
-        printf ("Scene center line/sample: %f, %f\n", img.l, img.s);
-        printf ("Scene center lat/long: %f, %f\n", center_lat, center_lon);
-    
-        /* Use the scene center lat/long to determine the line/sample in the
-           CMG-related lookup tables, using the center of the UL pixel */
-        ycmg = (89.975 - center_lat) * 20.0;    /* vs / 0.05 */
-        xcmg = (179.975 + center_lon) * 20.0;   /* vs / 0.05 */
-        lcmg = (int) (ycmg + 0.5);
-        scmg = (int) (xcmg + 0.5);
-        if ((lcmg < 0 || lcmg >= CMG_NBLAT) || (scmg < 0 || scmg >= CMG_NBLON))
+
+        if (stat (rationm, &statbuf) == -1)
         {
-            sprintf (errmsg, "Invalid line/sample combination for the "
-                "CMG-related lookup tables - line %d, sample %d (0-based).  "
-                "CMG-based tables are %d lines x %d samples.", lcmg, scmg,
-                CMG_NBLAT, CMG_NBLON);
-            error_handler (true, FUNC_NAME, errmsg);
+            sprintf (errmsg, "Could not find rationm data file: %s\n  Check "
+                "L8_AUX_DIR environment variable.", rationm);
+            error_handler (false, FUNC_NAME, errmsg);
             exit (ERROR);
         }
-    
-        if (wv[lcmg][scmg] != 0)
-            uwv = wv[lcmg][scmg] / 200.0;
-        else
-            uwv = 0.5;
-    
-        if (oz[lcmg][scmg] != 0)
-            uoz = oz[lcmg][scmg] / 400.0;
-        else
-            uoz = 0.3;
-    
-        if (dem[lcmg][scmg] != -9999)
-            pres = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
-        else
-            pres = 1013.0;
-    
-        raot550nm = 0.05;
-    }  /* End if process_sr initializations */
+
+        if (stat (auxnm, &statbuf) == -1)
+        {
+            sprintf (errmsg, "Could not find auxnm data file: %s\n  Check "
+                "L8_AUX_DIR environment variable.", auxnm);
+            error_handler (false, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+    }
 
     /* Compute the TOA reflectance and at-sensor brightness temp */
     printf ("Calculating TOA reflectance and at-sensor brightness temps...");
@@ -665,14 +495,10 @@ int main (int argc, char *argv[])
         /* Perform atmospheric correction for the reflectance bands and write
            the data to the SR output file */
         printf ("Performing atmospheric corrections for each reflectance "
-            "band ...");
+            "band ...\n");
         retval = compute_sr_refl (input, &xml_metadata, xml_infile, qaband,
-            nlines, nsamps, pixsize, sband, space, &space_def, xts, xfs, xtv,
-            xmus, xmuv, xfi, cosxfi, raot550nm, pres, uoz, uwv, tsmax, tsmin,
-            xtsstep, xtsmin, xtvstep, xtvmin, tts, ttv, indts, rolutt, transt,
-            sphalbt, normext, nbfic, nbfi, dem, andwi, sndwi, ratiob1, ratiob2,
-            ratiob7, intratiob1, intratiob2, intratiob7, slpratiob1, slpratiob2,
-            slpratiob7, wv, oz);
+            nlines, nsamps, pixsize, sband, xts, xfs, xmus, anglehdf,
+            intrefnm, transmnm, spheranm, cmgdemnm, rationm, auxnm);
         if (retval != SUCCESS)
         {
             sprintf (errmsg, "Error computing surface reflectance");
@@ -681,36 +507,6 @@ int main (int argc, char *argv[])
         }
     }  /* end if process_sr */
   
-    /* Done with the ratiob* arrays */
-    for (i = 0; i < RATIO_NBLAT; i++)
-    {
-        free (andwi[i]);
-        free (sndwi[i]);
-        free (ratiob1[i]);
-        free (ratiob2[i]);
-        free (ratiob7[i]);
-        free (intratiob1[i]);
-        free (intratiob2[i]);
-        free (intratiob7[i]);
-        free (slpratiob1[i]);
-        free (slpratiob2[i]);
-        free (slpratiob7[i]);
-    }
-    free (andwi);  andwi = NULL;
-    free (sndwi);  sndwi = NULL;
-    free (ratiob1);  ratiob1 = NULL;
-    free (ratiob2);  ratiob2 = NULL;
-    free (ratiob7);  ratiob7 = NULL;
-    free (intratiob1);  intratiob1 = NULL;
-    free (intratiob2);  intratiob2 = NULL;
-    free (intratiob7);  intratiob7 = NULL;
-    free (slpratiob1);  slpratiob1 = NULL;
-    free (slpratiob2);  slpratiob2 = NULL;
-    free (slpratiob7);  slpratiob7 = NULL;
-
-    /* Free the spatial mapping pointer */
-    free (space);
-
     /* Free the metadata structure */
     free_metadata (&xml_metadata);
 
@@ -722,56 +518,6 @@ int main (int argc, char *argv[])
     /* Free the filename pointers */
     free (xml_infile);
     free (aux_infile);
-
-    /* Free the data arrays */
-    for (i = 0; i < DEM_NBLAT; i++)
-        free (dem[i]);
-    free (dem);
-
-    for (i = 0; i < CMG_NBLAT; i++)
-    {
-        free (wv[i]);
-        free (oz[i]);
-    }
-    free (wv);
-    free (oz);
-
-    for (i = 0; i < NSR_BANDS; i++)
-    {
-        for (j = 0; j < 7; j++)
-        {
-            for (k = 0; k < 22; k++)
-            {
-                free (rolutt[i][j][k]);
-                free (transt[i][j][k]);
-            }
-            free (rolutt[i][j]);
-            free (transt[i][j]);
-            free (sphalbt[i][j]);
-        }
-        free (rolutt[i]);
-        free (transt[i]);
-        free (sphalbt[i]);
-    }
-    free (rolutt);
-    free (transt);
-    free (sphalbt);
-
-    /* tsmax[20][22] and float tsmin[20][22] and float nbfic[20][22] and
-       nbfi[20][22] and float ttv[20][22] */
-    for (i = 0; i < 20; i++)
-    {
-        free (tsmax[i]);
-        free (tsmin[i]);
-        free (nbfic[i]);
-        free (nbfi[i]);
-        free (ttv[i]);
-    }
-    free (tsmax);
-    free (tsmin);
-    free (nbfic);
-    free (nbfi);
-    free (ttv);
 
     /* Free memory for band data */
     free (qaband);

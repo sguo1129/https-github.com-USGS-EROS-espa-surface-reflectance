@@ -1875,6 +1875,96 @@ int memory_allocation_main
 (
     int nlines,          /* I: number of lines in the scene */
     int nsamps,          /* I: number of samples in the scene */
+    uint16 **qaband,     /* O: QA band for the input image, nlines x nsamps */
+    int16 ***sband       /* O: output surface reflectance and brightness temp
+                               bands */
+)
+{
+    char FUNC_NAME[] = "memory_allocation_main"; /* function name */
+    char errmsg[STR_SIZE];   /* error message */
+    int i;                   /* looping variables */
+
+    *qaband = calloc (nlines*nsamps, sizeof (uint16));
+    if (*qaband == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for qaband");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Given that the QA band is its own separate array of uint16s, we need
+       one less band for the signed image data */
+    *sband = calloc (NBAND_TTL_OUT-1, sizeof (int16*));
+    if (*sband == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for sband");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+    for (i = 0; i < NBAND_TTL_OUT-1; i++)
+    {
+        (*sband)[i] = calloc (nlines*nsamps, sizeof (int16));
+        if ((*sband)[i] == NULL)
+        {
+            sprintf (errmsg, "Error allocating memory for sband");
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Successful completion */
+    return (SUCCESS);
+}
+
+
+/******************************************************************************
+MODULE:  memory_allocation_sr
+
+PURPOSE:  Allocates memory for all the various arrays needed specifically for
+the L8 surface reflectance corrections.
+
+RETURN VALUE:
+Type = int
+Value          Description
+-----          -----------
+ERROR          Error occurred allocating memory
+SUCCESS        Successful completion
+
+HISTORY:
+Date         Programmer       Reason
+---------    ---------------  -------------------------------------
+8/25/2014    Gail Schmidt     Original development
+12/9/2014    Gail Schmidt     Removed the uband allocation since it's handled
+                              in a different function (compute_refl)
+
+NOTES:
+  1. Memory is allocated for each of the input variables, so it is up to the
+     calling routine to free this memory.
+  2. Each array passed into this function is passed in as the address to that
+     1D, 2D, nD array.
+******************************************************************************/
+int memory_allocation_sr
+(
+    int nlines,          /* I: number of lines in the scene */
+    int nsamps,          /* I: number of samples in the scene */
+    int16 **aerob1,      /* O: atmospherically corrected band 1 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob2,      /* O: atmospherically corrected band 2 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob4,      /* O: atmospherically corrected band 4 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob5,      /* O: atmospherically corrected band 5 data
+                               (TOA refl), nlines x nsamps */
+    int16 **aerob7,      /* O: atmospherically corrected band 7 data
+                               (TOA refl), nlines x nsamps */
+    uint8 **cloud,       /* O: bit-packed value that represent clouds,
+                               nlines x nsamps */
+    float **twvi,        /* O: interpolated water vapor value,
+                               nlines x nsamps */
+    float **tozi,        /* O: interpolated ozone value, nlines x nsamps */
+    float **tp,          /* O: interpolated pressure value, nlines x nsamps */
+    float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
+    float **taero,       /* O: aerosol values for each pixel, nlines x nsamps */
     int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
     int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
     int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
@@ -1901,15 +1991,100 @@ int memory_allocation_main
     float ***tsmin,      /* O: minimum scattering angle table [20][22] */
     float ***nbfic,      /* O: communitive number of azimuth angles [20][22] */
     float ***nbfi,       /* O: number of azimuth angles [20][22] */
-    float ***ttv,        /* O: view angle table [20][22] */
-    uint16 **qaband,     /* O: QA band for the input image, nlines x nsamps */
-    int16 ***sband       /* O: output surface reflectance and brightness temp
-                               bands */
+    float ***ttv         /* O: view angle table [20][22] */
 )
 {
-    char FUNC_NAME[] = "memory_allocation_main"; /* function name */
+    char FUNC_NAME[] = "memory_allocation_sr"; /* function name */
     char errmsg[STR_SIZE];   /* error message */
     int i, j, k;             /* looping variables */
+
+    *aerob1 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob1 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob1");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob2 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob2 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob2");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob4 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob4 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob4");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob5 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob5 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob5");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *aerob7 = calloc (nlines*nsamps, sizeof (int16));
+    if (*aerob7 == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for aerob7");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *twvi = calloc (nlines*nsamps, sizeof (float));
+    if (*twvi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for twvi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *tozi = calloc (nlines*nsamps, sizeof (float));
+    if (*tozi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tozi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *tp = calloc (nlines*nsamps, sizeof (float));
+    if (*tp == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tp");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *tresi = calloc (nlines*nsamps, sizeof (float));
+    if (*tresi == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for tresi");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *taero = calloc (nlines*nsamps, sizeof (float));
+    if (*taero == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for taero");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *cloud = calloc (nlines*nsamps, sizeof (uint8));
+    if (*cloud == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for cloud");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
 
     /* Allocate memory for all the climate modeling grid files */
     *dem = calloc (DEM_NBLAT, sizeof (int16*));
@@ -2350,180 +2525,6 @@ int memory_allocation_main
             error_handler (true, FUNC_NAME, errmsg);
             return (ERROR);
         }
-    }
-
-    *qaband = calloc (nlines*nsamps, sizeof (uint16));
-    if (*qaband == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for qaband");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    /* Given that the QA band is its own separate array of uint16s, we need
-       one less band for the signed image data */
-    *sband = calloc (NBAND_TTL_OUT-1, sizeof (int16*));
-    if (*sband == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for sband");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-    for (i = 0; i < NBAND_TTL_OUT-1; i++)
-    {
-        (*sband)[i] = calloc (nlines*nsamps, sizeof (int16));
-        if ((*sband)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for sband");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    /* Successful completion */
-    return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  memory_allocation_sr
-
-PURPOSE:  Allocates memory for all the various arrays needed specifically for
-the L8 surface reflectance corrections.
-
-RETURN VALUE:
-Type = int
-Value          Description
------          -----------
-ERROR          Error occurred allocating memory
-SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-8/25/2014    Gail Schmidt     Original development
-12/9/2014    Gail Schmidt     Removed the uband allocation since it's handled
-                              in a different function (compute_refl)
-
-NOTES:
-  1. Memory is allocated for each of the input variables, so it is up to the
-     calling routine to free this memory.
-  2. Each array passed into this function is passed in as the address to that
-     1D, 2D, nD array.
-******************************************************************************/
-int memory_allocation_sr
-(
-    int nlines,          /* I: number of lines in the scene */
-    int nsamps,          /* I: number of samples in the scene */
-    int16 **aerob1,      /* O: atmospherically corrected band 1 data
-                               (TOA refl), nlines x nsamps */
-    int16 **aerob2,      /* O: atmospherically corrected band 2 data
-                               (TOA refl), nlines x nsamps */
-    int16 **aerob4,      /* O: atmospherically corrected band 4 data
-                               (TOA refl), nlines x nsamps */
-    int16 **aerob5,      /* O: atmospherically corrected band 5 data
-                               (TOA refl), nlines x nsamps */
-    int16 **aerob7,      /* O: atmospherically corrected band 7 data
-                               (TOA refl), nlines x nsamps */
-    uint8 **cloud,       /* O: bit-packed value that represent clouds,
-                               nlines x nsamps */
-    float **twvi,        /* O: interpolated water vapor value,
-                               nlines x nsamps */
-    float **tozi,        /* O: interpolated ozone value, nlines x nsamps */
-    float **tp,          /* O: interpolated pressure value, nlines x nsamps */
-    float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
-    float **taero        /* O: aerosol values for each pixel, nlines x nsamps */
-)
-{
-    char FUNC_NAME[] = "memory_allocation_sr"; /* function name */
-    char errmsg[STR_SIZE];   /* error message */
-
-    *aerob1 = calloc (nlines*nsamps, sizeof (int16));
-    if (*aerob1 == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for aerob1");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *aerob2 = calloc (nlines*nsamps, sizeof (int16));
-    if (*aerob2 == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for aerob2");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *aerob4 = calloc (nlines*nsamps, sizeof (int16));
-    if (*aerob4 == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for aerob4");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *aerob5 = calloc (nlines*nsamps, sizeof (int16));
-    if (*aerob5 == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for aerob5");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *aerob7 = calloc (nlines*nsamps, sizeof (int16));
-    if (*aerob7 == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for aerob7");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *twvi = calloc (nlines*nsamps, sizeof (float));
-    if (*twvi == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for twvi");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *tozi = calloc (nlines*nsamps, sizeof (float));
-    if (*tozi == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for tozi");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *tp = calloc (nlines*nsamps, sizeof (float));
-    if (*tp == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for tp");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *tresi = calloc (nlines*nsamps, sizeof (float));
-    if (*tresi == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for tresi");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *taero = calloc (nlines*nsamps, sizeof (float));
-    if (*taero == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for taero");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    *cloud = calloc (nlines*nsamps, sizeof (uint8));
-    if (*cloud == NULL)
-    {
-        sprintf (errmsg, "Error allocating memory for cloud");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
     }
 
     /* Successful completion */
