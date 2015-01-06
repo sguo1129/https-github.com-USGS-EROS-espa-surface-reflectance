@@ -104,7 +104,7 @@ typedef struct {
 } Img_coord_info_t;
 
 /* Surface reflectance version */
-#define SR_VERSION "0.1.0"
+#define SR_VERSION "0.2.0"
 
 /* How many lines of data should be processed at one time */
 #define PROC_NLINES 1000

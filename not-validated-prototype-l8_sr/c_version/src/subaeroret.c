@@ -52,6 +52,10 @@ Date         Programmer       Reason
                               well vs. doing the residual computation for 16
                               bands.
 8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
+1/6/2015     Gail Schmidt     Added a loop iterator and check on the number
+                              of iterations for the
+                              while ((ros1 < th1 || ros3 < th3)) loop to prevent
+                              infinite loops.
 
 NOTES:
 ******************************************************************************/
@@ -168,9 +172,10 @@ int subaeroret
         else
             raot550nm = (raot1 + aot550nm[iaot]) * 0.5;
 
-        /* Loop until convergence */
+        /* Loop until convergence.  Add a mechanism to stop the loop from being
+           infinite by stopping at 50 iterations. */
         iter = 0;
-        while ((ros1 < th1) || (ros3 < th3))
+        while ((ros1 < th1 || ros3 < th3) && (iter < 50))
         {
             if (iter > 0)
             {
