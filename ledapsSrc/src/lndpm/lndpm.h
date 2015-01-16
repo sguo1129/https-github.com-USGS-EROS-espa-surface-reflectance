@@ -32,7 +32,7 @@ NOTES:
 
 /* Defines */
 /* LEDAPS VERSION definitions */
-#define LEDAPS_VERSION "2.1.0"
+#define LEDAPS_VERSION "2.2.1"
 #define logFile "LogReport"
 
 /* define useful constants */
