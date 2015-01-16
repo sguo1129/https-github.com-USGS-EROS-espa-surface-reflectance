@@ -104,6 +104,10 @@ revision on 11/13/2014 by Gail Schmidt, USGS/EROS
    to play weird games with the histograms in ENVI to be able to see both the
    0 and 255 when one of the values is flagged as fill.
 
+revision on 1/15/2015 by Gail Schmidt, USGS/EROS
+ - descriptions of the on/off QA values were flip-flopped. These have been
+   fixed.
+
 !END****************************************************************************
 */
 {
@@ -251,38 +255,38 @@ revision on 11/13/2014 by Gail Schmidt, USGS/EROS
       if (allocate_class_metadata (&bmeta[ib], 2) != SUCCESS)
         RETURN_ERROR("allocating 2 classes", "OpenOutput", NULL); 
 
-      bmeta[ib].class_values[0].class = 0;
-      bmeta[ib].class_values[1].class = 255;
+      bmeta[ib].class_values[0].class = 0;     /* off */
+      bmeta[ib].class_values[1].class = 255;   /* on */
       switch (ib - nband_out_extra + 2) {
         case (FILL):
-          strcpy (bmeta[ib].class_values[0].description, "fill");
-          strcpy (bmeta[ib].class_values[1].description, "not fill");
+          strcpy (bmeta[ib].class_values[0].description, "not fill");
+          strcpy (bmeta[ib].class_values[1].description, "fill");
           break;
         case (DDV):
           strcpy (bmeta[ib].class_values[0].description,
-            "dark dense vegetation");
-          strcpy (bmeta[ib].class_values[1].description,
             "not dark dense vegetation");
+          strcpy (bmeta[ib].class_values[1].description,
+            "dark dense vegetation");
           break;
         case (CLOUD):
-          strcpy (bmeta[ib].class_values[0].description, "cloud");
-          strcpy (bmeta[ib].class_values[1].description, "not cloud");
+          strcpy (bmeta[ib].class_values[0].description, "not cloud");
+          strcpy (bmeta[ib].class_values[1].description, "cloud");
           break;
         case (CLOUD_SHADOW):
-          strcpy (bmeta[ib].class_values[0].description, "cloud shadow");
-          strcpy (bmeta[ib].class_values[1].description, "not cloud shadow");
+          strcpy (bmeta[ib].class_values[0].description, "not cloud shadow");
+          strcpy (bmeta[ib].class_values[1].description, "cloud shadow");
           break;
         case (SNOW):
-          strcpy (bmeta[ib].class_values[0].description, "snow");
-          strcpy (bmeta[ib].class_values[1].description, "not snow");
+          strcpy (bmeta[ib].class_values[0].description, "not snow");
+          strcpy (bmeta[ib].class_values[1].description, "snow");
           break;
         case (LAND_WATER):
           strcpy (bmeta[ib].class_values[0].description, "land");
           strcpy (bmeta[ib].class_values[1].description, "water");
           break;
         case (ADJ_CLOUD):
-          strcpy (bmeta[ib].class_values[0].description, "adjacent cloud");
-          strcpy (bmeta[ib].class_values[1].description, "not adjacent cloud");
+          strcpy (bmeta[ib].class_values[0].description, "not adjacent cloud");
+          strcpy (bmeta[ib].class_values[1].description, "adjacent cloud");
           break;
       }
     }
