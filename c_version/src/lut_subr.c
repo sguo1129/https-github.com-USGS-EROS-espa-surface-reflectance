@@ -124,7 +124,7 @@ int atmcorlamb2
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
     float *roatm,                    /* O: atmospheric reflectance */
-    float *ttatmg,
+    float *ttatmg,                   /* O: total atmospheric transmission */
     float *satm,                     /* O: spherical albedo */
     float *xrorayp,                  /* O: molecular reflectance */
     float *next                      /* O: */
