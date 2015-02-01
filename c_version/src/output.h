@@ -7,7 +7,6 @@
 /* Define some of the constants to use in the output data products */
 #define FILL_VALUE -9999
 #define CLOUD_FILL_VALUE 0
-#define SATURATE_VALUE 20000
 #define SCALE_FACTOR 0.0001
 #define MULT_FACTOR 10000.0
 #define SCALE_FACTOR_TH 0.1

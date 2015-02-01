@@ -124,9 +124,9 @@ int subaeroret
     double ros1, ros3;      /* surface reflectance for bands */
     double raot1, raot2;    /* AOT ratios that bracket the predicted ratio */
     float next;             /* ???? */
-    float tgo;
-    float roatm;            /* atmospherice reflectance */
-    float ttatmg;
+    float tgo;              /* other gaseous transmittance */
+    float roatm;            /* atmospheric reflectance */
+    float ttatmg;           /* total atmospheric transmission */
     float satm;             /* spherical albedo */
     float xrorayp;          /* molecular reflectance */
     double aratio1, aratio2;
