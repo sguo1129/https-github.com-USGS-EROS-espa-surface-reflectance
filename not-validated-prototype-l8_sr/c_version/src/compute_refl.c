@@ -308,19 +308,20 @@ int compute_sr_refl
     float raot;         /* AOT reflectance */
     float residual;     /* model residual */
     float rsurf;        /* surface reflectance */
-    float corf;
-    long nbclear;                    /* count of the clear (non-cloud) pixels */
-    long nbval;                      /* count of the non-fill pixels */
-    double anom;                     /* band 3 and 5 combination */
-    double mall;                     /* average/mean temp of all the pixels */
-    double mclear;                   /* average/mean temp of the clear pixels */
-    float fack, facl;                /* cloud height factor in the k,l dim */
-    int cldhmin;                     /* minimum bound of the cloud height */
-    int cldhmax;                     /* maximum bound of the cloud height */
-    float cldh;                      /* cloud height */
-    int icldh;                       /* looping variable for cloud height */
+    float corf;         /* aerosol impact (higher values represent high
+                           aerosol) */
+    long nbclear;       /* count of the clear (non-cloud) pixels */
+    long nbval;         /* count of the non-fill pixels */
+    double anom;        /* band 3 and 5 combination */
+    double mall;        /* average/mean temp of all the pixels */
+    double mclear;      /* average/mean temp of the clear pixels */
+    float fack, facl;   /* cloud height factor in the k,l dim */
+    int cldhmin;        /* minimum bound of the cloud height */
+    int cldhmax;        /* maximum bound of the cloud height */
+    float cldh;         /* cloud height */
+    int icldh;          /* looping variable for cloud height */
     int mband5, mband5k, mband5l;    /* band 6 value and k,l locations */
-    float tcloud;                    /* temperature of the current pixel */
+    float tcloud;       /* temperature of the current pixel */
 
     float cfac = 6.0;     /* cloud factor */
     double aaot;          /* average of AOT */
@@ -736,7 +737,7 @@ int compute_sr_refl
                 }
                 else
                 {
-                    /* Use the NDWI to calculate the band ratio */
+                    /* Use a version of NDWI to calculate the band ratio */
                     xndwi = ((double) sband[SR_BAND5][curr_pix] -
                              (double) (sband[SR_BAND7][curr_pix] * 0.5)) /
                             ((double) sband[SR_BAND5][curr_pix] +
@@ -805,7 +806,8 @@ int compute_sr_refl
                 }
                 corf = raot / xmus;
 
-                /* Check the model residual */
+                /* Check the model residual.  Corf represents aerosol impact.
+                   Test the quality of the aerosol inversion. */
                 if (residual < (0.015 + 0.005 * corf))
                 {
                     /* Test if band 5 makes sense */
@@ -1215,7 +1217,9 @@ fclose (tmpfile);
                fill pixels have already been marked in the TOA process. */
             if (qaband[i] != 1)
             {
-                if (tresi[i] > 0.0 &&                /* checks for water */
+                /* If not water or some other high aerosol pixel (tresi > 0)
+                   and this isn't a cirrus or cloud pixel */
+                if (tresi[i] > 0.0 &&
                     !btest (cloud[i], CIR_QA) &&
                     !btest (cloud[i], CLD_QA))
                 {
@@ -1242,10 +1246,11 @@ fclose (tmpfile);
                         exit (ERROR);
                     }
 
-                    /* Handle the aerosol computation in the cloud mask if
-                       this is the coastal aerosol band */
+                    /* If this is the coastal aerosol band then set the
+                       aerosol bits in the QA band */
                     if (ib == DN_BAND1)
                     {
+                        /* Recompute based on predefined toaero value */
                         if (roslamb < -0.005)
                         {
                             taero[i] = 0.05;

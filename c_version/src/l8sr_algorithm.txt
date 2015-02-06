@@ -347,8 +347,9 @@ Loop through all the lines in the scene
             Endif
 
             Call subaeroret with bands 4 and 1 to retrieve the aerosol information (passing in the band ratios, solar angles, observation angles, the SR constant variables, the look up tables, ozone, water vapor, and surface pressure).  AOT reflectance (raot) and model residual (residual) are both returned.
-            Set corf = raot / xmus
+            Set corf = raot / xmus   (aerosol impact; higher values represent high aerosol)
 
+            /* Test the quality of the aerosol inversion */
             If residual < (0.015 + 0.005 * corf) then
                 /* Test the AOT reflectance with BAND5 and BAND4 */
                 Call atmcorlamb2 for BAND5 to implement the Lambertian atmospheric correction (passing in the calculated raot as raot550nm, solar angles, observation angles, the SR constant variables, the look up tables, ozone, water vapor, and TOA reflectance for BAND5).  lambertian SR (roslamb), other gaseous transmittance (tgo), atmospheric reflectance (roatm), total atmospheric transmission (ttatmg), atmosphere spherical albedo (satm), and molecular reflectance (xrorayp) are all returned.
