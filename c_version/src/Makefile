@@ -2,7 +2,9 @@
 # Makefile for L8 SR code
 #------------------------------------------------------------------------------
 
-# Set up compile options
+# Set up compile options; add -fopenmp to use the OpenMP support for processing
+# L8SR.
+# EXTRA = -Wall -O2 -fopenmp
 CC = gcc
 RM = rm -f
 EXTRA = -Wall -O2
@@ -27,7 +29,7 @@ OBJ = $(SRC:.c=.o)
 # Define the object libraries
 EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
   -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
-  -L$(XML2LIB) -lxml2 -L$(HDFEOS_GCTPLIB) -lGctp -lz
+  -L$(XML2LIB) -lxml2 -L$(HDFEOS_GCTPLIB) -lGctp -L$(ZLIBLIB) -lz
 MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 

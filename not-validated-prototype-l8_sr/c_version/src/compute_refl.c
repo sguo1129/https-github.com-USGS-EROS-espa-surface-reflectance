@@ -1,4 +1,5 @@
 #include "l8_sr.h"
+#include "time.h"
 
 /******************************************************************************
 MODULE:  compute_toa_refl
@@ -108,6 +109,7 @@ int compute_toa_refl
                 return (ERROR);
             }
 
+            #pragma omp parallel for private (i, rotoa)
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
@@ -145,6 +147,7 @@ int compute_toa_refl
 
             /* Compute brightness temp for band 10.  Make sure it falls
                within the min/max range for the thermal bands. */
+            #pragma omp parallel for private (i, tmpf)
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
@@ -183,6 +186,7 @@ int compute_toa_refl
 
             /* Compute brightness temp for band 11.  Make sure it falls
                within the min/max range for the thermal bands. */
+            #pragma omp parallel for private (i, tmpf)
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
@@ -546,6 +550,7 @@ int compute_sr_refl
         bsatm[ib] = satm;
 
         /* Perform atmospheric corrections for bands 1-7 */
+        #pragma omp parallel for private (i, rotoa, roslamb)
         for (i = 0; i < nlines*nsamps; i++)
         {
             /* If this pixel is not fill.  Otherwise fill pixels have
@@ -588,9 +593,11 @@ int compute_sr_refl
     /* Interpolate the auxiliary data for each pixel location */
     printf ("Interpolating the auxiliary data ...\n");
     tmp_percent = 0;
+    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
     for (i = 0; i < nlines; i++)
     {
-        /* update status? */
+#ifndef _OPENMP
+        /* update status, but not if multi-threaded */
         curr_tmp_percent = 100 * i / nlines;
         if (curr_tmp_percent > tmp_percent)
         {
@@ -601,6 +608,7 @@ int compute_sr_refl
                 fflush (stdout);
             }
         }
+#endif
 
         curr_pix = i * nsamps;
         for (j = 0; j < nsamps; j++, curr_pix++)
@@ -872,9 +880,11 @@ int compute_sr_refl
         }  /* end for j */
     }  /* end for i */
 
+#ifndef _OPENMP
     /* update status */
     printf ("100%%\n");
     fflush (stdout);
+#endif
 
     /* Done with the aerob* arrays */
     free (aerob1);  aerob1 = NULL;
@@ -990,6 +1000,7 @@ int compute_sr_refl
     printf ("Determining cloud shadow ...\n");
     facl = cosf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* lines */
     fack = sinf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* samps */
+//    #pragma omp parallel for private (i, j, curr_pix, tcloud, cldh, cldhmin, cldhmax, mband5, mband5k, mband5l, icldh, k, l, win_pix)
     for (i = 0; i < nlines; i++)
     {
         curr_pix = i * nsamps;
@@ -1051,6 +1062,7 @@ int compute_sr_refl
 
     /* Expand the cloud shadow using the residual */
     printf ("Expanding cloud shadow ...\n");
+    #pragma omp parallel for private (i, j, curr_pix, k, l, win_pix)
     for (i = 0; i < nlines; i++)
     {
         curr_pix = i * nsamps;
@@ -1211,6 +1223,7 @@ fclose (tmpfile);
     for (ib = 0; ib <= DN_BAND7; ib++)
     {
         printf ("  Band %d\n", ib+1);
+        #pragma omp parallel for private (i, rsurf, rotoa, raot550nm, pres, uwv, uoz, retval, roslamb, tgo, roatm, ttatmg, satm, xrorayp, next)
         for (i = 0; i < nlines * nsamps; i++)
         {
             /* If this pixel is fill, then don't process. Otherwise the
