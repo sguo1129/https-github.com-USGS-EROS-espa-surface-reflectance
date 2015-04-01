@@ -34,6 +34,9 @@
  Revision 2.0 01/21/2014 Gail Schmidt, USGS EROS
  Modified applications to use the ESPA internal raw binary file format.
 
+ Revision 03/31/2015 Gail Schmidt, USGS EROS
+ Added an existance check for the TOA reflectance (and K1/K2 consts).
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -320,12 +323,12 @@ bool FreeParam(Param_t *this)
   return true;
 } 
   
-bool existGB(Espa_internal_meta_t *metadata)
+bool existRadGB(Espa_internal_meta_t *metadata)
 /* 
 !C******************************************************************************
 
-!Description: 'existGB' determines if the gains and biases exist and were set
-from the input XML file.
+!Description: 'existRadGB' determines if the gains and biases for TOA radiance
+conversion exist and were set from the input XML file.
  
 !Input Parameters:
  metadata     'Espa_internal_meta_t' data structure
@@ -354,9 +357,56 @@ from the input XML file.
 
   /* If the gain or bias for band1 in the input file is not set, then assume
      none are set and therefore need to be manually set before continuing. */
-  if (fabs (metadata->band[refl_indx].toa_gain - ESPA_FLOAT_META_FILL) <
+  if (fabs (metadata->band[refl_indx].rad_gain - ESPA_FLOAT_META_FILL) <
         ESPA_EPSILON ||
-      fabs (metadata->band[refl_indx].toa_bias - ESPA_FLOAT_META_FILL) <
+      fabs (metadata->band[refl_indx].rad_bias - ESPA_FLOAT_META_FILL) <
+        ESPA_EPSILON)
+  {
+    return false;
+  }
+
+  return true;
+}
+  
+bool existReflGB(Espa_internal_meta_t *metadata)
+/* 
+!C******************************************************************************
+
+!Description: 'existReflGB' determines if the gains and biases for TOA
+reflectance conversion exist and were set from the input XML file.  If these
+conversion parameters exist, then it is also assumed the K1 and K2 thermal
+constants were set as well.
+ 
+!Input Parameters:
+ metadata     'Espa_internal_meta_t' data structure
+
+!Output Parameters:
+ (returns)      N/A
+
+!Team Unique Header:
+
+!END****************************************************************************
+*/
+{
+  int refl_indx = 0;  /* index of band1 in the input file */
+  int i;              /* looping variable */
+
+  /* Find band1 in the input XML file */
+  for (i = 0; i < metadata->nbands; i++)
+  {
+    if (!strcmp (metadata->band[i].name, "band1") &&
+        !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+    {
+      /* this is the index we'll use for reflectance band info */
+      refl_indx = i;
+    }
+  }
+
+  /* If the gain or bias for band1 in the input file is not set, then assume
+     none are set and therefore need to be manually set before continuing. */
+  if (fabs (metadata->band[refl_indx].refl_gain - ESPA_FLOAT_META_FILL) <
+        ESPA_EPSILON ||
+      fabs (metadata->band[refl_indx].refl_bias - ESPA_FLOAT_META_FILL) <
         ESPA_EPSILON)
   {
     return false;

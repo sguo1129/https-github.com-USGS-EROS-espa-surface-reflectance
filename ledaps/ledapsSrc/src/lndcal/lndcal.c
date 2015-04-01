@@ -102,8 +102,8 @@ int main (int argc, const char **argv) {
   }
 
   /* Check to see if the gain and bias values were specified */
-  if (!existGB (&xml_metadata))
-    EXIT_ERROR("Gains and biases don't exist in XML file (toa_reflectance gain "
+  if (!existRadGB (&xml_metadata))
+    EXIT_ERROR("Gains and biases don't exist in XML file (TOA radiance gain "
       "and bias fields) for each band.  Make sure to utilize the latest LPGS "
       "MTL file for conversion to the ESPA internal raw binary format as the "
       "gains and biases should be in that file.", "main");

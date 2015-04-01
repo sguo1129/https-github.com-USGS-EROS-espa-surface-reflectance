@@ -70,18 +70,24 @@ typedef struct {
   Date_t prod_date;        /* Production date (must be available for ETM) */
   float sun_zen;           /* Solar zenith angle (radians; scene center) */
   float sun_az;            /* Solar azimuth angle (radians; scene center) */
+  float earth_sun_dist;    /* Earth-sun distance */
   Wrs_t wrs_sys;           /* WRS system */
   int ipath;               /* WRS path number */
   int irow;                /* WRS row number */
   unsigned char fill;      /* Fill value */
   int iband[NBAND_REFL_MAX]; /* Band numbers */
   int iband_th;            /* Thermal Band number= (6) */
-  Gain_t gain_set[NBAND_REFL_MAX]; /* Band gain settings */
-  Gain_t gain_setting_th; /* Band gain settings Thermal */
-  float gain[NBAND_REFL_MAX]; /* Band gain */
-  float bias[NBAND_REFL_MAX]; /* Band bias */
-  float gain_th;           /* Thermal band gain */
-  float bias_th;           /* Thermal band bias */
+  float rad_gain[NBAND_REFL_MAX]; /* TOA radiance band gain */
+  float rad_bias[NBAND_REFL_MAX]; /* TOA radiance band bias */
+  float rad_gain_th;           /* Thermal TOA radiance band gain */
+  float rad_bias_th;           /* Thermal TOA radiance band bias */
+  bool use_toa_refl_consts;    /* Are the TOA reflectance gain/bias and K1/K2
+                                  constants available? Same with earth-sun
+                                  distance */
+  float refl_gain[NBAND_REFL_MAX]; /* TOA reflectance band gain */
+  float refl_bias[NBAND_REFL_MAX]; /* TOA reflectance band bias */
+  float k1_const;          /* K1 thermal constant */
+  float k2_const;          /* K2 thermal constant */
 } Input_meta_t;
 
 /* Structure for the 'input' data type */

@@ -27,75 +27,12 @@
 #define ADD_OFFSET_ERR_TH    (0.0)
 #define CALIBRATED_NT_REF    (5.0)  /* HDF definition of DFNT_FLOAT32 */
 #define CALIBRATED_NT_TH     (5.0)  /* HDF definition of DFNT_FLOAT32 */
-#define RECAL_YEAR  (2003)
-#define RECAL_MONTH (05)
-#define RECAL_DAY   (05)
-#define RECAL_DOY   (125)
-#define NORECAL_YEAR  (2007)
-#define NORECAL_DOY   (92)
 
-/* Landsat 7 ETM+ Minimum and Maximum Spectral Radiance (LMIN and LMAX)
-   Units = watts / (meter squared * steradian * micrometer)
-   Table A is for data produced before July 1, 2000 and 
-   Table B is for data produced on or after
-   Reference:
+
+/* Relative sun-earth distance variation (Ref. L7 handbook)
  http://lpwww.gsfc.nasa.gov/IAS/handbook/handbook_htmls/chaper11/chapter11.html
    (web site visited on August 22, 2002)
 */
-
-
-#define TABLE_B_DATE ("2000-07-01")
-#define QCALMIN_LPGS (1)
-#define QCALMIN_NLAPS (0)
-#define QCALMAX (255)
-
-const float etm_lmin_low_a[8] = {
-  -6.2, -6.0, -4.5, -4.5, -1.0, 0.0, -0.35, -5.0
-};
-
-const float etm_lmax_low_a[8] = {
-  297.5, 303.4, 235.5, 235.0, 47.70, 17.04, 16.60, 244.00
-};
-
-const float etm_lmin_high_a[8] = {
-  -6.2, -6.0, -4.5, -4.5, -1.0, 3.2, -0.35, -5.0
-};
-
-const float etm_lmax_high_a[8] = {
-  194.3, 202.4, 158.6, 157.5, 31.76, 12.65, 10.932, 158.40
-};
-
-const float etm_lmin_low_b[8] = {
-  -6.2, -6.4, -5.0, -5.1, -1.0, 0.0, -0.35, -4.7
-};
-
-const float etm_lmax_low_b[8] = {
-  293.7, 300.9, 234.4, 241.1, 47.57, 17.04, 16.54, 243.1
-};
-
-const float etm_lmin_high_b[8] = {
-   -6.2, -6.4, -5.0, -5.1, -1.0, 3.2, -0.35, -4.7
-};
-
-const float etm_lmax_high_b[8] = {
-   191.6, 196.5, 152.9, 157.4, 31.06, 12.65, 10.80, 158.3
-};
-
-const float mss_lmin_l1[4] = {  0.0,  0.0,  0.0,  0.0 };
-const float mss_lmin_l2[4] = {  0.8,  0.6,  0.6,  0.4 };
-const float mss_lmin_l3[4] = {  0.4,  0.3,  0.3,  0.1 };
-const float mss_lmin_l4[4] = {  0.4,  0.4,  0.5,  0.4 };
-const float mss_lmin_l5[4] = {  0.3,  0.3,  0.5,  0.3 };
-
-const float mss_lmax_l1[4] = { 24.8, 20.0, 17.6, 15.3 };
-const float mss_lmax_l2[4] = { 26.3, 17.6, 15.2, 13.0 };
-const float mss_lmax_l3[4] = { 25.9, 17.9, 14.9, 12.8 };
-const float mss_lmax_l4[4] = { 23.8, 16.4, 14.2, 11.6 };
-const float mss_lmax_l5[4] = { 26.8, 17.9, 14.8, 12.3 };
-
-const float delta= 0.00001;
-
-/* Relative sun-earth distance variation (Ref. L7 handbook) */
 
 #define NDSUN (25)
 typedef struct {
@@ -167,19 +104,6 @@ const float esun_mss_5[4] = {
   1849.0, 1595.0, 1253.0, 870.0
 };
 
-/* Landsat 4/5 TM Bandwidths
-   Units = micrometers
-   Reference: EOSAT Fast Format Document Version B, Effective Dec. 1, 1993
-*/
-
-const float band_width_tm_4[7] = {
-  0.066, 0.081, 0.069, 0.129, 0.216, 1.00, 0.250
-};
-
-const float band_width_tm_5[7] = {
-  0.066, 0.082, 0.067, 0.128, 0.217, 1.00, 0.252
-};
-
 const float K1_tm_4=  671.62;
 const float K2_tm_4= 1284.30;
 const float K1_tm_5=  607.76;
@@ -207,7 +131,7 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
 
   /* Copy some information from the input metadata to the metadata for
      the look-up table, like path, row, satellite, instrument, gains, biases,
-     bands, etc. */
+     K1/K2 consts, bands, etc. */
   if (!InputMetaCopy(input_meta, nband, &this->meta)) {
     free(this);
     RETURN_ERROR("copying input metadata", "GetLut", NULL);
@@ -255,7 +179,8 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
     }
   }  /* end if inst == MSS */
   
-  /* Compute the coefficients for the reflectance */
+  /* Compute the coefficients for the reflectance. Use the K1,K2 thermal consts
+     from the XML file if they are available. */
   for (ib = 0; ib < nband; ib++) {
     iband = input_meta->iband[ib] - 1;
     switch (input_meta->sat) {
@@ -275,8 +200,14 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
         if (input_meta->inst == INST_TM) {
           this->esun[ib] = esun_tm_4[iband];
           if ( ib==0 ){
-            this->K1 = K1_tm_4;
-            this->K2 = K2_tm_4;
+            if (input_meta->use_toa_refl_consts) {
+              this->K1 = input_meta->k1_const;
+              this->K2 = input_meta->k2_const;
+            }
+            else {
+              this->K1 = K1_tm_4;
+              this->K2 = K2_tm_4;
+            }
           }
         }
         else
@@ -287,8 +218,14 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
         if (input_meta->inst == INST_TM) {
           this->esun[ib] = esun_tm_5[iband];
           if ( ib==0 ){
-            this->K1 = K1_tm_5;
-            this->K2 = K2_tm_5;
+            if (input_meta->use_toa_refl_consts) {
+              this->K1 = input_meta->k1_const;
+              this->K2 = input_meta->k2_const;
+            }
+            else {
+              this->K1 = K1_tm_5;
+              this->K2 = K2_tm_5;
+            }
           }
         }
         else
@@ -297,8 +234,16 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
 
       case SAT_LANDSAT_7:
         this->esun[ib] = esun_etm[iband];
-        this->K1 = K1_etm;
-        this->K2 = K2_etm;
+        if ( ib==0 ){
+          if (input_meta->use_toa_refl_consts) {
+            this->K1 = input_meta->k1_const;
+            this->K2 = input_meta->k2_const;
+          }
+          else {
+            this->K1 = K1_etm;
+            this->K2 = K2_etm;
+          }
+        }
         break;
 
       case SAT_NULL: break;
@@ -309,20 +254,27 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
   this->cos_sun_zen = cos(input_meta->sun_zen);
   jdoy = input_meta->acq_date.doy;
 
-  for (i = 0; i < (NDSUN - 1); i++) {
-    if (jdoy >= dsun_table[i].doy  &&  jdoy <= dsun_table[i+1].doy)
-      break;
+  /* Use the earth sun distance from the XML file if it was available otherwise
+     calculate from the DSUN table */
+  if (input_meta->use_toa_refl_consts) {
+    dsun = input_meta->earth_sun_dist;
   }
+  else { /* calculate from the table */
+    for (i = 0; i < (NDSUN - 1); i++) {
+      if (jdoy >= dsun_table[i].doy  &&  jdoy <= dsun_table[i+1].doy)
+        break;
+    }
 
-  if (i >= (NDSUN - 1)) {
-    free(this);
-    RETURN_ERROR("finding sun-earth distance", "GetLut", false);
+    if (i >= (NDSUN - 1)) {
+      free(this);
+      RETURN_ERROR("finding sun-earth distance", "GetLut", false);
+    }
+
+    dsun = dsun_table[i].dsun + 
+           ((jdoy - dsun_table[i].doy) * 
+            ((dsun_table[i + 1].dsun - dsun_table[i].dsun) /
+         (dsun_table[i + 1].doy - dsun_table[i].doy)));
   }
-
-  dsun = dsun_table[i].dsun + 
-         ((jdoy - dsun_table[i].doy) * 
-          ((dsun_table[i + 1].dsun - dsun_table[i].dsun) /
-       (dsun_table[i + 1].doy - dsun_table[i].doy)));
   this->dsun2 = dsun * dsun;
 
   if (input_meta->inst == INST_MSS) {
