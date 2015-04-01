@@ -77,6 +77,7 @@ typedef struct {
 
 Param_t *GetParam(int argc, const char **argv);
 bool FreeParam(Param_t *this);
-bool existGB(Espa_internal_meta_t *metadata);
+bool existRadGB(Espa_internal_meta_t *metadata);
+bool existReflGB(Espa_internal_meta_t *metadata);
 
 #endif

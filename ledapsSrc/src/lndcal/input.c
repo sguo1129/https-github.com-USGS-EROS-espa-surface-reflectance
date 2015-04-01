@@ -23,6 +23,11 @@
  Gail Schmidt, USGS EROS
  Modified to use ESPA internal raw binary format
 
+ Revision 2015/03/31
+ Gail Schmidt, USGS EROS
+ Added support for pulling the TOA reflectance parameters, K1/K2 consts, and
+    earth-sun distance from the XML, if they exist.
+
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -302,20 +307,25 @@ bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy)
   copy->time_fill = this->time_fill;
   copy->sun_zen = this->sun_zen;
   copy->sun_az = this->sun_az;
+  copy->earth_sun_dist = this->earth_sun_dist;
   copy->wrs_sys = this->wrs_sys;
   copy->ipath = this->ipath;
   copy->irow = this->irow;
   copy->fill = this->fill;
 
+  copy->iband_th = this->iband_th;
   for (ib = 0; ib < nband; ib++) {
     copy->iband[ib] = this->iband[ib];
-    copy->gain_set[ib] = this->gain_set[ib];
-    copy->gain[ib] = this->gain[ib];
-    copy->bias[ib] = this->bias[ib];
+    copy->rad_gain[ib] = this->rad_gain[ib];
+    copy->rad_bias[ib] = this->rad_bias[ib];
+    copy->refl_gain[ib] = this->refl_gain[ib];
+    copy->refl_bias[ib] = this->refl_bias[ib];
   }
-  copy->gain_th = this->gain_th;
-  copy->bias_th = this->bias_th;
-  copy->iband_th =this->iband_th;
+  copy->rad_gain_th = this->rad_gain_th;
+  copy->rad_bias_th = this->rad_bias_th;
+  copy->k1_const = this->k1_const;
+  copy->k2_const = this->k2_const;
+  copy->use_toa_refl_consts = this->use_toa_refl_consts;
   return true;
 }
 
@@ -380,17 +390,20 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     for (ib = 0; ib < NBAND_REFL_MAX; ib++)
     {
         this->meta.iband[ib] = -1;
-        this->meta.gain_set[ib] = GAIN_NULL;
-        this->meta.gain[ib] = GAIN_BIAS_FILL;
-        this->meta.bias[ib] = GAIN_BIAS_FILL;
+        this->meta.rad_gain[ib] = GAIN_BIAS_FILL;
+        this->meta.rad_bias[ib] = GAIN_BIAS_FILL;
+        this->meta.refl_gain[ib] = GAIN_BIAS_FILL;
+        this->meta.refl_bias[ib] = GAIN_BIAS_FILL;
         this->file_name[ib] = NULL;
         this->open[ib] = false;
         this->fp_bin[ib] = NULL;
     }
     this->nband_th = 0;
     this->open_th = false;
-    this->meta.gain_th = GAIN_BIAS_FILL;
-    this->meta.bias_th = GAIN_BIAS_FILL;
+    this->meta.rad_gain_th = GAIN_BIAS_FILL;
+    this->meta.rad_bias_th = GAIN_BIAS_FILL;
+    this->meta.k1_const = GAIN_BIAS_FILL;
+    this->meta.k2_const = GAIN_BIAS_FILL;
     this->file_name_th = NULL;
     this->fp_bin_th = NULL;
 
@@ -452,6 +465,8 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     }
     this->meta.sun_az *= RAD;    /* convert to radians */
 
+    this->meta.earth_sun_dist = gmeta->earth_sun_dist;
+
     switch (gmeta->wrs_system)
     {
         case 1: this->meta.wrs_sys = WRS_1; break;
@@ -480,6 +495,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
 
     /* Find band 1 and band 6/61 in the input XML file to obtain band-related
        information */
+    this->meta.use_toa_refl_consts = false;
     for (i = 0; i < metadata->nbands; i++)
     {
         if (!strcmp (metadata->band[i].name, "band1") &&
@@ -489,53 +505,91 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             refl_indx = i;
 
             /* get the band1 info */
-            this->meta.gain[0] = metadata->band[i].toa_gain;
-            this->meta.bias[0] = metadata->band[i].toa_bias;
+            this->meta.rad_gain[0] = metadata->band[i].rad_gain;
+            this->meta.rad_bias[0] = metadata->band[i].rad_bias;
             this->file_name[0] = strdup (metadata->band[i].file_name);
 
             /* get the production date but only the date portion (yyyy-mm-dd) */
             strncpy (prod_date, metadata->band[i].production_date, 10);
             prod_date[10] = '\0';
+
+            /* are the TOA reflectance coefficients available in XML file? */
+            if (existReflGB (metadata))
+            {
+                this->meta.use_toa_refl_consts = true;
+                this->meta.refl_gain[0] = metadata->band[i].refl_gain;
+                this->meta.refl_bias[0] = metadata->band[i].refl_bias;
+            }
         }
         else if (!strcmp (metadata->band[i].name, "band2") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
         {
             /* get the band2 info */
-            this->meta.gain[1] = metadata->band[i].toa_gain;
-            this->meta.bias[1] = metadata->band[i].toa_bias;
+            this->meta.rad_gain[1] = metadata->band[i].rad_gain;
+            this->meta.rad_bias[1] = metadata->band[i].rad_bias;
             this->file_name[1] = strdup (metadata->band[i].file_name);
+
+            if (this->meta.use_toa_refl_consts)
+            {
+                this->meta.refl_gain[1] = metadata->band[i].refl_gain;
+                this->meta.refl_bias[1] = metadata->band[i].refl_bias;
+            }
         }
         else if (!strcmp (metadata->band[i].name, "band3") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
         {
             /* get the band3 info */
-            this->meta.gain[2] = metadata->band[i].toa_gain;
-            this->meta.bias[2] = metadata->band[i].toa_bias;
+            this->meta.rad_gain[2] = metadata->band[i].rad_gain;
+            this->meta.rad_bias[2] = metadata->band[i].rad_bias;
             this->file_name[2] = strdup (metadata->band[i].file_name);
+
+            if (this->meta.use_toa_refl_consts)
+            {
+                this->meta.refl_gain[2] = metadata->band[i].refl_gain;
+                this->meta.refl_bias[2] = metadata->band[i].refl_bias;
+            }
         }
         else if (!strcmp (metadata->band[i].name, "band4") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
         {
             /* get the band4 info */
-            this->meta.gain[3] = metadata->band[i].toa_gain;
-            this->meta.bias[3] = metadata->band[i].toa_bias;
+            this->meta.rad_gain[3] = metadata->band[i].rad_gain;
+            this->meta.rad_bias[3] = metadata->band[i].rad_bias;
             this->file_name[3] = strdup (metadata->band[i].file_name);
+
+            if (this->meta.use_toa_refl_consts)
+            {
+                this->meta.refl_gain[3] = metadata->band[i].refl_gain;
+                this->meta.refl_bias[3] = metadata->band[i].refl_bias;
+            }
         }
         else if (!strcmp (metadata->band[i].name, "band5") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
         {
             /* get the band5 info */
-            this->meta.gain[4] = metadata->band[i].toa_gain;
-            this->meta.bias[4] = metadata->band[i].toa_bias;
+            this->meta.rad_gain[4] = metadata->band[i].rad_gain;
+            this->meta.rad_bias[4] = metadata->band[i].rad_bias;
             this->file_name[4] = strdup (metadata->band[i].file_name);
+
+            if (this->meta.use_toa_refl_consts)
+            {
+                this->meta.refl_gain[4] = metadata->band[i].refl_gain;
+                this->meta.refl_bias[4] = metadata->band[i].refl_bias;
+            }
         }
         else if (!strcmp (metadata->band[i].name, "band7") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
         {
             /* get the band7 info */
-            this->meta.gain[5] = metadata->band[i].toa_gain;
-            this->meta.bias[5] = metadata->band[i].toa_bias;
+            this->meta.rad_gain[5] = metadata->band[i].rad_gain;
+            this->meta.rad_bias[5] = metadata->band[i].rad_bias;
             this->file_name[5] = strdup (metadata->band[i].file_name);
+
+            if (this->meta.use_toa_refl_consts)
+            {
+                this->meta.refl_gain[5] = metadata->band[i].refl_gain;
+                this->meta.refl_bias[5] = metadata->band[i].refl_bias;
+            }
         }
 
         if (!strcmp (metadata->band[i].name, "band6") &&
@@ -546,9 +600,15 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             th_indx = i;
 
             /* get the band6 info */
-            this->meta.gain_th = metadata->band[i].toa_gain;
-            this->meta.bias_th = metadata->band[i].toa_bias;
+            this->meta.rad_gain_th = metadata->band[i].rad_gain;
+            this->meta.rad_bias_th = metadata->band[i].rad_bias;
             this->file_name_th = strdup (metadata->band[i].file_name);
+
+            if (this->meta.use_toa_refl_consts)
+            {
+                this->meta.k1_const = metadata->band[i].k1_const;
+                this->meta.k2_const = metadata->band[i].k2_const;
+            }
         }
         else if (!strcmp (metadata->band[i].name, "band61") &&
             this->meta.inst == INST_ETM &&
@@ -558,11 +618,29 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             th_indx = i;
 
             /* get the band6 info */
-            this->meta.gain_th = metadata->band[i].toa_gain;
-            this->meta.bias_th = metadata->band[i].toa_bias;
+            this->meta.rad_gain_th = metadata->band[i].rad_gain;
+            this->meta.rad_bias_th = metadata->band[i].rad_bias;
             this->file_name_th = strdup (metadata->band[i].file_name);
+
+            if (this->meta.use_toa_refl_consts)
+            {
+                this->meta.k1_const = metadata->band[i].k1_const;
+                this->meta.k2_const = metadata->band[i].k2_const;
+            }
         }
     }  /* for i */
+
+    /* Let the user know if the XML params are being used or the LUT params */
+    if (this->meta.use_toa_refl_consts)
+    {
+        printf ("Using the TOA reflectance coefficients, K1/K2 thermal "
+            "constants, and earth-sun distance from the XML file.\n");
+    }
+    else
+    {
+        printf ("Using the hard-coded TOA reflectance coefficients, K1/K2 "
+            "thermal constants, and earth-sun distance table.\n");
+    }
 
     /* Pull the reflectance info from band1 in the XML file */
     this->size.s = metadata->band[refl_indx].nsamps;
