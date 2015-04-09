@@ -1041,7 +1041,7 @@ int get_xml_input
         return (ERROR);
     }
 
-    if (th_indx == -9)
+    if (this->meta.inst == INST_OLI_TIRS && th_indx == -9)
     {
         sprintf (errmsg, "Band 10 (band10) was not found in the XML file");
         error_handler (true, FUNC_NAME, errmsg);
