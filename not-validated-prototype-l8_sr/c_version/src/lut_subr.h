@@ -342,6 +342,7 @@ int memory_allocation_sr
     float **tp,          /* O: interpolated pressure value, nlines x nsamps */
     float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
     float **taero,       /* O: aerosol values for each pixel, nlines x nsamps */
+    uint8 **lw_mask,     /* O: land/water mask data, nlines x nsamps */
     int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
     int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
     int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */

@@ -127,7 +127,7 @@ int compute_toa_refl
                     else if (rotoa > MAX_VALID)
                         sband[sband_ib][i] = MAX_VALID;
                     else
-                        sband[sband_ib][i] = (int) rotoa;
+                        sband[sband_ib][i] = (int) (rotoa + 0.5);
                 }
                 else
                     sband[sband_ib][i] = FILL_VALUE;
@@ -252,6 +252,9 @@ Date          Programmer       Reason
                                the step x step window surrounding the current
                                pixel vs. the step x step window from the
                                current pixel and going to the southeast.
+4/9/2015      Gail Schmidt     Updated to utilize a land/water mask for the
+                               scene vs. using the global DEM to flag water
+                               pixels
 
 NOTES:
 1. Initializes the variables and data arrays from the lookup table and
@@ -425,6 +428,7 @@ int compute_sr_refl
                                     [RATIO_NBLAT][RATIO_NBLON] */
     uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
     uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
+    uint8 *lw_mask = NULL;    /* land/water mask, nlines x nsamps */
     float raot550nm;    /* nearest input value of AOT */
     float uoz;          /* total column ozone */
     float uwv;          /* total column water vapor (precipital water vapor) */
@@ -472,10 +476,11 @@ int compute_sr_refl
     /* Allocate memory for the many arrays needed to do the surface reflectance
        computations */
     retval = memory_allocation_sr (nlines, nsamps, &aerob1, &aerob2, &aerob4,
-        &aerob5, &aerob7, &cloud, &twvi, &tozi, &tp, &tresi, &taero, &dem,
-        &andwi, &sndwi, &ratiob1, &ratiob2, &ratiob7, &intratiob1, &intratiob2,
-        &intratiob7, &slpratiob1, &slpratiob2, &slpratiob7, &wv, &oz, &rolutt,
-        &transt, &sphalbt, &normext, &tsmax, &tsmin, &nbfic, &nbfi, &ttv);
+        &aerob5, &aerob7, &cloud, &twvi, &tozi, &tp, &tresi, &taero, &lw_mask,
+        &dem, &andwi, &sndwi, &ratiob1, &ratiob2, &ratiob7, &intratiob1,
+        &intratiob2, &intratiob7, &slpratiob1, &slpratiob2, &slpratiob7, &wv,
+        &oz, &rolutt, &transt, &sphalbt, &normext, &tsmax, &tsmin, &nbfic,
+        &nbfi, &ttv);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Error allocating memory for the data arrays needed "
@@ -516,6 +521,14 @@ int compute_sr_refl
         return (ERROR);
     }
 
+    /* Read the land/water mask */
+    if (get_input_lw_lines (input, 0, nlines, lw_mask) != SUCCESS)
+    {
+        sprintf (errmsg, "Reading land/water mask");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
     /* Loop through all the reflectance bands and perform atmospheric
        corrections based on climatology */
     printf ("Performing atmospheric corrections for each reflectance "
@@ -524,6 +537,7 @@ int compute_sr_refl
     {
         printf (" %d ...", ib+1);
 
+/** GAIL -- stick to angles for the scene center here for initializing **/
         /* Get the parameters for the atmospheric correction */
         /* rotoa is not defined for this call, which is ok, but the
            roslamb value is not valid upon output. Just set it to 0.0 to
@@ -680,30 +694,33 @@ int compute_sr_refl
                              uoz22 * u * v;
             tozi[curr_pix] = tozi[curr_pix] * 0.0025;   /* vs / 400 */
 
-            if (dem[lcmg][scmg] != -9999)
-                pres11 = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
-            else
+            /* If this pixel is water, then set the water bit.  If we are
+               on the edges of the scene, just use the current pixel.  OW
+               test the current pixel and the 8 surrounding pixels, as the
+               land/water mask isn't perfect.  A water test using the NDVI
+               will be applied later to make sure. */
+            if (((i == 0 || i == nlines-1 || j == 0 || j == nsamps-1) &&
+                   lw_mask[curr_pix] == 0) ||
+                 (lw_mask[(i-1)*nsamps + nsamps-1] == 0 ||
+                  lw_mask[(i-1)*nsamps + nsamps] == 0 ||
+                  lw_mask[(i-1)*nsamps + nsamps+1] == 0 ||
+                  lw_mask[curr_pix-1] == 0 ||
+                  lw_mask[curr_pix] == 0 ||
+                  lw_mask[curr_pix+1] == 0 ||
+                  lw_mask[(i+1)*nsamps + nsamps-1] == 0 ||
+                  lw_mask[(i+1)*nsamps + nsamps] == 0 ||
+                  lw_mask[(i+1)*nsamps + nsamps+1] == 0))
             {
-                pres11 = 1013.0;
                 cloud[curr_pix] = 128;    /* set water bit */
                 tresi[curr_pix] = -1.0;
             }
 
-            /* If any of the surrounding pixels are fill, then mark this as
-               possibly water.  Then let the algorithm prove differently.
-               However keep the actual pressure which was defined. */
-            if ((dem[lcmg-1][scmg] == -9999) ||
-                (dem[lcmg+1][scmg] == -9999) ||
-                (dem[lcmg][scmg-1] == -9999) ||
-                (dem[lcmg][scmg+1] == -9999) ||
-                (dem[lcmg-1][scmg-1] == -9999) ||
-                (dem[lcmg-1][scmg+1] == -9999) ||
-                (dem[lcmg+1][scmg-1] == -9999) ||
-                (dem[lcmg+1][scmg+1] == -9999))
-            {
-                cloud[curr_pix] = 128;    /* set water bit */
-                tresi[curr_pix] = -1.0;
-            }
+            /* Get the surface pressure from the global DEM.  Set to 1013.0
+               (sea level) if the DEM is fill (likely ocean). */
+            if (dem[lcmg][scmg] != -9999)
+                pres11 = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
+            else
+                pres11 = 1013.0;
 
             if (dem[lcmg][scmg+1] != -9999)
                 pres12 = 1013.0 * exp (-dem[lcmg][scmg+1] * ONE_DIV_8500);
@@ -796,6 +813,8 @@ int compute_sr_refl
                     }
                 }
        
+/** GAIL -- which angles should be used?  scene center or which band?  Do
+    we need the angles for the bands passed in (i.e. bands 1 and 4)? **/
                 /* Retrieve the aerosol information */
                 iband1 = DN_BAND4;
                 iband3 = DN_BAND1;
@@ -822,6 +841,8 @@ int compute_sr_refl
                     iband = DN_BAND5;
                     rotoa = aerob5[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
+/** GAIL -- which angles should be used?  scene center or which band?  Do
+    we need the angle for the band passed in (i.e. band 5)? **/
                     retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
                         raot550nm, iband, pres, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
@@ -843,6 +864,8 @@ int compute_sr_refl
                     iband = DN_BAND4;
                     rotoa = aerob4[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
+/** GAIL -- which angles should be used?  scene center or which band?  Do
+    we need the angle for the band passed in (i.e. band 5)? **/
                     retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
                         raot550nm, iband, pres, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
@@ -998,6 +1021,7 @@ int compute_sr_refl
 
     /* Compute the cloud shadow */
     printf ("Determining cloud shadow ...\n");
+/** GAIL -- facl and fack will need to be calculated within the nsamps loop, since the solar angles will be dependent upon the pixel **/
     facl = cosf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* lines */
     fack = sinf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* samps */
 //    #pragma omp parallel for private (i, j, curr_pix, tcloud, cldh, cldhmin, cldhmax, mband5, mband5k, mband5l, icldh, k, l, win_pix)

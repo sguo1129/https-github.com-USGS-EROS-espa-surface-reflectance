@@ -1936,6 +1936,7 @@ Date         Programmer       Reason
 8/25/2014    Gail Schmidt     Original development
 12/9/2014    Gail Schmidt     Removed the uband allocation since it's handled
                               in a different function (compute_refl)
+4/9/2015     Gail Schmidt     Added support for land/water mask
 
 NOTES:
   1. Memory is allocated for each of the input variables, so it is up to the
@@ -1965,6 +1966,7 @@ int memory_allocation_sr
     float **tp,          /* O: interpolated pressure value, nlines x nsamps */
     float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
     float **taero,       /* O: aerosol values for each pixel, nlines x nsamps */
+    uint8 **lw_mask,     /* O: land/water mask data, nlines x nsamps */
     int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
     int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
     int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
@@ -2082,6 +2084,14 @@ int memory_allocation_sr
     if (*cloud == NULL)
     {
         sprintf (errmsg, "Error allocating memory for cloud");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    *lw_mask = calloc (nlines*nsamps, sizeof (uint8));
+    if (*lw_mask == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for lw_mask");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
