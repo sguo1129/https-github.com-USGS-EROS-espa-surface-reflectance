@@ -34,12 +34,14 @@ typedef struct {
     int iband_qa[NBAND_QA_MAX];    /* QA band numbers */
     int iband_lw;                  /* land/water mask band number */
     bool gain_set;                 /* are the gains and biases set? */
-    float gain[NBAND_REFL_MAX];    /* reflectance band gain */
-    float gain_th[NBAND_THM_MAX];  /* thermal band gain */
-    float gain_pan[NBAND_PAN_MAX]; /* pan band gain */
+    float gain[NBAND_REFL_MAX];    /* reflectance band TOA refl gain */
+    float gain_th[NBAND_THM_MAX];  /* thermal band brightness temp gain */
+    float gain_pan[NBAND_PAN_MAX]; /* pan band TOA refl gain */
     float bias[NBAND_REFL_MAX];    /* reflectance band bias */
     float bias_th[NBAND_THM_MAX];  /* thermal band bias */
     float bias_pan[NBAND_PAN_MAX]; /* pan band bias */
+    float k1_const[NBAND_THM_MAX]; /* K1 constant for thermal bands */
+    float k2_const[NBAND_THM_MAX]; /* K2 constant for thermal bands */
 } Input_meta_t;
 
 /* Structure for the input data */

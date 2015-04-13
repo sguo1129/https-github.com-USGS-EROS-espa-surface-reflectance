@@ -133,6 +133,7 @@ Input_t *open_input
         this->open_qa[ib] = true;
     }
 
+#ifdef USE_LAND_WATER_MASK
     this->fp_bin_lw = open_raw_binary (this->file_name_lw, "rb");
     if (this->fp_bin_lw == NULL)
     {
@@ -143,6 +144,7 @@ Input_t *open_input
         return (NULL);
     }
     this->open_lw = true;
+#endif
 
     /* Do a cursory check to make sure the QA band and land/water mask 
        exist and have been opened */
@@ -162,6 +164,7 @@ Input_t *open_input
         return (NULL);
     }
 
+#ifdef USE_LAND_WATER_MASK
     if (!this->open_lw)
     {
         sprintf (errmsg, "Land/water mask is not open.");
@@ -169,6 +172,7 @@ Input_t *open_input
         free_input (this);
         return (NULL);
     }
+#endif
 
     return this;
 }
@@ -725,6 +729,9 @@ Date         Programmer       Reason
 ----------   ---------------  -------------------------------------
 6/20/2014    Gail Schmidt     Original Development
 11/17/2014   Gail Schmidt     Modified to support OLI-only scenes
+4/13/2015    Gail Schmidt     Updated to use rad_gain/bias vs. toa_gain/bias
+                              to be compliant with the latest espa-common
+                              metadata changes
 
 NOTES:
 ******************************************************************************/
@@ -924,8 +931,8 @@ int get_xml_input
             refl_indx = i;
 
             /* get the band1 info */
-            this->meta.gain[0] = metadata->band[i].toa_gain;
-            this->meta.bias[0] = metadata->band[i].toa_bias;
+            this->meta.gain[0] = metadata->band[i].refl_gain;
+            this->meta.bias[0] = metadata->band[i].refl_bias;
             this->file_name[0] = strdup (metadata->band[i].file_name);
 
             /* get the production date but only the date portion
@@ -936,50 +943,50 @@ int get_xml_input
         else if (!strcmp (metadata->band[i].name, "band2"))
         {
             /* get the band2 info */
-            this->meta.gain[1] = metadata->band[i].toa_gain;
-            this->meta.bias[1] = metadata->band[i].toa_bias;
+            this->meta.gain[1] = metadata->band[i].refl_gain;
+            this->meta.bias[1] = metadata->band[i].refl_bias;
             this->file_name[1] = strdup (metadata->band[i].file_name);
         }
         else if (!strcmp (metadata->band[i].name, "band3"))
         {
             /* get the band3 info */
-            this->meta.gain[2] = metadata->band[i].toa_gain;
-            this->meta.bias[2] = metadata->band[i].toa_bias;
+            this->meta.gain[2] = metadata->band[i].refl_gain;
+            this->meta.bias[2] = metadata->band[i].refl_bias;
             this->file_name[2] = strdup (metadata->band[i].file_name);
         }
         else if (!strcmp (metadata->band[i].name, "band4"))
         {
             /* get the band4 info */
-            this->meta.gain[3] = metadata->band[i].toa_gain;
-            this->meta.bias[3] = metadata->band[i].toa_bias;
+            this->meta.gain[3] = metadata->band[i].refl_gain;
+            this->meta.bias[3] = metadata->band[i].refl_bias;
             this->file_name[3] = strdup (metadata->band[i].file_name);
         }
         else if (!strcmp (metadata->band[i].name, "band5"))
         {
             /* get the band5 info */
-            this->meta.gain[4] = metadata->band[i].toa_gain;
-            this->meta.bias[4] = metadata->band[i].toa_bias;
+            this->meta.gain[4] = metadata->band[i].refl_gain;
+            this->meta.bias[4] = metadata->band[i].refl_bias;
             this->file_name[4] = strdup (metadata->band[i].file_name);
         }
         else if (!strcmp (metadata->band[i].name, "band6"))
         {
             /* get the band6 info */
-            this->meta.gain[5] = metadata->band[i].toa_gain;
-            this->meta.bias[5] = metadata->band[i].toa_bias;
+            this->meta.gain[5] = metadata->band[i].refl_gain;
+            this->meta.bias[5] = metadata->band[i].refl_bias;
             this->file_name[5] = strdup (metadata->band[i].file_name);
         }
         else if (!strcmp (metadata->band[i].name, "band7"))
         {
             /* get the band7 info */
-            this->meta.gain[6] = metadata->band[i].toa_gain;
-            this->meta.bias[6] = metadata->band[i].toa_bias;
+            this->meta.gain[6] = metadata->band[i].refl_gain;
+            this->meta.bias[6] = metadata->band[i].refl_bias;
             this->file_name[6] = strdup (metadata->band[i].file_name);
         }
         else if (!strcmp (metadata->band[i].name, "band9"))
         {
             /* get the band9 info */
-            this->meta.gain[7] = metadata->band[i].toa_gain;
-            this->meta.bias[7] = metadata->band[i].toa_bias;
+            this->meta.gain[7] = metadata->band[i].refl_gain;
+            this->meta.bias[7] = metadata->band[i].refl_bias;
             this->file_name[7] = strdup (metadata->band[i].file_name);
         }
 
@@ -989,8 +996,8 @@ int get_xml_input
             pan_indx = i;
 
             /* get the band8 info */
-            this->meta.gain_pan[0] = metadata->band[i].toa_gain;
-            this->meta.bias_pan[0] = metadata->band[i].toa_bias;
+            this->meta.gain_pan[0] = metadata->band[i].refl_gain;
+            this->meta.bias_pan[0] = metadata->band[i].refl_bias;
             this->file_name_pan[0] = strdup (metadata->band[i].file_name);
         }
 
@@ -1002,15 +1009,19 @@ int get_xml_input
             th_indx = i;
 
             /* get the band10 info */
-            this->meta.gain_th[0] = metadata->band[i].toa_gain;
-            this->meta.bias_th[0] = metadata->band[i].toa_bias;
+            this->meta.gain_th[0] = metadata->band[i].rad_gain;
+            this->meta.bias_th[0] = metadata->band[i].rad_bias;
+            this->meta.k1_const[0] = metadata->band[i].k1_const;
+            this->meta.k2_const[0] = metadata->band[i].k2_const;
             this->file_name_th[0] = strdup (metadata->band[i].file_name);
         }
         else if (!strcmp (metadata->band[i].name, "band11"))
         {
             /* get the band11 info */
-            this->meta.gain_th[1] = metadata->band[i].toa_gain;
-            this->meta.bias_th[1] = metadata->band[i].toa_bias;
+            this->meta.gain_th[1] = metadata->band[i].rad_gain;
+            this->meta.bias_th[1] = metadata->band[i].rad_bias;
+            this->meta.k1_const[1] = metadata->band[i].k1_const;
+            this->meta.k2_const[1] = metadata->band[i].k2_const;
             this->file_name_th[1] = strdup (metadata->band[i].file_name);
         }
 
@@ -1023,6 +1034,7 @@ int get_xml_input
             this->file_name_qa[0] = strdup (metadata->band[i].file_name);
         }
 
+#ifdef USE_LAND_WATER_MASK
         else if (!strcmp (metadata->band[i].name, "land_water_mask"))
         {
             /* this is the index we'll use for land/water mask band info */
@@ -1031,6 +1043,7 @@ int get_xml_input
             /* get the land/water mask band info */
             this->file_name_lw = strdup (metadata->band[i].file_name);
         }
+#endif
     }  /* for i */
 
     /* Make sure the bands were found in the XML file */
@@ -1062,6 +1075,7 @@ int get_xml_input
         return (ERROR);
     }
 
+#ifdef USE_LAND_WATER_MASK
     if (lw_indx == -9)
     {
         sprintf (errmsg, "Land/water mask band (land_water_mask) was not "
@@ -1069,6 +1083,7 @@ int get_xml_input
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
+#endif
 
     if (this->meta.inst == INST_OLI_TIRS)
     /* Get the size of the reflectance, thermal, pan, etc. bands by using
@@ -1099,10 +1114,12 @@ int get_xml_input
     this->size_qa.pixsize[0] = metadata->band[qa_indx].pixel_size[0];
     this->size_qa.pixsize[1] = metadata->band[qa_indx].pixel_size[1];
 
+#ifdef USE_LAND_WATER_MASK
     this->size_lw.nsamps = metadata->band[lw_indx].nsamps;
     this->size_lw.nlines = metadata->band[lw_indx].nlines;
     this->size_lw.pixsize[0] = metadata->band[lw_indx].pixel_size[0];
     this->size_lw.pixsize[1] = metadata->band[lw_indx].pixel_size[1];
+#endif
 
     /* Check WRS path/rows */
     if (this->meta.wrs_sys == WRS_1)

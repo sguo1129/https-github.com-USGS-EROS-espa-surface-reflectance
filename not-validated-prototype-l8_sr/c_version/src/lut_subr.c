@@ -2088,6 +2088,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
+#ifdef USE_LAND_WATER_MASK
     *lw_mask = calloc (nlines*nsamps, sizeof (uint8));
     if (*lw_mask == NULL)
     {
@@ -2095,6 +2096,7 @@ int memory_allocation_sr
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
+#endif
 
     /* Allocate memory for all the climate modeling grid files */
     *dem = calloc (DEM_NBLAT, sizeof (int16*));
