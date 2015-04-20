@@ -133,7 +133,6 @@ Input_t *open_input
         this->open_qa[ib] = true;
     }
 
-#ifdef USE_LAND_WATER_MASK
     this->fp_bin_lw = open_raw_binary (this->file_name_lw, "rb");
     if (this->fp_bin_lw == NULL)
     {
@@ -144,7 +143,6 @@ Input_t *open_input
         return (NULL);
     }
     this->open_lw = true;
-#endif
 
     /* Do a cursory check to make sure the QA band and land/water mask 
        exist and have been opened */
@@ -164,7 +162,6 @@ Input_t *open_input
         return (NULL);
     }
 
-#ifdef USE_LAND_WATER_MASK
     if (!this->open_lw)
     {
         sprintf (errmsg, "Land/water mask is not open.");
@@ -172,7 +169,6 @@ Input_t *open_input
         free_input (this);
         return (NULL);
     }
-#endif
 
     return this;
 }
@@ -887,7 +883,7 @@ int get_xml_input
         this->nband = 8;        /* number of reflectance bands */
         for (ib = 0; ib < this->nband-1; ib++)
             this->meta.iband[ib] = ib+1;
-        this->meta.iband[7] = 9;
+        this->meta.iband[7] = 9;  /* skip pan band */
 
         this->nband_th = 2;     /* number of thermal bands */
         this->meta.iband_th[0] = 10;
@@ -907,7 +903,7 @@ int get_xml_input
         this->nband = 8;        /* number of reflectance bands */
         for (ib = 0; ib < this->nband-1; ib++)
             this->meta.iband[ib] = ib+1;
-        this->meta.iband[7] = 9;
+        this->meta.iband[7] = 9;  /* skip pan band */
 
         this->nband_th = 0;     /* number of thermal bands */
 
@@ -1034,7 +1030,6 @@ int get_xml_input
             this->file_name_qa[0] = strdup (metadata->band[i].file_name);
         }
 
-#ifdef USE_LAND_WATER_MASK
         else if (!strcmp (metadata->band[i].name, "land_water_mask"))
         {
             /* this is the index we'll use for land/water mask band info */
@@ -1043,7 +1038,6 @@ int get_xml_input
             /* get the land/water mask band info */
             this->file_name_lw = strdup (metadata->band[i].file_name);
         }
-#endif
     }  /* for i */
 
     /* Make sure the bands were found in the XML file */
@@ -1075,7 +1069,6 @@ int get_xml_input
         return (ERROR);
     }
 
-#ifdef USE_LAND_WATER_MASK
     if (lw_indx == -9)
     {
         sprintf (errmsg, "Land/water mask band (land_water_mask) was not "
@@ -1083,9 +1076,7 @@ int get_xml_input
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
-#endif
 
-    if (this->meta.inst == INST_OLI_TIRS)
     /* Get the size of the reflectance, thermal, pan, etc. bands by using
        the representative band in the XML file */
     this->size.nsamps = metadata->band[refl_indx].nsamps;
@@ -1114,12 +1105,10 @@ int get_xml_input
     this->size_qa.pixsize[0] = metadata->band[qa_indx].pixel_size[0];
     this->size_qa.pixsize[1] = metadata->band[qa_indx].pixel_size[1];
 
-#ifdef USE_LAND_WATER_MASK
     this->size_lw.nsamps = metadata->band[lw_indx].nsamps;
     this->size_lw.nlines = metadata->band[lw_indx].nlines;
     this->size_lw.pixsize[0] = metadata->band[lw_indx].pixel_size[0];
     this->size_lw.pixsize[1] = metadata->band[lw_indx].pixel_size[1];
-#endif
 
     /* Check WRS path/rows */
     if (this->meta.wrs_sys == WRS_1)
