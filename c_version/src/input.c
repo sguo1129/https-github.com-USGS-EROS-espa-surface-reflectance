@@ -133,22 +133,33 @@ Input_t *open_input
         this->open_qa[ib] = true;
     }
 
-    this->fp_bin_lw = open_raw_binary (this->file_name_lw, "rb");
-    if (this->fp_bin_lw == NULL)
-    {
-        sprintf (errmsg, "Opening land/water mask raw binary file: %s",
-            this->file_name_lw);
-        error_handler (true, FUNC_NAME, errmsg);
-        free_input (this);
-        return (NULL);
+    if (this->nband_lw != 0)
+    {  /* NOTE: nband_lw will be 0 for OLI-only scenes */
+        this->fp_bin_lw = open_raw_binary (this->file_name_lw, "rb");
+        if (this->fp_bin_lw == NULL)
+        {
+            sprintf (errmsg, "Opening land/water mask raw binary file: %s",
+                this->file_name_lw);
+            error_handler (true, FUNC_NAME, errmsg);
+            free_input (this);
+            return (NULL);
+        }
+        this->open_lw = true;
     }
-    this->open_lw = true;
 
     /* Do a cursory check to make sure the QA band and land/water mask 
        exist and have been opened */
     if (!this->open[0])
     {
         sprintf (errmsg, "Reflectance band 1 is not open.");
+        error_handler (true, FUNC_NAME, errmsg);
+        free_input (this);
+        return (NULL);
+    }
+
+    if (this->nband_th != 0 && !this->open_th[0])
+    {
+        sprintf (errmsg, "Thermal band 10 is not open.");
         error_handler (true, FUNC_NAME, errmsg);
         free_input (this);
         return (NULL);
@@ -162,7 +173,7 @@ Input_t *open_input
         return (NULL);
     }
 
-    if (!this->open_lw)
+    if (this->nband_lw != 0 && !this->open_lw)
     {
         sprintf (errmsg, "Land/water mask is not open.");
         error_handler (true, FUNC_NAME, errmsg);
@@ -809,6 +820,7 @@ int get_xml_input
         this->fp_bin_qa[ib] = NULL;
     }
 
+    this->nband_lw = 0;
     this->meta.iband_lw = -1;
     this->file_name_lw = NULL;
     this->open_lw = false;
@@ -896,6 +908,7 @@ int get_xml_input
         this->meta.iband_qa[0] = 12;
 
         /* land/water mask is a single band */
+        this->nband_lw = 1;     /* number of land/water bands */
         this->meta.iband_lw = 13;
     }
     else if (this->meta.inst == INST_OLI)
@@ -912,9 +925,6 @@ int get_xml_input
 
         this->nband_qa = 1;     /* number of QA bands */
         this->meta.iband_qa[0] = 10;
-
-        /* land/water mask is a single band */
-        this->meta.iband_lw = 11;
     }
 
     /* Find band 1, band 10, and band 8 in the input XML file to obtain
@@ -1069,7 +1079,8 @@ int get_xml_input
         return (ERROR);
     }
 
-    if (lw_indx == -9)
+    /* land/water mask only used for OLI/TIRS products */
+    if (this->meta.inst == INST_OLI_TIRS && lw_indx == -9)
     {
         sprintf (errmsg, "Land/water mask band (land_water_mask) was not "
             "found in the XML file");
@@ -1105,10 +1116,13 @@ int get_xml_input
     this->size_qa.pixsize[0] = metadata->band[qa_indx].pixel_size[0];
     this->size_qa.pixsize[1] = metadata->band[qa_indx].pixel_size[1];
 
-    this->size_lw.nsamps = metadata->band[lw_indx].nsamps;
-    this->size_lw.nlines = metadata->band[lw_indx].nlines;
-    this->size_lw.pixsize[0] = metadata->band[lw_indx].pixel_size[0];
-    this->size_lw.pixsize[1] = metadata->band[lw_indx].pixel_size[1];
+    if (this->meta.inst == INST_OLI_TIRS)
+    {  /* skip for OLI */
+        this->size_lw.nsamps = metadata->band[lw_indx].nsamps;
+        this->size_lw.nlines = metadata->band[lw_indx].nlines;
+        this->size_lw.pixsize[0] = metadata->band[lw_indx].pixel_size[0];
+        this->size_lw.pixsize[1] = metadata->band[lw_indx].pixel_size[1];
+    }
 
     /* Check WRS path/rows */
     if (this->meta.wrs_sys == WRS_1)
