@@ -264,7 +264,8 @@ Date          Programmer       Reason
                                current pixel and going to the southeast.
 4/9/2015      Gail Schmidt     Updated to utilize a land/water mask for the
                                scene vs. using the global DEM to flag water
-                               pixels
+                               pixels. Scene-based land/water mask is expected
+                               in the XML file and opened in the input routines.
 
 NOTES:
 1. Initializes the variables and data arrays from the lookup table and
