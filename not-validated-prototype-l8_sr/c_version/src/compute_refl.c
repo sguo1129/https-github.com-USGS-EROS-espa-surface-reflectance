@@ -61,23 +61,6 @@ int compute_toa_refl
     uint16 *uband = NULL;  /* array for input image data for a single band,
                               nlines x nsamps */
 
-    /* LANDSAT OLI/TIRS constants for offset and scaling */
-//    const float refl_mult = 2.0E-05; /* reflectance multiplier for bands 1-9 */
-//    const float refl_add = -0.1;     /* reflectance additive for bands 1-9 */
-
-    /* Radiance offset and scaling for bands 10 and 11, might also be found
-       in the MTL file */
-//    const float xcals = 3.3420E-04;  /* radiance multiplier for bands
-//                                        10 and 11 */
-//    const float xcalo = 0.10000;     /* radiance additive for bands
-//                                        10 and 11 */
-
-    /* K[1|2]b1[0|1] constants might also be found in the MTL file */
-//    const float k1b10 = 774.89;      /* temperature constant for band 10 */
-//    const float k1b11 = 480.89;      /* temperature constant for band 11 */
-//    const float k2b10 = 1321.08;     /* temperature constant for band 10 */
-//    const float k2b11 = 1201.14;     /* temperature constant for band 11 */
-
     /* Allocate space for band data */
     uband = calloc (nlines*nsamps, sizeof (uint16));
     if (uband == NULL)
@@ -548,7 +531,6 @@ int compute_sr_refl
         return (ERROR);
     }
 
-#ifdef USE_LAND_WATER_MASK
     /* Read the land/water mask */
     if (get_input_lw_lines (input, 0, nlines, lw_mask) != SUCCESS)
     {
@@ -556,7 +538,6 @@ int compute_sr_refl
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
-#endif
 
     /* Loop through all the reflectance bands and perform atmospheric
        corrections based on climatology */
@@ -723,7 +704,6 @@ int compute_sr_refl
                              uoz22 * u * v;
             tozi[curr_pix] = tozi[curr_pix] * 0.0025;   /* vs / 400 */
 
-#ifdef USE_LAND_WATER_MASK
             /* If this pixel is water, then set the water bit.  If we are
                on the edges of the scene, just use the current pixel.  OW
                test the current pixel and the 8 surrounding pixels, as the
@@ -744,23 +724,6 @@ int compute_sr_refl
                 cloud[curr_pix] = 128;    /* set water bit */
                 tresi[curr_pix] = -1.0;
             }
-#else
-            /* If any of the surrounding pixels are fill, then mark this as
-               possibly water.  Then let the algorithm prove differently.
-               However keep the actual pressure which was defined. */
-            if ((dem[lcmg-1][scmg] == -9999) ||
-                (dem[lcmg+1][scmg] == -9999) ||
-                (dem[lcmg][scmg-1] == -9999) ||
-                (dem[lcmg][scmg+1] == -9999) ||
-                (dem[lcmg-1][scmg-1] == -9999) ||
-                (dem[lcmg-1][scmg+1] == -9999) ||
-                (dem[lcmg+1][scmg-1] == -9999) ||
-                (dem[lcmg+1][scmg+1] == -9999))
-            {
-                cloud[curr_pix] = 128;    /* set water bit */
-                tresi[curr_pix] = -1.0;
-            }
-#endif
 
             /* Get the surface pressure from the global DEM.  Set to 1013.0
                (sea level) if the DEM is fill (likely ocean). */
