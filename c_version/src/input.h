@@ -51,6 +51,7 @@ typedef struct {
     int nband_th;             /* number of thermal bands */
     int nband_pan;            /* number of pan bands */
     int nband_qa;             /* number of QA bands */
+    int nband_lw;             /* number of land/water bands */
     Img_coord_info_t size;    /* input file size */
     Img_coord_info_t size_th; /* input thermal file size */
     Img_coord_info_t size_pan;/* input pan file size */
