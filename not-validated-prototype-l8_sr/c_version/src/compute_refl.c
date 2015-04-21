@@ -254,10 +254,6 @@ Date          Programmer       Reason
 ----------    ---------------  -------------------------------------
 12/9/2014     Gail Schmidt     Broke the source code into a function to
                                modularize the source code in the main routine
-1/25/2015     Gail Schmidt     Modified to look at all the surrounding CMGDEM
-                               pixels for water pixels.  If any are water then
-                               treat the current pixel as water until it's
-                               proven not to be water.
 1/28/2015     Gail Schmidt     When doing the aerosol interpolation, look at
                                the step x step window surrounding the current
                                pixel vs. the step x step window from the
@@ -266,6 +262,11 @@ Date          Programmer       Reason
                                scene vs. using the global DEM to flag water
                                pixels. Scene-based land/water mask is expected
                                in the XML file and opened in the input routines.
+4/21/2015     Gail Schmidt     Modified to look at the surrounding 9x9 window
+                               for water pixels.  If any are water then treat
+                               the current pixel as water until it's proven not
+                               to be water.  The land/water mask isn't exact
+                               in many cases.
 
 NOTES:
 1. Initializes the variables and data arrays from the lookup table and
@@ -307,6 +308,7 @@ int compute_sr_refl
     int iband;           /* current band */
     int curr_pix;        /* current pixel in 1D arrays of nlines * nsamps */
     int win_pix;         /* current pixel in the line,sample window */
+    int win;             /* window around current pixel for water mask */
     float rotoa;         /* top of atmosphere reflectance */
     float roslamb;       /* lambertian surface reflectance */
     float tgo;           /* other gaseous transmittance */
@@ -707,28 +709,33 @@ int compute_sr_refl
 
             /* If this pixel is water, then set the water bit.  If we are
                on the edges of the scene, just use the current pixel.  OW
-               test the current pixel and the 8 surrounding pixels, as the
+               test the current pixel and the surrounding window pixels, as the
                land/water mask isn't perfect.  A water test using the NDVI
                will be applied later to make sure. */
-            if ((i == 0 || i == nlines-1 || j == 0 || j == nsamps-1) &&
-                   lw_mask[curr_pix] == 0)
-            {
-                cloud[curr_pix] = 128;    /* set water bit */
-                tresi[curr_pix] = -1.0;
-            }
-            else if
-                (lw_mask[(i-1)*nsamps + j-1] == 0 ||
-                 lw_mask[(i-1)*nsamps + j] == 0 ||
-                 lw_mask[(i-1)*nsamps + j+1] == 0 ||
-                 lw_mask[curr_pix-1] == 0 ||
-                 lw_mask[curr_pix] == 0 ||
-                 lw_mask[curr_pix+1] == 0 ||
-                 lw_mask[(i+1)*nsamps + j-1] == 0 ||
-                 lw_mask[(i+1)*nsamps + j] == 0 ||
-                 lw_mask[(i+1)*nsamps + j+1] == 0)
-            {
-                cloud[curr_pix] = 128;    /* set water bit */
-                tresi[curr_pix] = -1.0;
+            for (win = 0; win < 9; win++)
+            {  /* Check 9x9 window */
+                if ((i == win || i == nlines-win-1 ||
+                     j == win || j == nsamps-win-1) && lw_mask[curr_pix] == 0)
+                {
+                    cloud[curr_pix] = 128;    /* set water bit */
+                    tresi[curr_pix] = -1.0;
+                    break;
+                }
+                else if
+                    (lw_mask[(i-win)*nsamps + j-win] == 0 ||
+                     lw_mask[(i-win)*nsamps + j] == 0 ||
+                     lw_mask[(i-win)*nsamps + j+win] == 0 ||
+                     lw_mask[curr_pix-win] == 0 ||
+                     lw_mask[curr_pix] == 0 ||
+                     lw_mask[curr_pix+win] == 0 ||
+                     lw_mask[(i+win)*nsamps + j-win] == 0 ||
+                     lw_mask[(i+win)*nsamps + j] == 0 ||
+                     lw_mask[(i+win)*nsamps + j+win] == 0)
+                {
+                    cloud[curr_pix] = 128;    /* set water bit */
+                    tresi[curr_pix] = -1.0;
+                    break;
+                }
             }
 
             /* Get the surface pressure from the global DEM.  Set to 1013.0
