@@ -710,17 +710,22 @@ int compute_sr_refl
                test the current pixel and the 8 surrounding pixels, as the
                land/water mask isn't perfect.  A water test using the NDVI
                will be applied later to make sure. */
-            if (((i == 0 || i == nlines-1 || j == 0 || j == nsamps-1) &&
-                   lw_mask[curr_pix] == 0) ||
-                 (lw_mask[(i-1)*nsamps + nsamps-1] == 0 ||
-                  lw_mask[(i-1)*nsamps + nsamps] == 0 ||
-                  lw_mask[(i-1)*nsamps + nsamps+1] == 0 ||
-                  lw_mask[curr_pix-1] == 0 ||
-                  lw_mask[curr_pix] == 0 ||
-                  lw_mask[curr_pix+1] == 0 ||
-                  lw_mask[(i+1)*nsamps + nsamps-1] == 0 ||
-                  lw_mask[(i+1)*nsamps + nsamps] == 0 ||
-                  lw_mask[(i+1)*nsamps + nsamps+1] == 0))
+            if ((i == 0 || i == nlines-1 || j == 0 || j == nsamps-1) &&
+                   lw_mask[curr_pix] == 0)
+            {
+                cloud[curr_pix] = 128;    /* set water bit */
+                tresi[curr_pix] = -1.0;
+            }
+            else if
+                (lw_mask[(i-1)*nsamps + j-1] == 0 ||
+                 lw_mask[(i-1)*nsamps + j] == 0 ||
+                 lw_mask[(i-1)*nsamps + j+1] == 0 ||
+                 lw_mask[curr_pix-1] == 0 ||
+                 lw_mask[curr_pix] == 0 ||
+                 lw_mask[curr_pix+1] == 0 ||
+                 lw_mask[(i+1)*nsamps + j-1] == 0 ||
+                 lw_mask[(i+1)*nsamps + j] == 0 ||
+                 lw_mask[(i+1)*nsamps + j+1] == 0)
             {
                 cloud[curr_pix] = 128;    /* set water bit */
                 tresi[curr_pix] = -1.0;
