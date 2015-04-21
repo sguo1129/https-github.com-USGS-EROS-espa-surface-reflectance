@@ -1104,6 +1104,14 @@ int get_xml_input
         this->size_th.pixsize[1] = metadata->band[th_indx].pixel_size[1];
         this->scale_factor_th = metadata->band[th_indx].scale_factor;
     }
+    else
+    {  /* set to 0s */
+        this->size_th.nsamps = 0;
+        this->size_th.nlines = 0;
+        this->size_th.pixsize[0] = 0;
+        this->size_th.pixsize[1] = 0;
+        this->scale_factor_th = 0;
+    }
 
     this->size_pan.nsamps = metadata->band[pan_indx].nsamps;
     this->size_pan.nlines = metadata->band[pan_indx].nlines;
@@ -1122,6 +1130,13 @@ int get_xml_input
         this->size_lw.nlines = metadata->band[lw_indx].nlines;
         this->size_lw.pixsize[0] = metadata->band[lw_indx].pixel_size[0];
         this->size_lw.pixsize[1] = metadata->band[lw_indx].pixel_size[1];
+    }
+    else
+    {  /* set to 0s */
+        this->size_lw.nsamps = 0;
+        this->size_lw.nlines = 0;
+        this->size_lw.pixsize[0] = 0;
+        this->size_lw.pixsize[1] = 0;
     }
 
     /* Check WRS path/rows */
