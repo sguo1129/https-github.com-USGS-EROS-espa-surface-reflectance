@@ -7,7 +7,7 @@
 # EXTRA = -Wall -O2 -fopenmp
 CC = gcc
 RM = rm -f
-EXTRA = -Wall -O2
+EXTRA = -Wall -O2 -fopenmp
 
 # Define the include files
 INC = common.h date.h input.h output.h lut_subr.h l8_sr.h
@@ -43,9 +43,9 @@ l8_sr: $(OBJ) $(INC)
 	$(CC) $(EXTRA) -o $(EXE) $(OBJ) $(LOADLIB)
 
 install:
-	install -d $(BIN)
-	install -m 755 $(EXE) $(BIN)
-	install -m 755 ../scripts/*.py $(BIN)
+	install -d $(PREFIX)/bin
+	install -m 755 $(EXE) $(PREFIX)/bin
+	install -m 755 ../scripts/*.py $(PREFIX)/bin
 
 clean:
 	$(RM) *.o $(EXE)
