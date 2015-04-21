@@ -30,7 +30,7 @@ clean:
 	rm -f *.o $(TARGET1)
 
 install:
-	cp $(TARGET1) $(BIN)
+	cp $(TARGET1) $(PREFIX)/bin
 
 #
 # Rules

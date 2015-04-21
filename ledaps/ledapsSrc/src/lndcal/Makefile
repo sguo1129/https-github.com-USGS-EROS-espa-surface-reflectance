@@ -29,8 +29,8 @@ clean:
 	rm -f *.o $(TARGET1)
 
 install:
-	install -d $(BIN)
-	install -m 755 $(TARGET1) $(BIN)
+	install -d $(PREFIX)/bin
+	install -m 755 $(TARGET1) $(PREFIX)/bin
 
 #
 # Rules
