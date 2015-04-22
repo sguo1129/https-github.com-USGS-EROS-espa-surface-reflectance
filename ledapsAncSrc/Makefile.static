@@ -39,8 +39,10 @@ clean:
 	rm -f *.o $(TARGET1) $(TARGET2)
 
 install:
-	cp $(TARGET1) $(BIN)
-	cp $(TARGET2) $(BIN)
+	install -d $(PREFIX)/bin
+	install -m 755 $(TARGET1) $(PREFIX)/bin
+	install -m 755 $(TARGET2) $(PREFIX)/bin
+
 #
 # Rules
 #
