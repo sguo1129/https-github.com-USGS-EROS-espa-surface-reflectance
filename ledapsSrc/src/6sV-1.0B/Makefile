@@ -35,4 +35,5 @@ clean:
 	rm -f *.o $(TARGET1)
 
 install:
-	cp $(TARGET1) $(PREFIX)/bin
+	install -d $(PREFIX)/bin
+	install -m 755 $(TARGET1) $(PREFIX)/bin
