@@ -82,7 +82,8 @@ typedef struct {
 /* Prototypes */
 Input_t *open_input
 (
-    Espa_internal_meta_t *metadata      /* I: input metadata */
+    Espa_internal_meta_t *metadata,     /* I: input metadata */
+    bool process_sr                     /* I: will SR data be processed? */
 );
 
 void close_input
@@ -142,6 +143,7 @@ int get_input_lw_lines
 int get_xml_input
 (
     Espa_internal_meta_t *metadata,  /* I: XML metadata */
+    bool process_sr,                 /* I: will SR data be processed? */
     Input_t *this                    /* O: data structure for the input file */
 );
 

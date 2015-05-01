@@ -179,7 +179,7 @@ int main (int argc, char *argv[])
 
     /* Open the reflectance product, set up the input data structure, and
        allocate memory for the data buffers */
-    input = open_input (&xml_metadata);
+    input = open_input (&xml_metadata, process_sr);
     if (input == (Input_t *) NULL)
     {
         sprintf (errmsg, "Error opening/reading the input DN data: %s",
