@@ -14,6 +14,8 @@ Date         Programmer       Reason
 ----------   --------------   -------------------------------------
 6/23/2014    Gail Schmidt     Original development
 4/9/2015     Gail Schmidt     Modified to add a land/water mask band
+5/1/2015     Gail Schmidt     Only read the land/water mask if we are processing
+                              surface reflectance
 
 NOTES:
 *****************************************************************************/
@@ -48,7 +50,8 @@ NOTES:
 ******************************************************************************/
 Input_t *open_input
 (
-    Espa_internal_meta_t *metadata      /* I: input metadata */
+    Espa_internal_meta_t *metadata,     /* I: input metadata */
+    bool process_sr                     /* I: will SR data be processed? */
 )
 {
     char FUNC_NAME[] = "open_input";   /* function name */
@@ -67,7 +70,7 @@ Input_t *open_input
     }
 
     /* Initialize and get input from metadata file */
-    if (get_xml_input (metadata, this) != SUCCESS)
+    if (get_xml_input (metadata, process_sr, this) != SUCCESS)
     {
         strcpy (errmsg, "Error getting input information from the metadata "
             "file.");
@@ -134,7 +137,8 @@ Input_t *open_input
     }
 
     if (this->nband_lw != 0)
-    {  /* NOTE: nband_lw will be 0 for OLI-only scenes */
+    {  /* NOTE: nband_lw will be 0 for OLI-only scenes or if we are only doing
+          TOA corrections */
         this->fp_bin_lw = open_raw_binary (this->file_name_lw, "rb");
         if (this->fp_bin_lw == NULL)
         {
@@ -745,6 +749,7 @@ NOTES:
 int get_xml_input
 (
     Espa_internal_meta_t *metadata,  /* I: XML metadata */
+    bool process_sr,                 /* I: will SR data be processed? */
     Input_t *this                    /* O: data structure for the input file */
 )
 {
@@ -907,9 +912,13 @@ int get_xml_input
         this->nband_qa = 1;     /* number of QA bands */
         this->meta.iband_qa[0] = 12;
 
-        /* land/water mask is a single band */
-        this->nband_lw = 1;     /* number of land/water bands */
-        this->meta.iband_lw = 13;
+        /* land/water mask is a single band, but only needed if processing
+           surface reflectance corrections */
+        if (process_sr)
+        {
+            this->nband_lw = 1;     /* number of land/water bands */
+            this->meta.iband_lw = 13;
+        }
     }
     else if (this->meta.inst == INST_OLI)
     {
@@ -1080,7 +1089,7 @@ int get_xml_input
     }
 
     /* land/water mask only used for OLI/TIRS products */
-    if (this->meta.inst == INST_OLI_TIRS && lw_indx == -9)
+    if (this->meta.inst == INST_OLI_TIRS && process_sr && lw_indx == -9)
     {
         sprintf (errmsg, "Land/water mask band (land_water_mask) was not "
             "found in the XML file");
@@ -1124,8 +1133,8 @@ int get_xml_input
     this->size_qa.pixsize[0] = metadata->band[qa_indx].pixel_size[0];
     this->size_qa.pixsize[1] = metadata->band[qa_indx].pixel_size[1];
 
-    if (this->meta.inst == INST_OLI_TIRS)
-    {  /* skip for OLI */
+    if (this->meta.inst == INST_OLI_TIRS && process_sr)
+    {  /* skip for OLI or for TOA-only */
         this->size_lw.nsamps = metadata->band[lw_indx].nsamps;
         this->size_lw.nlines = metadata->band[lw_indx].nlines;
         this->size_lw.pixsize[0] = metadata->band[lw_indx].pixel_size[0];
