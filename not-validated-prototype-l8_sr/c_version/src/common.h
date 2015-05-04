@@ -63,14 +63,14 @@ typedef enum {SR_BAND1=0, SR_BAND2, SR_BAND3, SR_BAND4, SR_BAND5, SR_BAND6,
 /* Bit location of weight for cloudmask QA. Bit 4 is used as a temporary
    bit location as well as the first aerosol bit. */
 typedef enum {
-  CIR_QA=0,    /* cirrus cloud bit */
-  CLD_QA=1,    /* cloud bit */
-  CLDA_QA=2,   /* adjacent cloud bit */
-  CLDS_QA=3,   /* cloud shadow bit */
-  CLDT_QA=4,   /* temporary cloud shadow bit, using residual */
-  AERO1_QA=4,  /* these two AERO bits mark the amount of aerosols and */
-  AERO2_QA=5,  /* reflect the level of atmospheric correction made */
-  WAT_QA=7     /* water bit */
+  CIR_QA=0,    /* cirrus cloud bit = 1 */
+  CLD_QA=1,    /* cloud bit = 2 */
+  CLDA_QA=2,   /* adjacent cloud bit = 4 */
+  CLDS_QA=3,   /* cloud shadow bit = 8 */
+  CLDT_QA=4,   /* temporary cloud shadow bit, using residual = 16 */
+  AERO1_QA=4,  /* these two AERO bits mark the amount of aerosols and = 16 */
+  AERO2_QA=5,  /* reflect the level of atmospheric correction made = 32 */
+  WAT_QA=7     /* water bit = 128 */
 } Cloudqa_t;
 
 /* Satellite type definitions, mainly to allow future satellites to be

@@ -1310,7 +1310,7 @@ fclose (tmpfile);
                        aerosol bits in the QA band */
                     if (ib == DN_BAND1)
                     {
-                        /* Recompute based on predefined toaero value */
+                        /* Recompute based on predefined taero value */
                         if (roslamb < -0.005)
                         {
                             taero[i] = 0.05;
