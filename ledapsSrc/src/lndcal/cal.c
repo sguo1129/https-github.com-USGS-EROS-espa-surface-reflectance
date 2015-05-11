@@ -24,7 +24,7 @@
  *   Celsius
  *
  * NOTES:
- * 1. TOA radiance and reflectance equations are available in
+ * 1. TOA radiance and reflectance equations for Landsat 7 are available in
  *    http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html
  * 2. The TOA reflectance gain/bias values from the MTL file (stored in the
  *    XML file after converting from LPGS to ESPA) do not account for the
