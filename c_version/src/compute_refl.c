@@ -25,6 +25,8 @@ Date          Programmer       Reason
 4/13/2015     Gail Schmidt     Use the reflectance gain/bias from the XML
                                file.  Also use the brightness temp gain/bias
                                and thermal constants (k1/k2) from the XML file.
+5/18/2015     Gail Schmidt     Updated the rounding to handle postitive and
+                               negative values
 
 NOTES:
   1. These TOA and BT algorithms match those as published by the USGS Landsat
@@ -125,7 +127,7 @@ int compute_toa_refl
                     else if (rotoa > MAX_VALID)
                         sband[sband_ib][i] = MAX_VALID;
                     else
-                        sband[sband_ib][i] = (int) (rotoa + 0.5);
+                        sband[sband_ib][i] = (int) (round (rotoa));
                 }
                 else
                     sband[sband_ib][i] = FILL_VALUE;
@@ -172,7 +174,7 @@ int compute_toa_refl
                     else if (tmpf > MAX_VALID_TH)
                         sband[SR_BAND10][i] = MAX_VALID_TH;
                     else
-                        sband[SR_BAND10][i] = (int) (tmpf + 0.5);
+                        sband[SR_BAND10][i] = (int) (round (tmpf));
                 }
                 else
                     sband[SR_BAND10][i] = FILL_VALUE;
@@ -217,7 +219,7 @@ int compute_toa_refl
                     else if (tmpf > MAX_VALID_TH)
                         sband[SR_BAND11][i] = MAX_VALID_TH;
                     else
-                        sband[SR_BAND11][i] = (int) (tmpf + 0.5);
+                        sband[SR_BAND11][i] = (int) (round (tmpf));
                 }
                 else
                     sband[SR_BAND11][i] = FILL_VALUE;
@@ -267,6 +269,8 @@ Date          Programmer       Reason
                                the current pixel as water until it's proven not
                                to be water.  The land/water mask isn't exact
                                in many cases.
+5/18/2015     Gail Schmidt     Updated the rounding to handle postitive and
+                               negative values
 
 NOTES:
 1. Initializes the variables and data arrays from the lookup table and
@@ -550,7 +554,6 @@ int compute_sr_refl
     {
         printf (" %d ...", ib+1);
 
-/** GAIL -- stick to angles for the scene center here for initializing **/
         /* Get the parameters for the atmospheric correction */
         /* rotoa is not defined for this call, which is ok, but the
            roslamb value is not valid upon output. Just set it to 0.0 to
@@ -836,8 +839,6 @@ int compute_sr_refl
                     }
                 }
        
-/** GAIL -- which angles should be used?  scene center or which band?  Do
-    we need the angles for the bands passed in (i.e. bands 1 and 4)? **/
                 /* Retrieve the aerosol information */
                 iband1 = DN_BAND4;
                 iband3 = DN_BAND1;
@@ -864,8 +865,6 @@ int compute_sr_refl
                     iband = DN_BAND5;
                     rotoa = aerob5[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
-/** GAIL -- which angles should be used?  scene center or which band?  Do
-    we need the angle for the band passed in (i.e. band 5)? **/
                     retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
                         raot550nm, iband, pres, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
@@ -887,8 +886,6 @@ int compute_sr_refl
                     iband = DN_BAND4;
                     rotoa = aerob4[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
-/** GAIL -- which angles should be used?  scene center or which band?  Do
-    we need the angle for the band passed in (i.e. band 5)? **/
                     retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
                         raot550nm, iband, pres, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
@@ -932,12 +929,13 @@ int compute_sr_refl
     fflush (stdout);
 #endif
 
-    /* Done with the aerob* arrays */
+    /* Done with the aerob* arrays and land/water mask */
     free (aerob1);  aerob1 = NULL;
     free (aerob2);  aerob2 = NULL;
     free (aerob4);  aerob4 = NULL;
     free (aerob5);  aerob5 = NULL;
     free (aerob7);  aerob7 = NULL;
+    free (lw_mask); lw_mask = NULL;
 
     /* Done with the DEM array */
     for (i = 0; i < DEM_NBLAT; i++)
@@ -1044,10 +1042,8 @@ int compute_sr_refl
 
     /* Compute the cloud shadow */
     printf ("Determining cloud shadow ...\n");
-/** GAIL -- facl and fack will need to be calculated within the nsamps loop, since the solar angles will be dependent upon the pixel **/
     facl = cosf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* lines */
     fack = sinf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* samps */
-//    #pragma omp parallel for private (i, j, curr_pix, tcloud, cldh, cldhmin, cldhmax, mband5, mband5k, mband5l, icldh, k, l, win_pix)
     for (i = 0; i < nlines; i++)
     {
         curr_pix = i * nsamps;
@@ -1361,7 +1357,7 @@ fclose (tmpfile);
                     else if (roslamb > MAX_VALID)
                         sband[ib][i] = MAX_VALID;
                     else
-                        sband[ib][i] = (int) roslamb;
+                        sband[ib][i] = (int) (round (roslamb));
                 }  /* end if */
             }  /* end if qaband */
         }  /* end for i */
