@@ -79,8 +79,16 @@ NOTES:
 4. Conversion algorithms for TOA reflectance and at-sensor brightness
    temperature are available from
    http://landsat.usgs.gov/Landsat8_Using_Product.php
-5. Solar zenith and azimuth angles are pulled from the scene center.  The
-   view zenith angle is set to 0.0.  None of these change on a per pixel basis.
+5. The solar angles from band to band are fairly stable, thus a single array of
+   per-pixel angles will be used.  The array can be from a "representative
+   band" for the reflectance bands or it can be an average of the reflectance
+   bands. We will use band 4 as the representative band for these per-pixel
+   angle values.
+6. The view/observation angles from band to band are a bit more unstable
+   (particularly the view azimuth) near nadir.  A single array of per-pixel
+   angles will still be used, however the information near nadir may be slightly
+   affected.  We will use band 4 as the representative band for these per-pixel
+   angle values.
 ******************************************************************************/
 int main (int argc, char *argv[])
 {
@@ -88,6 +96,7 @@ int main (int argc, char *argv[])
     char FUNC_NAME[] = "main"; /* function name */
     char errmsg[STR_SIZE];   /* error message */
     char envi_file[STR_SIZE];/* ENVI filename */
+    char angle_coeff_name[STR_SIZE]; /* angle coefficient filename */
     char *aux_path = NULL;   /* path for Landsat auxiliary data */
     char *xml_infile = NULL; /* input XML filename */
     char *aux_infile = NULL; /* input auxiliary filename for water vapor
@@ -98,20 +107,40 @@ int main (int argc, char *argv[])
     int retval;              /* return status */
     int ib;                  /* looping variable for input bands */
     int i;                   /* looping variables */
+    int BAND4 = 3;           /* index for band 4 for per-pixel angles */
     Input_t *input = NULL;       /* input structure for the Landsat product */
     Output_t *toa_output = NULL; /* output structure and metadata for the TOA
                                     product */
     Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
     Espa_global_meta_t *gmeta = NULL;   /* pointer to global meta */
     Envi_header_t envi_hdr;      /* output ENVI header information */
-    struct stat statbuf;      /* buffer for the file stat function */
+    struct stat statbuf;     /* buffer for the file stat function */
 
-    uint16 *qaband = NULL;    /* QA band for the input image, nlines x nsamps */
-    int16 **sband = NULL;     /* output surface reflectance and brightness
-                                 temp bands, qa band is separate as a uint16 */
-    float xts;           /* solar zenith angle (deg) */
-    float xfs;           /* solar azimuth angle (deg) */
-    float xmus;          /* cosine of solar zenith angle */
+    uint16 *qaband = NULL;   /* QA band for the input image, nlines x nsamps */
+    int16 **sband = NULL;    /* output surface reflectance and brightness
+                                temp bands, qa band is separate as a uint16 */
+    float xts;               /* solar zenith angle for scene center (deg) */
+    float xfs;               /* solar azimuth angle for scene center (deg) */
+    short *solar_zenith[L8_NBANDS];  /* Array of pointers for the solar
+                                        zenith angle array, one per band.
+                                        degrees scaled by 100 */
+    short *solar_azimuth[L8_NBANDS]; /* Array of pointers for the solar
+                                        azimuth angle array, one per band.
+                                        degrees scaled by 100 */
+    short *sat_zenith[L8_NBANDS];    /* Array of pointers for the satellite
+                                        zenith angle array, one per band.
+                                        degrees scaled by 100 */
+    short *sat_azimuth[L8_NBANDS];   /* Array of pointers for the satellite
+                                        azimuth angle array, one per band.
+                                        degrees scaled by 100 */
+    short *xts_arr = NULL;   /* scaled solar zenith angle (deg); pointer to
+                                band 4 in the solar_zenith array */
+    short *xfs_arr = NULL;   /* scaled solar azimuth angle (deg); pointer to
+                                band 4 in the solar_azimuth array */
+    short *xtv_arr = NULL;   /* scaled observation zenith angle (deg); pointer
+                                to band 4 in the sat_zenith array */
+    short *xfv_arr = NULL;   /* scaled observation azimuth angle (deg); pointer
+                                to band 4 in the sat_azimuth array */
     bool process_sr = true;  /* this is set to false if the solar zenith
                                 is too large and the surface reflectance
                                 cannot be calculated or if the user specifies
@@ -120,10 +149,14 @@ int main (int argc, char *argv[])
                                 done */
     bool write_toa = false;  /* this is set to true if the user specifies
                                 TOA products should be output for delivery */
-    float pixsize;      /* pixel size for the reflectance bands */
-    int nlines, nsamps; /* number of lines and samples in the reflectance and
-                           thermal bands */
-
+    float pixsize;           /* pixel size for the reflectance bands */
+    int nlines, nsamps;      /* number of lines and samples in the reflectance
+                                and thermal bands */
+    int ppa_nlines[L8_NBANDS];  /* number of lines for each per-pixel angle
+                                   band */
+    int ppa_nsamps[L8_NBANDS];  /* number of samples for each per-pixel angle
+                                   band */
+    ANGLES_FRAME ppa_frame[L8_NBANDS];  /* frame info for each per-pixel band */
 
     /* The following arguments are all names of the LUTs. The first five are
        all tables of coefficients generated by the 6S software and provided
@@ -216,16 +249,17 @@ int main (int argc, char *argv[])
         printf ("  Pixsize: %f,%f\n\n", input->size_lw.pixsize[0],
             input->size_lw.pixsize[1]);
 
-        printf ("  Fill value: %d\n", input->meta.fill);
-        printf ("  Solar zenith: %f\n", xml_metadata.global.solar_zenith);
-        printf ("  Solar azimuth: %f\n", xml_metadata.global.solar_azimuth);
+        printf ("  Input fill value: %d\n", input->meta.fill);
+        printf ("  Solar zenith (scene center): %f\n",
+            xml_metadata.global.solar_zenith);
+        printf ("  Solar azimuth (scene center): %f\n",
+            xml_metadata.global.solar_azimuth);
     }
 
     /* Pull the needed metadata from the XML file and input structure */
     xts = gmeta->solar_zenith;
     xfs = gmeta->solar_azimuth;
     pixsize = (float) input->size.pixsize[0];
-    xmus = cos (xts * DEG2RAD);
     nlines = input->size.nlines;
     nsamps = input->size.nsamps;
 
@@ -247,10 +281,10 @@ int main (int argc, char *argv[])
        scene falls into that category. */
     if (xts > 76.0 && process_sr)
     {
-        sprintf (errmsg, "Solar zenith angle is too large to allow for surface "
-            "reflectance processing.  Corrections must be limited to top of "
-            "atmosphere and at-sensor brightness temperature corrections. "
-            "Use the --process_sr=false command-line argument. "
+        sprintf (errmsg, "Solar zenith angle at scene center is too large to "
+            "allow for surface reflectance processing. Corrections must be "
+            "limited to top of atmosphere and at-sensor brightness temperature "
+            "corrections. Use the --process_sr=false command-line argument. "
             "(solar zenith angle out of range)");
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
@@ -258,7 +292,7 @@ int main (int argc, char *argv[])
 
     /* Allocate memory for all the data arrays */
     if (verbose)
-        printf ("Allocating memory for the data arrays ...\n");
+        printf ("\n  Allocating memory for the data arrays ...\n");
     retval = memory_allocation_main (nlines, nsamps, &qaband, &sband);
     if (retval != SUCCESS)
     {   /* get_args already printed the error message */
@@ -275,6 +309,22 @@ int main (int argc, char *argv[])
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
+
+    /* Determine the angle coefficient file */
+    strcpy (angle_coeff_name, xml_infile);
+    cptr = strrchr (angle_coeff_name, '.');
+    strcpy (cptr, "_ANG.txt");
+    if (stat (angle_coeff_name, &statbuf) == -1)
+    {
+        sprintf (errmsg, "Could not find angle coefficient file: %s\n  This "
+            "should be delivered with the Level 1 data and have the same "
+            "name basename as the input bands with an _ANG.txt extention.",
+            angle_coeff_name);
+        error_handler (false, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+    if (verbose)
+        printf ("  ANG input file: %s\n", angle_coeff_name);
 
     /* Get the L8 auxiliary directory and the full pathname of the auxiliary
        files to be read if processing surface reflectance */
@@ -365,11 +415,129 @@ int main (int argc, char *argv[])
             error_handler (false, FUNC_NAME, errmsg);
             exit (ERROR);
         }
+
+        /* Create the per-pixel angles for solar and observation/view zenith
+           and azimuth.  Allocates memory for the specified band. */
+        if (verbose)
+        {
+            printf (  "Generating the solar and view per-pixel angles for "
+                "band 4 ...\n");
+        }
+        retval = l8_per_pixel_angles (angle_coeff_name, 1, FILL_VALUE, "4",
+            ppa_frame, solar_zenith, solar_azimuth, sat_zenith, sat_azimuth,
+            ppa_nlines, ppa_nsamps);
+        if (retval != SUCCESS)
+        {
+            sprintf (errmsg, "Creating band 4 per-pixel angles for solar and "
+                "observation/view zenith and azimuth.");
+            error_handler (false, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+        xts_arr = solar_zenith[BAND4];
+        xfs_arr = solar_azimuth[BAND4];
+        xtv_arr = sat_zenith[BAND4];
+        xfv_arr = sat_azimuth[BAND4];
+        if (verbose)
+        {
+            printf ("  Per-pixel solar zenith (scene center): %d\n",
+                xts_arr[(int) (nlines * 0.5) * nsamps + (int) (nsamps * 0.5)]);
+            printf ("  Per-pixel solar azimuth (scene center): %d\n",
+                xfs_arr[(int) (nlines * 0.5) * nsamps + (int) (nsamps * 0.5)]);
+            printf ("  Per-pixel view zenith (scene center): %d\n",
+                xtv_arr[(int) (nlines * 0.5) * nsamps + (int) (nsamps * 0.5)]);
+            printf ("  Per-pixel view azimuth (scene center): %d\n",
+                xfv_arr[(int) (nlines * 0.5) * nsamps + (int) (nsamps * 0.5)]);
+        }
+
+        /* Make sure that the scene size for the per-pixel angles matches
+           that of the current scene for the reflectance bands */
+        if (ppa_nlines[BAND4] != nlines || ppa_nsamps[BAND4] != nsamps)
+        {
+            sprintf (errmsg, "Number of lines and samples in band 4 of the "
+                "per-pixel angles (%d, %d) does not match the number of lines "
+                "and samples in the image reflectance bands (%d, %d).",
+                ppa_nlines[BAND4], ppa_nsamps[BAND4], nlines, nsamps);
+            error_handler (false, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        /* Make sure none of the solar zenith angles are > 76 degrees (7600
+           since the solar angles are scaled by 100), otherwise surface
+           reflectance corrections cannot be completed.  Don't check the fill
+           values. */
+        for (i = 0; i < nlines * nsamps; i++)
+        {
+            if (xts_arr[i] != FILL_VALUE && xts_arr[i] > 7600)
+            {
+                sprintf (errmsg, "Solar zenith angle (%f) is too large to "
+                    "allow for surface reflectance processing. Corrections "
+                    "must be limited to top of atmosphere and at-sensor "
+                    "brightness temperature corrections. Use the "
+                    "--process_sr=false command-line argument. (solar zenith "
+                    "angle out of range).\nDEBUG info: line %d, sample %d",
+                    (float) solar_zenith[BAND4][i], i/nsamps, i%nsamps);
+                error_handler (true, FUNC_NAME, errmsg);
+                exit (ERROR);
+            }
+        }
+
+        /* FOR TESTING ONLY -- Copy the scene center solar angles to the
+           per-pixel angle bands to make sure our results are the same. */
+/*        for (i = 0; i < nlines * nsamps; i++)
+        {
+            xts_arr[i] = xts * 100.0;
+            xfs_arr[i] = xfs * 100.0;
+        }
+*/
+
+        /* FOR TESTING ONLY -- Zero out the observation/view angles since
+           they were previously hard-coded to zero to make sure our results
+           are the same. */
+        memset (xtv_arr, 0, nlines * nsamps * sizeof (short));
+        memset (xfv_arr, 0, nlines * nsamps * sizeof (short));
+    }
+    else
+    {
+        /* Create the per-pixel angles for solar zenith.  Allocates memory for
+           the specified band. */
+        if (verbose)
+        {
+            printf ("  Generating the solar zenith per-pixel angles for "
+                "band 4 ...\n");
+        }
+        retval = l8_per_pixel_angles (angle_coeff_name, 1, FILL_VALUE, "4",
+            ppa_frame, solar_zenith, NULL, NULL, NULL, ppa_nlines, ppa_nsamps);
+        if (retval != SUCCESS)
+        {   /* l8_per_pixel_angles already printed the error message */
+            sprintf (errmsg, "Creating band 4 per-pixel angles for solar "
+                "zenith.");
+            error_handler (false, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+        xts_arr = solar_zenith[BAND4];
+
+        /* Make sure that the scene size for the per-pixel angles matches
+           that of the current scene for the reflectance bands */
+        if (ppa_nlines[BAND4] != nlines || ppa_nsamps[BAND4] != nsamps)
+        {
+            sprintf (errmsg, "Number of lines and samples in band 4 of the "
+                "per-pixel angles (%d, %d) does not match the number of lines "
+                "and samples in the image reflectance bands (%d, %d).",
+                ppa_nlines[BAND4], ppa_nsamps[BAND4], nlines, nsamps);
+            error_handler (false, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        /* FOR TESTING ONLY -- Copy the scene center solar angles to the
+           per-pixel angle bands to make sure our results are the same. */
+/*        for (i = 0; i < nlines * nsamps; i++)
+            xts_arr[i] = xts;
+*/
     }
 
     /* Compute the TOA reflectance and at-sensor brightness temp */
     printf ("Calculating TOA reflectance and at-sensor brightness temps...");
-    retval = compute_toa_refl (input, qaband, nlines, nsamps, xmus,
+    retval = compute_toa_refl (input, qaband, nlines, nsamps, xts_arr,
         gmeta->instrument, sband);
     if (retval != SUCCESS)
     {
@@ -506,8 +674,8 @@ int main (int argc, char *argv[])
         printf ("Performing atmospheric corrections for each reflectance "
             "band ...\n");
         retval = compute_sr_refl (input, &xml_metadata, xml_infile, qaband,
-            nlines, nsamps, pixsize, sband, xts, xfs, xmus, anglehdf,
-            intrefnm, transmnm, spheranm, cmgdemnm, rationm, auxnm);
+            nlines, nsamps, pixsize, sband, xts_arr, xfs_arr, xtv_arr, xfv_arr,
+            anglehdf, intrefnm, transmnm, spheranm, cmgdemnm, rationm, auxnm);
         if (retval != SUCCESS)
         {
             sprintf (errmsg, "Error computing surface reflectance");

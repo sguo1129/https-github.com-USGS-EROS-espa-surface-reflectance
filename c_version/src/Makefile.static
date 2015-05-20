@@ -27,7 +27,8 @@ SRC = compute_refl.c      \
 OBJ = $(SRC:.c=.o)
 
 # Define the object libraries
-EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
+EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
+  -l_espa_format_conversion -l_espa_l8_angles -l_espa_l8_ang \
   -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
   -L$(XML2LIB) -lxml2 -L$(HDFEOS_GCTPLIB) -lGctp -L$(ZLIBLIB) -lz
 MATHLIB = -lm

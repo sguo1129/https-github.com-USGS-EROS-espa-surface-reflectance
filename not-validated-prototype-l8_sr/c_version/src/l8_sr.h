@@ -16,6 +16,7 @@
 #include "write_metadata.h"
 #include "envi_header.h"
 #include "error_handler.h"
+#include "l8_angles.h"
 
 /* Prototypes */
 void usage ();
@@ -46,10 +47,11 @@ int compute_toa_refl
     uint16 *qaband,     /* I: QA band for the input image, nlines x nsamps */
     int nlines,         /* I: number of lines in reflectance, thermal bands */
     int nsamps,         /* I: number of samps in reflectance, thermal bands */
-    float xmus,         /* I: cosine of solar zenith angle */
+    short *xts_arr,     /* I: scaled solar zenith angle (deg) from a 
+                              representative band or band average */
     char *instrument,   /* I: instrument to be processed (OLI, TIRS) */
-    int16 **sband       /* O: output surface reflectance and brightness
-                              temp bands */
+    int16 **sband       /* O: output TOA reflectance and brightness temp
+                              values (scaled) */
 );
 
 int compute_sr_refl
@@ -63,9 +65,14 @@ int compute_sr_refl
     int nsamps,         /* I: number of samps in reflectance, thermal bands */
     float pixsize,      /* I: pixel size for the reflectance bands */
     int16 **sband,      /* I/O: input TOA and output surface reflectance */
-    float xts,          /* I: solar zenith angle (deg) */
-    float xfs,          /* I: solar azimuth angle (deg) */
-    float xmus,         /* I: cosine of solar zenith angle */
+    short *xts_arr,     /* I: scaled solar zenith angle (deg) from a 
+                              representative band or band average */
+    short *xfs_arr,     /* I: scaled solar azimuth angle (deg) from a
+                              representative band or band average */
+    short *xtv_arr,     /* I: scaled observation zenith angle (deg) from a
+                              representative band or band average */
+    short *xfv_arr,     /* I: scaled observation azimuth angle (deg) from a
+                              representative band or band average */
     char *anglehdf,     /* I: angle HDF filename */
     char *intrefnm,     /* I: intrinsic reflectance filename */
     char *transmnm,     /* I: transmission filename */
@@ -88,11 +95,6 @@ int init_sr_refl
     char *cmgdemnm,     /* I: climate modeling grid DEM filename */
     char *rationm,      /* I: ratio averages filename */
     char *auxnm,        /* I: auxiliary filename for ozone and water vapor */
-    float *xtv,         /* O: observation zenith angle (deg) */
-    float *xmuv,        /* O: cosine of observation zenith angle */
-    float *xfi,         /* O: azimuthal difference between sun and
-                              observation (deg) */
-    float *cosxfi,      /* O: cosine of azimuthal difference */
     float *raot550nm,   /* O: nearest value of AOT */
     float *pres,        /* O: surface pressure */
     float *uoz,         /* O: total column ozone */
