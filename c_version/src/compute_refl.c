@@ -25,10 +25,18 @@ Date          Programmer       Reason
 4/13/2015     Gail Schmidt     Use the reflectance gain/bias from the XML
                                file.  Also use the brightness temp gain/bias
                                and thermal constants (k1/k2) from the XML file.
+5/13/2015     Gail Schmidt     Updated to use per-pixel solar zenith angles
+5/18/2015     Gail Schmidt     Updated the rounding to handle postitive and
+                               negative values
 
 NOTES:
   1. These TOA and BT algorithms match those as published by the USGS Landsat
      team in http://landsat.usgs.gov/Landsat8_Using_Product.php
+  2. The solar zenith angles from band to band are fairly stable, thus a
+     single array of per-pixel angles will be used.  The array can be from
+     a "representative band" for the reflectance bands or it can be an average
+     of the reflectance bands. The choice will be left up to the calling
+     routine.
 ******************************************************************************/
 int compute_toa_refl
 (
@@ -36,7 +44,8 @@ int compute_toa_refl
     uint16 *qaband,     /* I: QA band for the input image, nlines x nsamps */
     int nlines,         /* I: number of lines in reflectance, thermal bands */
     int nsamps,         /* I: number of samps in reflectance, thermal bands */
-    float xmus,         /* I: cosine of solar zenith angle */
+    short *xts_arr,     /* I: scaled solar zenith angle (deg) from a 
+                              representative band or band average */
     char *instrument,   /* I: instrument to be processed (OLI, TIRS) */
     int16 **sband       /* O: output TOA reflectance and brightness temp
                               values (scaled) */
@@ -58,6 +67,7 @@ int compute_toa_refl
     float k1b11;         /* K1 temperature constant for band 11 */
     float k2b10;         /* K2 temperature constant for band 10 */
     float k2b11;         /* K2 temperature constant for band 11 */
+    float xmus;          /* cosine of solar zenith angle */
     uint16 *uband = NULL;  /* array for input image data for a single band,
                               nlines x nsamps */
 
@@ -107,7 +117,7 @@ int compute_toa_refl
             refl_mult = input->meta.gain[iband];
             refl_add = input->meta.bias[iband];
 
-            #pragma omp parallel for private (i, rotoa)
+            #pragma omp parallel for private (i, xmus, rotoa)
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
@@ -115,6 +125,7 @@ int compute_toa_refl
                 {
                     /* Compute the TOA reflectance based on the scene center sun
                        angle.  Scale the value for output. */
+                    xmus = cos (xts_arr[i] * 0.01 * DEG2RAD);
                     rotoa = (uband[i] * refl_mult) + refl_add;
                     rotoa = rotoa * MULT_FACTOR / xmus;
 
@@ -125,7 +136,7 @@ int compute_toa_refl
                     else if (rotoa > MAX_VALID)
                         sband[sband_ib][i] = MAX_VALID;
                     else
-                        sband[sband_ib][i] = (int) (rotoa + 0.5);
+                        sband[sband_ib][i] = (int) (round (rotoa));
                 }
                 else
                     sband[sband_ib][i] = FILL_VALUE;
@@ -172,7 +183,7 @@ int compute_toa_refl
                     else if (tmpf > MAX_VALID_TH)
                         sband[SR_BAND10][i] = MAX_VALID_TH;
                     else
-                        sband[SR_BAND10][i] = (int) (tmpf + 0.5);
+                        sband[SR_BAND10][i] = (int) (round (tmpf));
                 }
                 else
                     sband[SR_BAND10][i] = FILL_VALUE;
@@ -217,7 +228,7 @@ int compute_toa_refl
                     else if (tmpf > MAX_VALID_TH)
                         sband[SR_BAND11][i] = MAX_VALID_TH;
                     else
-                        sband[SR_BAND11][i] = (int) (tmpf + 0.5);
+                        sband[SR_BAND11][i] = (int) (round (tmpf));
                 }
                 else
                     sband[SR_BAND11][i] = FILL_VALUE;
@@ -267,6 +278,10 @@ Date          Programmer       Reason
                                the current pixel as water until it's proven not
                                to be water.  The land/water mask isn't exact
                                in many cases.
+5/13/2015     Gail Schmidt     Updated to use per-pixel solar zenith/azimuth
+                               and view/observation zenith/azimuth angles
+5/18/2015     Gail Schmidt     Updated the rounding to handle postitive and
+                               negative values
 
 NOTES:
 1. Initializes the variables and data arrays from the lookup table and
@@ -276,6 +291,17 @@ NOTES:
    generated (like many of the other auxiliary input tables) by running 6S and
    storing the coefficients.
 3. Aerosol retrieval is not done for pixels over water or cloudy/cirrus pixels.
+4. The solar angles from band to band are fairly stable, thus a single array of
+   per-pixel angles will be used.  The array can be from a "representative
+   band" for the reflectance bands or it can be an average of the reflectance
+   bands. The choice will be left up to the calling routine.
+5. The view/observation angles from band to band are a bit more unstable
+   (particularly the view azimuth) near nadir.  A single array of per-pixel
+   angles will still be used, however the information near nadir may be slightly
+   affected.  These single arrays really should be from a "representative
+   band" for the reflectance bands, mainly due to the fact that the angles
+   vary quite a bit from band to band.  Thus a band average won't be a good
+   selection.
 ******************************************************************************/
 int compute_sr_refl
 (
@@ -288,9 +314,14 @@ int compute_sr_refl
     int nsamps,         /* I: number of samps in reflectance, thermal bands */
     float pixsize,      /* I: pixel size for the reflectance bands */
     int16 **sband,      /* I/O: input TOA and output surface reflectance */
-    float xts,          /* I: solar zenith angle (deg) */
-    float xfs,          /* I: solar azimuth angle (deg) */
-    float xmus,         /* I: cosine of solar zenith angle */
+    short *xts_arr,     /* I: scaled solar zenith angle (deg) from a 
+                              representative band or band average */
+    short *xfs_arr,     /* I: scaled solar azimuth angle (deg) from a
+                              representative band or band average */
+    short *xtv_arr,     /* I: scaled observation zenith angle (deg) from a
+                              representative band or band average */
+    short *xfv_arr,     /* I: scaled observation azimuth angle (deg) from a
+                              representative band or band average */
     char *anglehdf,     /* I: angle HDF filename */
     char *intrefnm,     /* I: intrinsic reflectance filename */
     char *transmnm,     /* I: transmission filename */
@@ -306,6 +337,7 @@ int compute_sr_refl
     int i, j, k, l;      /* looping variable for pixels */
     int ib;              /* looping variable for input bands */
     int iband;           /* current band */
+    int center_pix;      /* pixel at the scene center (nlines/2, nsamps/2) */
     int curr_pix;        /* current pixel in 1D arrays of nlines * nsamps */
     int win_pix;         /* current pixel in the line,sample window */
     int win;             /* window around current pixel for water mask */
@@ -353,7 +385,9 @@ int compute_sr_refl
     bool hole;            /* is this a hole in the aerosol retrieval area? */
     float ros4, ros5;     /* surface reflectance for band 4 and band 5 */
     int tmp_percent;      /* current percentage for printing status */
+#ifndef _OPENMP
     int curr_tmp_percent; /* percentage for current line */
+#endif
 
     float lat, lon;       /* pixel lat, long location */
     int lcmg, scmg;       /* line/sample index for the CMG */
@@ -393,10 +427,13 @@ int compute_sr_refl
     Geo_coord_t geo;              /* coordinate in lat/long space */
 
     /* Lookup table variables */
-    float xtv;           /* observation zenith angle (deg) -- NOTE: set to 0.0
-                            and never changes */
+    float xts;           /* solar zenith angle (deg) */
+    float xfs;           /* solar azimuth angle (deg) */
+    float xtv;           /* observation zenith angle (deg) */
+    float xfv;           /* observation azimuth angle (deg) */
+    float xmus;          /* cosine of solar zenith angle */
     float xmuv;          /* cosine of observation zenith angle */
-    float xfi;           /* azimuthal difference between the sun and
+    float xfi;           /* azimuthal difference between the solar and
                             observation angle (deg) */
     float cosxfi;        /* cosine of azimuthal difference */
     float xtsstep;       /* solar zenith step value */
@@ -520,12 +557,11 @@ int compute_sr_refl
 
     /* Initialize the look up tables and atmospheric correction variables */
     retval = init_sr_refl (nlines, nsamps, input, space, anglehdf, intrefnm,
-        transmnm, spheranm, cmgdemnm, rationm, auxnm, &xtv, &xmuv, &xfi,
-        &cosxfi, &raot550nm, &pres, &uoz, &uwv, &xtsstep, &xtsmin, &xtvstep,
-        &xtvmin, tsmax, tsmin, tts, ttv, indts, rolutt, transt, sphalbt,
-        normext, nbfic, nbfi, dem, andwi, sndwi, ratiob1, ratiob2, ratiob7,
-        intratiob1, intratiob2, intratiob7, slpratiob1, slpratiob2, slpratiob7,
-        wv, oz);
+        transmnm, spheranm, cmgdemnm, rationm, auxnm, &raot550nm, &pres, &uoz,
+        &uwv, &xtsstep, &xtsmin, &xtvstep, &xtvmin, tsmax, tsmin, tts, ttv,
+        indts, rolutt, transt, sphalbt, normext, nbfic, nbfi, dem, andwi,
+        sndwi, ratiob1, ratiob2, ratiob7, intratiob1, intratiob2, intratiob7,
+        slpratiob1, slpratiob2, slpratiob7, wv, oz);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Error initializing the lookup tables and "
@@ -546,16 +582,26 @@ int compute_sr_refl
        corrections based on climatology */
     printf ("Performing atmospheric corrections for each reflectance "
         "band ...");
+    center_pix = (int) (nlines * 0.5) * nsamps + (int) (nsamps * 0.5);
     for (ib = 0; ib <= SR_BAND7; ib++)
     {
         printf (" %d ...", ib+1);
 
-/** GAIL -- stick to angles for the scene center here for initializing **/
-        /* Get the parameters for the atmospheric correction */
+        /* Get the parameters for the atmospheric correction.  Use the angles
+           from the scene center for this initialization. */
         /* rotoa is not defined for this call, which is ok, but the
            roslamb value is not valid upon output. Just set it to 0.0 to
            be consistent. */
         rotoa = 0.0;
+        xts = xts_arr[center_pix] * 0.01;
+        xmus = cos (xts * DEG2RAD);
+        xtv = xtv_arr[center_pix] * 0.01;
+        xmuv = cos (xtv * DEG2RAD);
+        xfs = xfs_arr[center_pix] * 0.01;
+        xfv = xfv_arr[center_pix] * 0.01;
+        xfi = xfs - xfv;
+xfi = 0.0;
+        cosxfi = cos (xfi * DEG2RAD);
         retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
             raot550nm, ib, pres, tpres, aot550nm, rolutt, transt, xtsstep,
             xtsmin, xtvstep, xtvmin, sphalbt, normext, tsmax, tsmin, nbfic,
@@ -620,7 +666,7 @@ int compute_sr_refl
     /* Interpolate the auxiliary data for each pixel location */
     printf ("Interpolating the auxiliary data ...\n");
     tmp_percent = 0;
-    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
+    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, xts, xmus, xtv, xmuv, xfs, xfv, xfi, cosxfi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
     for (i = 0; i < nlines; i++)
     {
 #ifndef _OPENMP
@@ -836,8 +882,17 @@ int compute_sr_refl
                     }
                 }
        
-/** GAIL -- which angles should be used?  scene center or which band?  Do
-    we need the angles for the bands passed in (i.e. bands 1 and 4)? **/
+                /* Set up the per-pixel angles for the current pixel */
+                xts = xts_arr[curr_pix] * 0.01;
+                xmus = cos (xts * DEG2RAD);
+                xtv = xtv_arr[curr_pix] * 0.01;
+                xmuv = cos (xtv * DEG2RAD);
+                xfs = xfs_arr[curr_pix] * 0.01;
+                xfv = xfv_arr[curr_pix] * 0.01;
+                xfi = xfs - xfv;
+xfi = 0.0;
+                cosxfi = cos (xfi * DEG2RAD);
+
                 /* Retrieve the aerosol information */
                 iband1 = DN_BAND4;
                 iband3 = DN_BAND1;
@@ -864,8 +919,6 @@ int compute_sr_refl
                     iband = DN_BAND5;
                     rotoa = aerob5[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
-/** GAIL -- which angles should be used?  scene center or which band?  Do
-    we need the angle for the band passed in (i.e. band 5)? **/
                     retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
                         raot550nm, iband, pres, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
@@ -887,8 +940,6 @@ int compute_sr_refl
                     iband = DN_BAND4;
                     rotoa = aerob4[curr_pix] * SCALE_FACTOR;
                     raot550nm = raot;
-/** GAIL -- which angles should be used?  scene center or which band?  Do
-    we need the angle for the band passed in (i.e. band 5)? **/
                     retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
                         raot550nm, iband, pres, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
@@ -932,12 +983,13 @@ int compute_sr_refl
     fflush (stdout);
 #endif
 
-    /* Done with the aerob* arrays */
+    /* Done with the aerob* arrays and land/water mask */
     free (aerob1);  aerob1 = NULL;
     free (aerob2);  aerob2 = NULL;
     free (aerob4);  aerob4 = NULL;
     free (aerob5);  aerob5 = NULL;
     free (aerob7);  aerob7 = NULL;
+    free (lw_mask); lw_mask = NULL;
 
     /* Done with the DEM array */
     for (i = 0; i < DEM_NBLAT; i++)
@@ -1044,10 +1096,6 @@ int compute_sr_refl
 
     /* Compute the cloud shadow */
     printf ("Determining cloud shadow ...\n");
-/** GAIL -- facl and fack will need to be calculated within the nsamps loop, since the solar angles will be dependent upon the pixel **/
-    facl = cosf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* lines */
-    fack = sinf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* samps */
-//    #pragma omp parallel for private (i, j, curr_pix, tcloud, cldh, cldhmin, cldhmax, mband5, mband5k, mband5l, icldh, k, l, win_pix)
     for (i = 0; i < nlines; i++)
     {
         curr_pix = i * nsamps;
@@ -1067,6 +1115,14 @@ int compute_sr_refl
                 mband5l = -9999;
                 if (cldhmin < 0)
                     cldhmin = 0.0;
+
+                /* Compute the line and sample factors based on the solar
+                   angles for the current pixel */
+                xts = xts_arr[curr_pix] * 0.01;
+                xfs = xfs_arr[curr_pix] * 0.01;
+                facl = cosf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;
+                fack = sinf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;
+
                 for (icldh = cldhmin * 0.1; icldh <= cldhmax * 0.1; icldh++)
                 {
                     cldh = icldh * 10.0;
@@ -1270,7 +1326,7 @@ fclose (tmpfile);
     for (ib = 0; ib <= DN_BAND7; ib++)
     {
         printf ("  Band %d\n", ib+1);
-        #pragma omp parallel for private (i, rsurf, rotoa, raot550nm, pres, uwv, uoz, retval, roslamb, tgo, roatm, ttatmg, satm, xrorayp, next)
+        #pragma omp parallel for private (i, rsurf, rotoa, raot550nm, pres, uwv, uoz, xts, xmus, xtv, xmuv, xfs, xfv, xfi, cosxfi, retval, roslamb, tgo, roatm, ttatmg, satm, xrorayp, next)
         for (i = 0; i < nlines * nsamps; i++)
         {
             /* If this pixel is fill, then don't process. Otherwise the
@@ -1290,6 +1346,18 @@ fclose (tmpfile);
                     pres = tp[i];
                     uwv = twvi[i];
                     uoz = tozi[i];
+
+                    /* Set up the per-pixel angles for the current pixel */
+                    xts = xts_arr[i] * 0.01;
+                    xmus = cos (xts * DEG2RAD);
+                    xtv = xtv_arr[i] * 0.01;
+                    xmuv = cos (xtv * DEG2RAD);
+                    xfs = xfs_arr[i] * 0.01;
+                    xfv = xfv_arr[i] * 0.01;
+                    xfi = xfs - xfv;
+xfi = 0.0;
+                    cosxfi = cos (xfi * DEG2RAD);
+
                     retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi, cosxfi,
                         raot550nm, ib, pres, tpres, aot550nm, rolutt,
                         transt, xtsstep, xtsmin, xtvstep, xtvmin, sphalbt,
@@ -1361,7 +1429,7 @@ fclose (tmpfile);
                     else if (roslamb > MAX_VALID)
                         sband[ib][i] = MAX_VALID;
                     else
-                        sband[ib][i] = (int) roslamb;
+                        sband[ib][i] = (int) (round (roslamb));
                 }  /* end if */
             }  /* end if qaband */
         }  /* end for i */
@@ -1580,6 +1648,8 @@ Date          Programmer       Reason
 ----------    ---------------  -------------------------------------
 12/15/2014    Gail Schmidt     Broke the source code into a function to
                                modularize the source code in the main routine
+5/13/2015     Gail Schmidt     View angle is no longer hard-coded to 0.0 so
+                               no need to initialize the xtv or xfi angles
 
 NOTES:
 1. The view angle is set to 0.0 and this never changes.
@@ -1598,11 +1668,6 @@ int init_sr_refl
     char *cmgdemnm,     /* I: climate modeling grid DEM filename */
     char *rationm,      /* I: ratio averages filename */
     char *auxnm,        /* I: auxiliary filename for ozone and water vapor */
-    float *xtv,         /* O: observation zenith angle (deg) */
-    float *xmuv,        /* O: cosine of observation zenith angle */
-    float *xfi,         /* O: azimuthal difference between sun and
-                              observation (deg) */
-    float *cosxfi,      /* O: cosine of azimuthal difference */
     float *raot550nm,   /* O: nearest value of AOT */
     float *pres,        /* O: surface pressure */
     float *uoz,         /* O: total column ozone */
@@ -1654,10 +1719,6 @@ int init_sr_refl
     float center_lat, center_lon; /* lat/long for scene center */
 
     /* Initialize the look up tables */
-    *xtv = 0.0;
-    *xmuv = cos (*xtv * DEG2RAD);
-    *xfi = 0.0;
-    *cosxfi = cos (*xfi * DEG2RAD);
     *xtsmin = 0;
     *xtsstep = 4.0;
     *xtvmin = 2.84090;
