@@ -5,8 +5,7 @@
 # Set up compile options
 CC = gcc
 RM = rm -f
-//EXTRA = -Wall -O2
-EXTRA = -Wall -g
+EXTRA = -Wall -O2
 
 # Define the include files
 INC = combine_l8_aux_data.h
@@ -36,9 +35,9 @@ combine_l8_aux_data: $(OBJ) $(INC)
 	$(CC) $(EXTRA) -o $(EXE) $(OBJ) $(LOADLIB)
 
 install:
-	install -d $(BIN)
-	install -m 755 $(EXE) $(BIN)
-	install -m 755 ../scripts/*.py $(BIN)
+	install -d $(PREFIX)/bin
+	install -m 755 $(EXE) $(PREFIX)/bin
+	install -m 755 ../scripts/*.py $(PREFIX)/bin
 
 clean:
 	$(RM) *.o $(EXE)
