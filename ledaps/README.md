@@ -24,36 +24,36 @@ See git tag [ledaps-version_2.3.0]
     tar -xvzf ledaps_aux.1978-2014.tar.gz
 ```
 
-  * Download (from Github USGS-EROS surface-reflectance project) and install source files. The following build will create a list of executable files under $PREFIX/bin (tested in Linux with the gcc and gfortran compiler). It will also copy various scripts from the scripts directory up the the $PREFIX/bin directory.
-```
-cd ledaps\ledapsSrc\src
-make
-make install
-make clean
-
-cd ledaps\ledapsAncSrc
-make
-make install
-make clean
-```
-
   * Setup the environment variables for the auxiliary files
 ```
-export LEDAPS_AUX_DIR="directory_saved_auxiliary_files"
-(or in c shell use 
-setenv LEDAPS_AUX_DIR "directory_saved_auxiliary_files")
+    export LEDAPS_AUX_DIR="directory_saved_auxiliary_files"
+    (or in c shell use 
+    setenv LEDAPS_AUX_DIR "directory_saved_auxiliary_files")
 ```
 
-  * Test - Download Landsat Level 1 files.  Run the do\_ledaps Python script in the LEDAPS bin directory to run the applications.  Use do\_ledaps.py --help for the usage information.  This script requires that your LEDAPS binaries are in your $PATH or that you have a $BIB environment variable set up to point to the LEDAPS bin directory.
+  * Download (from Github USGS-EROS surface-reflectance project) and install source files. The following build will create a list of executable files under $PREFIX/bin (tested in Linux with the gcc and gfortran compiler). It will also copy various scripts from the scripts directory up the the $PREFIX/bin directory.
 ```
-convert_lpgs_to_espa --mtl <Landsat_MTL_file> --xml <Landsat_ESPA_XML_file>
-do_ledaps.py --xml <Landsat_ESPA_XML_file>
+    cd ledaps\ledapsSrc\src
+    make
+    make install
+    make clean
+
+    cd ledaps\ledapsAncSrc
+    make
+    make install
+    make clean
+```
+
+  * Test - Download Landsat Level 1 files.  Run the do\_ledaps Python script in the LEDAPS bin directory to run the applications.  Use do\_ledaps.py --help for the usage information.  This script requires that your LEDAPS binaries are in your $PATH or that you have a $BIN environment variable set up to point to the LEDAPS bin directory.
+```
+    convert_lpgs_to_espa --mtl <Landsat_MTL_file> --xml <Landsat_ESPA_XML_file>
+    do_ledaps.py --xml <Landsat_ESPA_XML_file>
 ```
 
   * Check output
 ```
-{scene_name}_toa_*: top-of-atmosphere (TOA) reflectance in internal ESPA file format (brightness temperatures are _toa_band6*)
-{scene_name}_sr_*: surface reflectance in internal ESPA file format
+    {scene_name}_toa_*: top-of-atmosphere (TOA) reflectance in internal ESPA file format (brightness temperatures are _toa_band6*)
+    {scene_name}_sr_*: surface reflectance in internal ESPA file format
 ```
 
 ### Dependencies
@@ -61,8 +61,8 @@ do_ledaps.py --xml <Landsat_ESPA_XML_file>
   * XML2 library
   * Auxiliary data products
     1. NCEP water vapor data
-    1. TOMS ozone data
-    1. CMGDEM HDF file
+    2. TOMS ozone data
+    3. CMGDEM HDF file
 
 ### Auxiliary Data Updates
 This baseline auxiliary files provided are good into 2014.  In order to update the auxiliary files to the most recent day of year (actually the most current auxiliary files available will be 2-3 days prior to the current day of year do to the latency of the underlying NCEP and TOMS products) the user will want to run the updatencep.py and updatetoms.py scripts available in $PREFIX/bin.  Both scripts can be run with the "--help" argument to print the usage information for each script.  In general the --quarterly argument will reprocess/update all the NCEP/TOMS data back to 1978.  This is good to do every once in a while to make sure any updates to the NCEP or TOMS data products are captured.  The --today command-line argument will process the NCEP/TOMS data for the most recent year.  In general, it is suggested to run the scripts with --quarterly once a quarter.  Then run the scripts with --today on a nightly basis.  This should provide an up-to-date version of the auxiliary input data for LEDAPS.  The easiest way to accomplish this is to set up a nightly and quarterly cron job.
