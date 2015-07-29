@@ -63,6 +63,45 @@ See git tag [l8_sr-version_0.3.0]
 ### Auxiliary Data Updates
 The baseline auxiliary files provided don't include the daily climate data.  In order to generate or update the auxiliary files to the most recent day of year (actually the most current auxiliary files available will be 2-3 days prior to the current day of year do to the latency of the underlying LADS products) the user will want to run the updatelads.py script available in $PREFIX/bin.  This script can be run with the "--help" argument to print the usage information.  In general the --quarterly argument will reprocess/update all the LADS data back to 2013.  This is good to do every once in a while to make sure any updates to the LADS data products are captured.  The --today command-line argument will process the LADS data for the most recent year.  In general, it is suggested to run the script with --quarterly once a quarter.  Then run the script with --today on a nightly basis.  This should provide an up-to-date version of the auxiliary input data for L8SR.  The easiest way to accomplish this is to set up a nightly and quarterly cron job.
 
+The updatelads script requires a username/password to access the ladssci.nascom.nasa.gov FTP site.  The user will need to contact NASA to obtain a username/password for this FTP access.  updatelads is currently set up to access ESPA_XMLRPC to obtain the ESPA LADS username/password.  That access will need to be commented out by the user and the user's specific username/password needs to be specified in the script for the username/password.
+
+The following code snippet is how best to handle the updatelads modification.  The __init__ method in updatelads.py should look like the following, and then you will need to put your own LADS username and password in where it says {put your username/password here}.
+
+```
+    def __init__(self):
+        # determine the auxiliary directory to store the data
+##        xmlrpc = os.environ.get('ESPA_XMLRPC')
+##        if xmlrpc is None:
+##            msg = "ESPA_XMLRPC environment variable not set... exiting"
+##            logger.error(msg)
+##            return ERROR
+##
+##        # get the LADS username and password
+##        try:
+##            server = xmlrpclib.ServerProxy(xmlrpc)
+##            self.user = server.get_configuration('ladsftp.username')
+##            self.password = server.get_configuration('ladsftp.password')
+##        except xmlrpclib.ProtocolError, e:
+##            msg = "Error connecting to XMLRPC service to fetch credentials: " 
+\               
+##                "%s" % e
+##            logger.error(msg)
+##            return ERROR
+        self.user = {put your username here}
+        self.password = {put your password here}
+        print "LADSFTP username: " + self.user
+        print "LADSFTP password: " + self.password
+
+        # verify that the XMLRPC service returned valid information and
+        # the username and password were set in the configuration
+##        if len(self.user) <= 0 or len(self.password) <= 0:
+##            msg = "Received invalid sized credentials for LADS FTP from " \
+##                "XMLRPC service. Make sure ladsftp.username and " \
+##                "ladsftp.password are set in the ESPA_XMLRPC."
+##            logger.error(msg)
+##            return ERROR
+```
+
 ### Data Preprocessing
 This version of the L8SR application requires the input Landsat products to be in the ESPA internal file format.  After compiling the product formatter raw\_binary libraries and tools, the convert\_lpgs\_to\_espa command-line tool can be used to create the ESPA internal file format for input to the L8SR application.
 
