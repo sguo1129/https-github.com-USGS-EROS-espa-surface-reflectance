@@ -2,6 +2,8 @@
 
 ############################################################################
 # Original development on 9/2/2014 by Gail Schmidt, USGS EROS
+# Updated on 9/9/2015 by Gail Schmidt, USGS EROS
+#   Modified the wget calls to retry up to 5 times if the download fails.
 ############################################################################
 import sys
 import os
@@ -206,7 +208,20 @@ def downloadLads (year, doy, destination):
         msg = "Retrieving %s to %s" % (url, destination)
         logger.info(msg)
         cmd = 'wget --tries=5 %s' % url
-        subprocess.call(cmd, shell=True, cwd=destination)
+        retval = subprocess.call(cmd, shell=True, cwd=destination)
+
+        # make sure the wget was successful or retry up to 5 more times and
+        # sleep in between
+        if retval:
+            retry_count = 1
+            while ((retry_count <= 5) and (retval)):
+                time.sleep(60)
+                print "Retry %d of wget for %s" % (retry_count, url)
+                subprocess.call(cmd, shell=True, cwd=destination)
+                retry_count += 1
+
+            if retval:
+                print "Unsuccessful download of %s (retried 5 times)" % url
 
     return SUCCESS
 

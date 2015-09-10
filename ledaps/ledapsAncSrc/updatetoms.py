@@ -405,7 +405,6 @@ def downloadToms (year, destination):
     
             if retval:
                 print "unsuccessful download of %s (retried 5 times)" % ds.url
-                return ERROR
 
     return SUCCESS
 

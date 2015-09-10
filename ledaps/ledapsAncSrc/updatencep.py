@@ -291,7 +291,6 @@ def downloadNcep (sourcefilename, destination):
 
         if retval:
             print "unsuccessful download of %s (retried 5 times)" % url
-            return ERROR
 
     print "successful download of %s to %s" % (url, destination)
     return SUCCESS
