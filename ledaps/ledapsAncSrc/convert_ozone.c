@@ -26,6 +26,9 @@ int read_ozone(char* fname, short int** data, int* doy, int* year, int* nlats,
  *   file, but the actual latitude values are not being written to
  *   correctly reflect this.  A fix has been made.
  *
+ *   Modified on 9/10/2015 by Gail Schmidt, USGS LSRD Project
+ *   The longitude values have been changed to be every degree versus
+ *   every 1.25 degrees.
  ********************************************************************/
 
 int main(int argc,char **argv) {
@@ -76,10 +79,10 @@ int main(int argc,char **argv) {
                       &maxlon, &latsteps, &lonsteps, lat_array, lon_array);
 
   if ( nlats!=180 || fabs(minlat+ 89.500)>0.0001 || fabs(maxlat- 89.500)>0.0001 || 
-       nlons!=288 || fabs(minlon+179.375)>0.0001 || fabs(maxlon-179.375)>0.0001 ||
-       fabs(latsteps-1.0)>0.0001 || fabs(lonsteps-1.25)>0.0001 )printf(
-   "*** unexpected values ***\n nlats=%d nlons=%d minlat=%f maxlat=%f minlon=%f maxlon=%f\n"
-   ,nlats,nlons,minlat,maxlat,minlon,maxlon);
+       nlons!=360 || fabs(minlon+179.5)>0.0001 || fabs(maxlon-179.5)>0.0001 ||
+       fabs(latsteps-1.0)>0.0001 || fabs(lonsteps-1.0)>0.0001 )printf(
+   "*** unexpected values ***\n nlats=%d nlons=%d minlat=%f maxlat=%f minlon=%f maxlon=%f latsteps=%f lonsteps=%f\n"
+   ,nlats,nlons,minlat,maxlat,minlon,maxlon,latsteps,lonsteps);
 
 
 
