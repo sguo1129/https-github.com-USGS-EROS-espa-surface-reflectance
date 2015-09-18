@@ -56,18 +56,18 @@ See git tag [l8_sr-version_0.3.0]
   * ESPA raw binary and ESPA common libraries from ESPA product formatter and associated dependencies
   * XML2 library
   * Auxiliary data products
-    1. LADS Terra and Aqua CMG and CMA data
+    1. LAADS Terra and Aqua CMG and CMA data
     2. CMGDEM HDF file
     3. Various input files and model information provided with the L8SR auxiliary .tar.gz file
 
 ### Auxiliary Data Updates
-The baseline auxiliary files provided don't include the daily climate data.  In order to generate or update the auxiliary files to the most recent day of year (actually the most current auxiliary files available will be 2-3 days prior to the current day of year do to the latency of the underlying LADS products) the user will want to run the updatelads.py script available in $PREFIX/bin.  This script can be run with the "--help" argument to print the usage information.  In general the --quarterly argument will reprocess/update all the LADS data back to 2013.  This is good to do every once in a while to make sure any updates to the LADS data products are captured.  The --today command-line argument will process the LADS data for the most recent year.  In general, it is suggested to run the script with --quarterly once a quarter.  Then run the script with --today on a nightly basis.  This should provide an up-to-date version of the auxiliary input data for L8SR.  The easiest way to accomplish this is to set up a nightly and quarterly cron job.
+The baseline auxiliary files provided don't include the daily climate data.  In order to generate or update the auxiliary files to the most recent day of year (actually the most current auxiliary files available will be 2-3 days prior to the current day of year do to the latency of the underlying LAADS products) the user will want to run the updatelads.py script available in $PREFIX/bin.  This script can be run with the "--help" argument to print the usage information.  In general the --quarterly argument will reprocess/update all the LAADS data back to 2013.  This is good to do every once in a while to make sure any updates to the LAADS data products are captured.  The --today command-line argument will process the LAADS data for the most recent year.  In general, it is suggested to run the script with --quarterly once a quarter.  Then run the script with --today on a nightly basis.  This should provide an up-to-date version of the auxiliary input data for L8SR.  The easiest way to accomplish this is to set up a nightly and quarterly cron job.
 
 The updatelads script requires a username/password to access the ladssci.nascom.nasa.gov FTP site.  The user will need to contact NASA Contractor/Scientist Sadashiva Devadiga <sadashiva.devadiga-1@nasa.gov> to obtain a username/password for the LAADS FTP site.  In your email explain that you will be using this ftp access to obtain LAADS data for processing Landsat 8 products using the L8SR application provided by the USGS EROS.
 
-updatelads is currently set up to access ESPA_XMLRPC to obtain the ESPA LADS username/password.  That access will need to be commented out by the user and the user's specific username/password needs to be specified in the script for the username/password.
+updatelads is currently set up to access ESPA_XMLRPC to obtain the ESPA LAADS username/password.  That access will need to be commented out by the user and the user's specific username/password needs to be specified in the script for the username/password.
 
-The following code snippet is how best to handle the updatelads modification.  The __init__ method in updatelads.py should look like the following, and then you will need to put your own LADS username and password in where it says {put your username/password here}.
+The following code snippet is how best to handle the updatelads modification.  The __init__ method in updatelads.py should look like the following, and then you will need to put your own LAADS username and password in where it says {put your username/password here}.
 
 ```
     def __init__(self):
@@ -78,7 +78,7 @@ The following code snippet is how best to handle the updatelads modification.  T
 ##            logger.error(msg)
 ##            return ERROR
 ##
-##        # get the LADS username and password
+##        # get the LAADS username and password
 ##        try:
 ##            server = xmlrpclib.ServerProxy(xmlrpc)
 ##            self.user = server.get_configuration('ladsftp.username')
@@ -91,13 +91,13 @@ The following code snippet is how best to handle the updatelads modification.  T
 ##            return ERROR
         self.user = {put your username here}
         self.password = {put your password here}
-        print "LADSFTP username: " + self.user
-        print "LADSFTP password: " + self.password
+        print "LAADS FTP username: " + self.user
+        print "LAADS FTP password: " + self.password
 
         # verify that the XMLRPC service returned valid information and
         # the username and password were set in the configuration
 ##        if len(self.user) <= 0 or len(self.password) <= 0:
-##            msg = "Received invalid sized credentials for LADS FTP from " \
+##            msg = "Received invalid sized credentials for LAADS FTP from " \
 ##                "XMLRPC service. Make sure ladsftp.username and " \
 ##                "ladsftp.password are set in the ESPA_XMLRPC."
 ##            logger.error(msg)
