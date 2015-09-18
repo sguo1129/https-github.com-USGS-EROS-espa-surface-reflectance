@@ -1,5 +1,5 @@
-## L8SR Version 0.3.0 Release Notes
-Release Date: May 27, 2015
+## L8SR Version 0.3.1 Release Notes
+Release Date: September 23, 2015
 
 ### Downloads
 L8SR source code
@@ -10,7 +10,7 @@ L8SR auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [l8_sr-version_0.3.0]
+See git tag [l8_sr-version_0.3.1]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -117,8 +117,8 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Changes From Previous Version
-#### Updates on May 27, 2015 - USGS EROS
-  1. Added OpenMP pragmas to the reflectance calculations.  The Makefiles, by default, do not compile with -fopenmp.  However, if the “EXTRA” flags have -fopenmp added, then the code will be built using multi-threading.  Currently the code uses the default number of threads available, as identified by OpenMP.  Running with 40 cores on scp41 has brought processing of one scene down to within 2 minutes. Obviously the speedup is dependent upon the number of cores available on the system.
-  2. Updated to utilize the static land/water mask.  This is only used for computing the surface reflectance.  Thus it will not be use for OLI-only scenes.
-  3. Updated the TOA reflectance and BT computations to use the radiance/reflectance/thermal constants and earth-sun distance from the XML file.
-  4. Updated to install in $PREFIX/bin vs. $BIN
+#### Updates on September 23, 2015 - USGS EROS
+  1. Fixed a bug accessing the 9x9 window in the land/water mask array. We were accessing invalid memory if the window was on the edges of the scene.
+  2. Fixed a bug accessing the CMG arrays for line+1 and sample+1.  We were accessing invalid memory if the scene was at the right or bottom edge of the CMG array.
+  3. Modified the update auxiliary files script (updatelads.py) to retry the file download in the event the wget fails.  Cleaned up a few logger issues in this script as well.
+
