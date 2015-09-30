@@ -43,6 +43,7 @@ See git tag [l8_sr-version_0.3.1]
   * Test - Download Landsat Level 1 files.  Run the do\_l8\_sr Python script in the PREFIX bin directory to run the applications.  Use do\_l8\_sr.py --help for the usage information.  This script requires that your L8SR binaries are in your $PATH or that you have a $BIN environment variable set up to point to the PREFIX bin directory.
 ```
     convert_lpgs_to_espa --mtl <Landsat_MTL_file> --xml <Landsat_ESPA_XML_file>
+    create_land_water_mask --xml <Landsat_ESPA_XML_file>
     do_l8_sr.py --xml <Landsat_ESPA_XML_file>
 ```
 
