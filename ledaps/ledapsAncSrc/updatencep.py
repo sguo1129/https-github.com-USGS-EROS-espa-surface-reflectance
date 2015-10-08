@@ -25,7 +25,7 @@ import logging
 # Global static variables
 ERROR = 1
 SUCCESS = 0
-START_YEAR = 1978 
+START_YEAR = 1978
 
 ############################################################################
 # Description: isLeapYear will determine if the specified year is a leap
