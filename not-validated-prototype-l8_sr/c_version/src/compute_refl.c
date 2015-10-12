@@ -365,6 +365,7 @@ int compute_sr_refl
 
     float lat, lon;       /* pixel lat, long location */
     int lcmg, scmg;       /* line/sample index for the CMG */
+    int lcmg1, scmg1;     /* line+1/sample+1 index for the CMG */
     float u, v;           /* line/sample index for the CMG */
     float th1, th2;       /* values for NDWI calculations */
     float xcmg, ycmg;     /* x/y location for CMG */
@@ -627,7 +628,7 @@ int compute_sr_refl
     /* Interpolate the auxiliary data for each pixel location */
     printf ("Interpolating the auxiliary data ...\n");
     tmp_percent = 0;
-    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
+    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
     for (i = 0; i < nlines; i++)
     {
 #ifndef _OPENMP
@@ -671,47 +672,67 @@ int compute_sr_refl
                pixel. Note, we are basically making sure the line/sample
                combination falls within -90, 90 and -180, 180 global climate
                data boundaries.  However, the source code below uses lcmg+1
-               and scmg+1.  Thus we need to stop one line/samp short in the CMG
-               data so we don't access an invalid portion of the CMG data
-               arrays. */
+               and scmg+1, which for some scenes may wrap around the dateline
+               or the poles.  Thus we need to wrap the CMG data around to the
+               beginning of the array. */
+            /* Each CMG pixel is 0.05 x 0.05 degrees.  Use the center of the
+               pixel for each calculation. */
             ycmg = (89.975 - lat) * 20.0;   /* vs / 0.05 */
             xcmg = (179.975 + lon) * 20.0;  /* vs / 0.05 */
             lcmg = (int) (ycmg);
             scmg = (int) (xcmg);
-            if ((lcmg < 0 || lcmg >= CMG_NBLAT-1) ||
-                (scmg < 0 || scmg >= CMG_NBLON-1))
+            if ((lcmg < 0 || lcmg >= CMG_NBLAT) ||
+                (scmg < 0 || scmg >= CMG_NBLON))
             {
                 sprintf (errmsg, "Invalid line/sample combination for the "
                     "CMG-related lookup tables - line %d, sample %d "
                     "(0-based). CMG-based tables are %d lines x %d "
-                    "samples. We need to stop one line and sample short of "
-                    "the CMG data to make sure we access value memory within "
-                    "the CMG data arrays.", lcmg, scmg, CMG_NBLAT, CMG_NBLON);
+                    "samples.", lcmg, scmg, CMG_NBLAT, CMG_NBLON);
                 error_handler (true, FUNC_NAME, errmsg);
                 exit (ERROR);
             }
 
+            /* If the current CMG pixel is at the edge of the CMG array,
+               then allow the next pixel for interpolation to wrap around
+               the array */
+            if (scmg >= CMG_NBLON-1)  /* 180 degrees so wrap around */
+                scmg1 = 0;
+            else
+                scmg1 = scmg + 1;
+
+            if (lcmg >= CMG_NBLAT-1)  /* -90 degrees so wrap around */
+                lcmg1 = 0;
+            else
+                lcmg1 = lcmg + 1;
+
+            /* Determine the fractional difference between the integer location
+               and floating point pixel location */
             u = (ycmg - lcmg);
             v = (xcmg - scmg);
+
+            /* Interpolate water vapor.  If the water vapor value is fill (=0),
+               then use it as-is. */
             twvi[curr_pix] = wv[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
-                             wv[lcmg][scmg+1] * (1.0 - u) * v +
-                             wv[lcmg+1][scmg] * u * (1.0 - v) +
-                             wv[lcmg+1][scmg+1] * u * v;
+                             wv[lcmg][scmg1] * (1.0 - u) * v +
+                             wv[lcmg1][scmg] * u * (1.0 - v) +
+                             wv[lcmg1][scmg1] * u * v;
             twvi[curr_pix] = twvi[curr_pix] * 0.01;   /* vs / 100 */
 
+            /* Interpolate ozone.  If the ozone value is fill (=0), then use a
+               default value of 120. */
             uoz11 = oz[lcmg][scmg];
             if (uoz11 == 0)
                 uoz11 = 120;
 
-            uoz12 = oz[lcmg][scmg+1];
+            uoz12 = oz[lcmg][scmg1];
             if (uoz12 == 0)
                 uoz12 = 120;
 
-            uoz21 = oz[lcmg+1][scmg];
+            uoz21 = oz[lcmg1][scmg];
             if (uoz21 == 0)
                 uoz21 = 120;
 
-            uoz22 = oz[lcmg+1][scmg+1];
+            uoz22 = oz[lcmg1][scmg1];
             if (uoz22 == 0)
                 uoz22 = 120;
 
@@ -756,24 +777,25 @@ int compute_sr_refl
             }
 
             /* Get the surface pressure from the global DEM.  Set to 1013.0
-               (sea level) if the DEM is fill (likely ocean). */
+               (sea level) if the DEM is fill (= -9999), which is likely
+               ocean. */
             if (dem[lcmg][scmg] != -9999)
                 pres11 = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
             else
                 pres11 = 1013.0;
 
-            if (dem[lcmg][scmg+1] != -9999)
-                pres12 = 1013.0 * exp (-dem[lcmg][scmg+1] * ONE_DIV_8500);
+            if (dem[lcmg][scmg1] != -9999)
+                pres12 = 1013.0 * exp (-dem[lcmg][scmg1] * ONE_DIV_8500);
             else
                 pres12 = 1013.0;
 
-            if (dem[lcmg+1][scmg] != -9999)
-                pres21 = 1013.0 * exp (-dem[lcmg+1][scmg] * ONE_DIV_8500);
+            if (dem[lcmg1][scmg] != -9999)
+                pres21 = 1013.0 * exp (-dem[lcmg1][scmg] * ONE_DIV_8500);
             else
                 pres21 = 1013.0;
 
-            if (dem[lcmg+1][scmg+1] != -9999)
-                pres22 = 1013.0 * exp (-dem[lcmg+1][scmg+1] * ONE_DIV_8500);
+            if (dem[lcmg1][scmg1] != -9999)
+                pres22 = 1013.0 * exp (-dem[lcmg1][scmg1] * ONE_DIV_8500);
             else
                 pres22 = 1013.0;
 

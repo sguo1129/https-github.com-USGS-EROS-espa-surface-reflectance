@@ -59,8 +59,6 @@ class DatasourceResolver:
                 "%s" % e
             logger.error(msg)
             return None
-        print "LADSFTP username: " + self.user
-        print "LADSFTP password: " + self.password
 
         # verify that the XMLRPC service returned valid information and
         # the username and password were set in the configuration
@@ -71,6 +69,8 @@ class DatasourceResolver:
             logger.error(msg)
             return None
 
+        print "LADSFTP username: " + self.user
+        print "LADSFTP password: " + self.password
 
     #######################################################################
     # Description: buildURL builds the URLs for the Terra and Aqua CMG and

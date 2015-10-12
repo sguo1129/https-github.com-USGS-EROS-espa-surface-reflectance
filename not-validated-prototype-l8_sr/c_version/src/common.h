@@ -37,6 +37,8 @@ typedef char byte;
 #define NBAND_QA_OUT 1
 #define NBAND_TTL_OUT (NBAND_REFL_OUT + NBAND_THM_OUT + NBAND_PAN_OUT + NBAND_QA_OUT)
 
+/* CMG and DEM files are lat/long images where each pixel represents 0.05 deg x
+   0.05 deg */
 /* DEM information */
 #define DEM_NBLAT 3600
 #define DEM_NBLON 7200
@@ -104,7 +106,7 @@ typedef struct {
 } Img_coord_info_t;
 
 /* Surface reflectance version */
-#define SR_VERSION "0.3.1"
+#define SR_VERSION "0.3.2"
 
 /* How many lines of data should be processed at one time */
 #define PROC_NLINES 1000
