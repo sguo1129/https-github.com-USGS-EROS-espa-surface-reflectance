@@ -207,7 +207,9 @@ class Ledaps():
                                     " True or False (default is True) "
                                     " If False, then processing will halt"
                                     " after the TOA reflectance products are"
-                                    " complete."))
+                                    " complete. (Note: scenes with solar"
+                                    " zenith angles above 76 degrees should"
+                                    " use process_sr=False)"))
             parser.add_option("--usebin",
                               dest="usebin", default=False,
                               action="store_true",

@@ -34,6 +34,12 @@
   scale factor or add offset versus the previous version which was int16
   with a scale factor and add offset.  The underlying NCEP variables have
   changed, as delivered from NOAA/NCEP.
+
+  Modified on 10/14/2015 by Gail Schmidt, USGS/EROS
+  Flagged scenes with a solar zenith angle above 76 degrees as not able to
+  process through to surface reflectance.  These scenes can be processed
+  to TOA and BT, however surface reflectance results for these low solar
+  elevation angles are not reliable.
 **************************************************************************/
 
 #include <stdio.h>
@@ -254,6 +260,18 @@ int main (int argc, const char **argv) {
 
   if (param->num_prwv_files > 0  && param->num_ncep_files > 0) {
      EXIT_ERROR("both PRWV and PRWV_FIL files specified", "main");
+  }
+
+  /* The surface reflectance algorithm cannot be implemented for solar
+     zenith angles greater than 76 degrees.  Need to flag if the current
+     scene falls into that category. */
+printf ("DEBUG: solar zenith angle: %f\n", input->meta.sun_zen * DEG);
+  if (input->meta.sun_zen * DEG > 76.0) {
+    EXIT_ERROR ("Solar zenith angle is too large to allow for surface "
+        "reflectance processing.  Corrections must be limited to top of "
+        "atmosphere and at-sensor brightness temperature corrections. "
+        "Use the --process_sr=False command-line argument when running "
+        "do_ledaps.py (solar zenith angle out of range)", "main");
   }
 
   /* Open prwv input file */
