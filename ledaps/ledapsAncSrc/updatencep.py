@@ -198,13 +198,13 @@ def executeNcep (fullinputpath, outputdir, year, clean):
         print(output)  # TODO:Should this be info message or print()?
         exit_code = status >> 8
         if exit_code == 157:  # return value of -99 (2s complement of 157)
-            logger.error('ERROR: Input file for year {0}, DOY {1} is not'
+            logger.error('Input file for year {0}, DOY {1} is not'
                          ' readable.  Stop processing since this same file is'
                          ' used for all days in the current year.'
                          .format(year, doy))
             return ERROR
         elif exit_code != 0:
-            logger.warn('WARNING: error running ncep for year {0}, DOY {1}.  '
+            logger.warn('error running ncep for year {0}, DOY {1}.  '
                         'Processing will continue ...'.format(year, doy))
             if os.path.isfile(fulloutputpath):
                 os.remove(fulloutputpath)
@@ -388,7 +388,7 @@ def main ():
         logger.info('Processing year: {0}'.format(yr))
         status = getNcepData(ancdir, yr)
         if status == ERROR:
-            logger.warn('WARNING: Problems occurred while processing NCEP'
+            logger.warn('Problems occurred while processing NCEP'
                         ' data for year {0}.  Processing will continue.'
                         .format(yr))
 

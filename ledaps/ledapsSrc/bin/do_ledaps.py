@@ -255,7 +255,7 @@ class Ledaps():
 
         # make sure the XML file exists
         if not os.path.isfile(xmlfile):
-            logger.error('Error: XML file does not exist or is not accessible'
+            logger.error('XML file does not exist or is not accessible'
                          ': {0}'.format(xmlfile))
             return ERROR
 
@@ -285,7 +285,7 @@ class Ledaps():
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
         cmdstr = "%slndpm %s" % (bin_dir, base_xmlfile)
-        logger.debug('DEBUG: lndpm command: {0}'.format(cmdstr))
+        logger.debug('lndpm command: {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
         logger.info(output)
         exit_code = status >> 8
@@ -295,7 +295,7 @@ class Ledaps():
             return ERROR
 
         cmdstr = "%slndcal lndcal.%s.txt" % (bin_dir, xml)
-        logger.debug('DEBUG: lndcal command: {0}'.format(cmdstr))
+        logger.debug('lndcal command: {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
         logger.info(output)
         exit_code = status >> 8
@@ -306,7 +306,7 @@ class Ledaps():
 
         if process_sr == "True":
             cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, xml)
-            logger.debug('DEBUG: lndsr command: {0}'.format(cmdstr))
+            logger.debug('lndsr command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
             logger.info(output)
             exit_code = status >> 8
@@ -317,7 +317,7 @@ class Ledaps():
                 return ERROR
 
             cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, xml)
-            logger.debug('DEBUG: lndsrbm command: {0}'.format(cmdstr))
+            logger.debug('lndsrbm command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
             logger.info(output)
             exit_code = status >> 8

@@ -392,7 +392,7 @@ def downloadToms (year, destination):
     # obtain the list of URL(s) for our particular date
     dsList = DatasourceResolver().resolve(year)
     if dsList == None:
-        logger.warn('WARNING: EP/TOMS URL could not be resolved for year {0}.'
+        logger.warn('EP/TOMS URL could not be resolved for year {0}.'
                     '  Processing will continue ...'.format(year))
         return ERROR
 
@@ -482,7 +482,7 @@ def getTomsData (ancdir, year):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            logger.warn('WARNING: no EP/TOMS data available for doy {0} year'
+            logger.warn('no EP/TOMS data available for doy {0} year'
                         ' {1} ({2}). processing will continue ...'
                         .format(doy, year, datestr))
             continue
@@ -495,14 +495,14 @@ def getTomsData (ancdir, year):
             else:
                 tomsfile = resolveFile (fileList)
                 if tomsfile == None:
-                    logger.warn('WARNING: error resolving the list of EP/TOMS'
+                    logger.warn('error resolving the list of EP/TOMS'
                                 ' files to process. processing will continue ...')
                     continue
 
             # get the ozone source
             ozoneSource = getOzoneSource (tomsfile)
             if ozoneSource == None:
-                logger.warn('WARNING: error determining the ozone source for'
+                logger.warn('error determining the ozone source for'
                             ' {0}. Processing will continue ...'
                             .format(tomsfile))
                 continue
@@ -520,7 +520,7 @@ def getTomsData (ancdir, year):
             logger.info(output)
             exit_code = status >> 8
             if exit_code != 0:
-                logger.warn('WARNING: error running convert_ozone for year'
+                logger.warn('error running convert_ozone for year'
                             ' {0}, DOY {1}.  processing will continue ...'
                             .format(year, doy))
     # end for doy
@@ -620,7 +620,7 @@ def main ():
         logger.info('Processing year: {0}'.format(yr))
         status = getTomsData(ancdir, yr)
         if status == ERROR:
-            logger.warn('WARNING: Problems occurred while processing EP/TOMS'
+            logger.warn('Problems occurred while processing EP/TOMS'
                         ' data for year {0}.  Processing will continue.'
                         .format(yr))
 
