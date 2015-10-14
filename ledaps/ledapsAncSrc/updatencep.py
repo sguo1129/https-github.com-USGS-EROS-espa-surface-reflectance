@@ -195,7 +195,7 @@ def executeNcep (fullinputpath, outputdir, year, clean):
         cmdstr = 'ncep_repackage %s %s %s' % (fullinputpath,fulloutputpath,doy)
         logger.info('\nExecuting {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput (cmdstr)
-        print(output)  # TODO:Should this be info message or print()?
+        logger.info(output)
         exit_code = status >> 8
         if exit_code == 157:  # return value of -99 (2s complement of 157)
             logger.error('Input file for year {0}, DOY {1} is not'
@@ -354,7 +354,7 @@ def main ():
     if (today == False) and (quarterly == False) and \
        (syear == 0 or eyear == 0):
         logger.error('Invalid command line argument combination.  Type --help'
-                     ' \ for more information')
+                     ' for more information')
         return ERROR
 
     # determine the ancillary directory to store the data

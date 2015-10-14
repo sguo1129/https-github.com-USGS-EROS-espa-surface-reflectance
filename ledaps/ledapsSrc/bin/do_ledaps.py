@@ -37,25 +37,6 @@ def isLeapYear(year):
         return False
 
 
-############################################################################
-# Description: logIt logs the information to the logfile (if valid) or to
-# stdout if the logfile is None.
-#
-# Inputs:
-#   msg - message to be printed/logged
-#   log_handler - log file handler; if None then print to stdout
-#
-# Returns: nothing
-#
-# Notes:
-############################################################################
-def logIt(msg, log_handler):
-    if log_handler is None:
-        print msg
-    else:
-        log_handler.write(msg + '\n')
-
-
 #############################################################################
 # Created on November 13, 2012 by Gail Schmidt, USGS/EROS
 # Created Python script so that lnd* application status values can be checked
@@ -106,10 +87,11 @@ class Ledaps():
     #         contains the REANALYSIS and EP/TOMS subdirectories.
     #######################################################################
     def findAncillary(self, year, doy=-99):
+        logger = logging.getLogger(__name__)
         # determine the ancillary directory to store the data
         ancdir = os.environ.get('ANC_PATH')
         if ancdir is None:
-            print "ANC_PATH environment variable not set... exiting"
+            logger.info('ANC_PATH environment variable not set... exiting')
             return None
 
         # initialize the doyList to empty and the number of days to 1
@@ -311,8 +293,8 @@ class Ledaps():
             logger.info(output)
             exit_code = status >> 8
             if exit_code != 0:
-                msg = 'Error running lndsr.  Processing will terminate.'
-                logIt(msg, log_handler)
+                logger.info('Error running lndsr.'
+                            '  Processing will terminate.')
                 os.chdir(mydir)
                 return ERROR
 
@@ -322,8 +304,8 @@ class Ledaps():
             logger.info(output)
             exit_code = status >> 8
             if exit_code != 0:
-                msg = 'Error running lndsrbm.  Processing will terminate.'
-                logIt(msg, log_handler)
+                logger.info('Error running lndsrbm.'
+                            '  Processing will terminate.')
                 os.chdir(mydir)
                 return ERROR
 
