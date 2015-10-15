@@ -442,6 +442,7 @@ def downloadToms (year, destination):
 # Notes:
 ############################################################################
 def getTomsData (ancdir, year):
+    logger = logging.getLogger(__name__)  # Obtain logger for this module.
     # download the daily ozone files for the specified year to /tmp/ep_toms
     dloaddir = "/tmp/ep_toms/%d" % year
     status = downloadToms (year, dloaddir)

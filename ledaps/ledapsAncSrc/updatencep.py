@@ -160,6 +160,8 @@ def getNcepData (ancdir, year):
 #   message is printed and processing continues.
 ############################################################################
 def executeNcep (fullinputpath, outputdir, year, clean):
+    logger = logging.getLogger(__name__)
+
     # if the specified year is the current year, only process up through
     # today otherwise process through all the days in the year
     now = datetime.datetime.now()
