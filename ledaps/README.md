@@ -31,7 +31,7 @@ See git tag [ledaps-version_2.4.0]
     setenv LEDAPS_AUX_DIR "directory_saved_auxiliary_files")
 ```
 
-  * Download (from Github USGS-EROS surface-reflectance project) and install source files. The following build will create a list of executable files under $PREFIX/bin (tested in Linux with the gcc and gfortran compiler). It will also copy various scripts from the scripts directory up the the $PREFIX/bin directory.
+  * Download (from Github USGS-EROS surface-reflectance project) and install source files. The following build will create a list of executable files under $PREFIX/bin (tested in Linux with the gcc and gfortran compiler). It will also copy various scripts from the scripts directory to the $PREFIX/bin directory.
 ```
     cd ledaps\ledapsSrc\src
     make
