@@ -72,9 +72,9 @@ See git tag [ledaps-version_2.3.1]
   * ESPA raw binary and ESPA common libraries from ESPA product formatter and associated dependencies
   * XML2 library
   * Auxiliary data products
-    1. NCEP water vapor data
+    1. NCEP water vapor, air pressure, air temperature data
     2. TOMS ozone data
-    3. CMGDEM HDF file
+    3. CMGDEM HDF file (GTOPO5)
 
 ### Auxiliary Data Updates
 This baseline auxiliary files provided are good into 2014.  In order to update the auxiliary files to the most recent day of year (actually the most current auxiliary files available will be 2-3 days prior to the current day of year do to the latency of the underlying NCEP and TOMS products) the user will want to run the updatencep.py and updatetoms.py scripts available in $PREFIX/bin.  Both scripts can be run with the "--help" argument to print the usage information for each script.  In general the --quarterly argument will reprocess/update all the NCEP/TOMS data back to 1978.  This is good to do every once in a while to make sure any updates to the NCEP or TOMS data products are captured.  The --today command-line argument will process the NCEP/TOMS data for the most recent year.  In general, it is suggested to run the scripts with --quarterly once a quarter.  Then run the scripts with --today on a nightly basis.  This should provide an up-to-date version of the auxiliary input data for LEDAPS.  The easiest way to accomplish this is to set up a nightly and quarterly cron job.
