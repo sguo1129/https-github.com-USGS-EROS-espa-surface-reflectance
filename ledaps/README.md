@@ -35,9 +35,12 @@ See git tag [ledaps-version_2.3.1]
 ```
   export NCDF4INC="path_to_netCDF4_include_files"
   export NCDF4LIB="path_to_netCDF4_libraries"
-    (or in c shell use 
-    setenv NCDF4INC "path_to_netCDF4_include_files"
-    setenv NCDF4LIB "path_to_netCDF4_libraries")
+  export HDF5INC="path_to_HDF5_include_files"
+  export HDF5LIB="path_to_HDF5_libraries"
+  export CURLINC="path_to_CURL_include_files"
+  export CURLLIB="path_to_CURL_libraries"
+  export IDNINC="path_to_IDN_include_files"
+  export IDNLIB="path_to_IDN_libraries"
 ```
 
   * Download (from Github USGS-EROS surface-reflectance project) and install source files. The following build will create a list of executable files under $PREFIX/bin (tested in Linux with the gcc and gfortran compiler). It will also copy various scripts from the scripts directory to the $PREFIX/bin directory.
