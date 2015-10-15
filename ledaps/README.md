@@ -31,6 +31,15 @@ See git tag [ledaps-version_2.3.1]
     setenv LEDAPS_AUX_DIR "directory_saved_auxiliary_files")
 ```
 
+  * Setup additional environment variables needed for building the auxiliary download applications
+```
+  export NCDF4INC="path_to_netCDF4_include_files"
+  export NCDF4LIB="path_to_netCDF4_libraries"
+    (or in c shell use 
+    setenv NCDF4INC "path_to_netCDF4_include_files"
+    setenv NCDF4LIB "path_to_netCDF4_libraries")
+```
+
   * Download (from Github USGS-EROS surface-reflectance project) and install source files. The following build will create a list of executable files under $PREFIX/bin (tested in Linux with the gcc and gfortran compiler). It will also copy various scripts from the scripts directory to the $PREFIX/bin directory.
 ```
     cd ledaps\ledapsSrc\src
