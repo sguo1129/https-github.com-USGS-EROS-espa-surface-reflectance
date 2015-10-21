@@ -38,39 +38,17 @@ class DatasourceResolver:
     AQUA_CMA = '/allData/22/MYD09CMA/'
     AQUA_CMG = '/allData/22/MYD09CMG/'
 
+    user = None
+    password = None
+
     def __init__(self):
-        # get the logger
-        logger = logging.getLogger(__name__)
+        if(self.user is None or self.password is None):
+            (self.user, self.password) = get_credentials_from_xmlrpc()
 
-        # determine the auxiliary directory to store the data
-        xmlrpc = os.environ.get('ESPA_XMLRPC')
-        if xmlrpc is None:
-            msg = "ESPA_XMLRPC environment variable not set... exiting"
-            logger.error(msg)
-            return None
-
-        # get the LADS username and password
-        try:
-            server = xmlrpclib.ServerProxy(xmlrpc)
-            self.user = server.get_configuration('ladsftp.username')
-            self.password = server.get_configuration('ladsftp.password')
-        except xmlrpclib.ProtocolError, e:
-            msg = "Error connecting to XMLRPC service to fetch credentials: " \
-                "%s" % e
-            logger.error(msg)
-            return None
-
-        # verify that the XMLRPC service returned valid information and
-        # the username and password were set in the configuration
-        if len(self.user) <= 0 or len(self.password) <= 0:
-            msg = "Received invalid sized credentials for LADS FTP from " \
-                "XMLRPC service. Make sure ladsftp.username and " \
-                "ladsftp.password are set in the ESPA_XMLRPC."
-            logger.error(msg)
-            return None
-
+        logger = logging.getLogger(__name__)  # Obtain logger for this module.
         logger.info('LADSFTP username: {0}'.format(self.user))
         logger.info('LADSFTP password: {0}'.format(self.password))
+
 
     #######################################################################
     # Description: buildURL builds the URLs for the Terra and Aqua CMG and
@@ -120,6 +98,56 @@ class DatasourceResolver:
 ############################################################################
 # End DatasourceResolver class
 ############################################################################
+
+
+#######################################################################
+# Description: Obtains ftp credentials (username and password) from
+# XMLRPC service.
+#
+# Precondition:
+#   Requires environmental variable, ESPA_XMLRPC, to be set equal to the
+#       address of the service.
+#   Assumes XMLRPC service is accessable from local system.
+#
+# Postcondition:
+#   Returns tuple containing (username, password)
+#   Returns None if error occured
+#       Occurs if service could not be reached
+#       Occurs if empty credentials were recieved from the service
+#
+#######################################################################
+def get_credentials_from_xmlrpc():
+    # get the logger
+    logger = logging.getLogger(__name__)
+
+    # determine the auxiliary directory to store the data
+    xmlrpc = os.environ.get('ESPA_XMLRPC')
+    if xmlrpc is None:
+        msg = "ESPA_XMLRPC environment variable not set... exiting"
+        logger.error(msg)
+        return None
+
+    # get the LADS username and password
+    try:
+        server = xmlrpclib.ServerProxy(xmlrpc)
+        user = server.get_configuration('ladsftp.username')
+        password = server.get_configuration('ladsftp.password')
+    except xmlrpclib.ProtocolError, e:
+        msg = "Error connecting to XMLRPC service to fetch credentials: " \
+            "%s" % e
+        logger.error(msg)
+        return None
+
+    # verify that the XMLRPC service returned valid information and
+    # the username and password were set in the configuration
+    if len(user) <= 0 or len(password) <= 0:
+        msg = "Received invalid sized credentials for LADS FTP from " \
+            "XMLRPC service. Make sure ladsftp.username and " \
+            "ladsftp.password are set in the ESPA_XMLRPC."
+        logger.error(msg)
+        return None
+
+    return (user, password)
 
 
 ############################################################################
@@ -188,6 +216,7 @@ def downloadLads (year, doy, destination):
             name = os.path.join(destination, myfile)
             if not os.path.isdir(name):
                 os.remove(name)
+                pass
 
     # obtain the list of URL(s) for our particular date.  this includes the
     # locations for the Aqua and Terra CMG/CMA files.
@@ -480,11 +509,25 @@ def main ():
     parser.add_option ("--quarterly", dest="quarterly", default=False,
         action="store_true", help=msg)
 
+    parser.add_option('--username', dest='username', type='string',
+                      help='Username to use for ftp site.')
+    parser.add_option('--password', dest='password', type='string',
+                      help='Password to use for ftp site.')
+
     (options, args) = parser.parse_args()
     syear = options.syear           # starting year
     eyear = options.eyear           # ending year
     today = options.today           # process most recent year of data
     quarterly = options.quarterly   # process today back to START_YEAR
+
+    if((options.username is None) and (options.password is None)):
+        logger.warn('Credentials obtained from XMLRPC service will be used')
+    elif((options.username is not None) and (options.password is not None)):
+        DatasourceResolver.user = options.username
+        DatasourceResolver.password = options.password
+    else:
+        raise Exception('It is invalid to specify --username or --password'
+                        ' argument without the other.')
 
     # check the arguments
     if (today == False) and (quarterly == False) and \
