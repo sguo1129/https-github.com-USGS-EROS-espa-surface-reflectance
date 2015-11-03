@@ -3,7 +3,7 @@
 #
 # Project Name: surface reflectance
 #-----------------------------------------------------------------------------
-.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-l8-sr install-l8-sr clean-l8-sr all-l8-sr-aux install-l8-sr-aux clean-l8-sr-aux
+.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-l8-sr install-l8-sr clean-l8-sr all-l8-sr-aux install-l8-sr-aux clean-l8-sr-aux install-aux
 
 include make.config
 
@@ -81,6 +81,9 @@ install-ledaps-aux:
 clean-ledaps-aux:
 	echo "make clean in $(DIR_LEDAPS)"; \
         (cd $(DIR_LEDAPS); $(MAKE) clean-ledaps-aux);
+
+#------------------------------------------------------------------------------
+install-aux: install-ledaps-aux install-l8-sr-aux
 
 #-----------------------------------------------------------------------------
 check-environment:
