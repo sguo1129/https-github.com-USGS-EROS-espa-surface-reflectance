@@ -11,11 +11,11 @@ DIR_LEDAPS = ledaps
 DIR_L8 = not-validated-prototype-l8_sr
 
 #-----------------------------------------------------------------------------
-all: all-ledaps all-l8-sr
+all: all-script all-ledaps all-l8-sr
 
-install: check-environment install-ledaps install-l8-sr
+install: check-environment install-script install-ledaps install-l8-sr
 
-clean: clean-ledaps clean-l8-sr
+clean: clean-script clean-ledaps clean-l8-sr
 
 #-----------------------------------------------------------------------------
 all-script:
