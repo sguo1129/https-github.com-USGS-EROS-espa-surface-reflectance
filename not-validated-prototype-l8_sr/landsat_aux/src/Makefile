@@ -1,49 +1,66 @@
 #-----------------------------------------------------------------------------
 # Makefile for combine L8 auxiliary code
 #-----------------------------------------------------------------------------
+.PHONY: all install clean
 
+# Inherit from upper-level make.config
+TOP = ../../..
+include $(TOP)/make.config
+
+#-----------------------------------------------------------------------------
 # Set up compile options
-CC = gcc
-RM = rm -f
-EXTRA = -Wall -O2
+CC    = gcc
+RM    = rm
+EXTRA_OPTIONS = $(static_option) $(threading_options) $(profiling_options)
+EXTRA   = -Wall -g -O2 $(EXTRA_OPTIONS)
 
 # Define the include files
 INC = combine_l8_aux_data.h
-INCDIR = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) \
--I$(ESPAINC)
-NCFLAGS  = $(EXTRA) $(INCDIR)
 
 # Define the source code and object files
-SRC = get_args.c          \
+SRC = get_args.c            \
       combine_l8_aux_data.c
 OBJ = $(SRC:.c=.o)
 
+# Define include paths
+INCDIR = -I. -I$(ESPAINC) -I$(XML2INC)
+HDF_INCDIR = -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
+NCFLAGS  = $(EXTRA) $(INCDIR) $(HDF_INCDIR)
+
 # Define the object libraries
 EXLIB = -L$(ESPALIB) -l_espa_common \
-  -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
-  -L$(XML2LIB) -lxml2 -lz
+        -L$(XML2LIB) -lxml2 \
+        -L$(LZMALIB) -llzma \
+        -L$(ZLIBLIB) -lz
+HDF_EXLIB = -L$(HDFEOS_LIB) -lhdfeos \
+            -L$(HDFLIB) -lmfhdf -ldf \
+            -L$(JPEGLIB) -ljpeg \
+            -L$(HDFEOS_GCTPLIB) -lGctp
 MATHLIB = -lm
-LOADLIB = $(EXLIB) $(MATHLIB)
+LOADLIB = $(HDF_EXLIB) $(EXLIB) $(MATHLIB)
 
-# Define the executable
-EXE	= combine_l8_aux_data
+# Define C executable s
+EXE = combine_l8_aux_data
 
-# Target for the executable
+#-----------------------------------------------------------------------------
 all: $(EXE)
 
-combine_l8_aux_data: $(OBJ) $(INC)
+$(EXE): $(OBJ) $(INC)
 	$(CC) $(EXTRA) -o $(EXE) $(OBJ) $(LOADLIB)
 
+#-----------------------------------------------------------------------------
 install:
-	install -d $(PREFIX)/bin
-	install -m 755 $(EXE) $(PREFIX)/bin
-	install -m 755 ../scripts/*.py $(PREFIX)/bin
+	install -d $(link_path)
+	install -d $(l8_bin_install_path)
+	install -m 755 $(EXE) $(l8_bin_install_path)
+	ln -sf $(l8_link_source_path)/$(EXE) $(link_path)/$(EXE)
 
+#-----------------------------------------------------------------------------
 clean:
 	$(RM) *.o $(EXE)
 
+#-----------------------------------------------------------------------------
 $(OBJ): $(INC)
 
 .c.o:
 	$(CC) $(NCFLAGS) -c $<
-

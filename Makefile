@@ -3,7 +3,7 @@
 #
 # Project Name: surface reflectance
 #-----------------------------------------------------------------------------
-.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-l8-sr install-l8-sr clean-l8-sr
+.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-l8-sr install-l8-sr clean-l8-sr all-l8-sr-aux install-l8-sr-aux clean-l8-sr-aux
 
 include make.config
 
@@ -33,15 +33,28 @@ clean-script:
 #-----------------------------------------------------------------------------
 all-l8-sr:
 	echo "make all in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) all);
+        (cd $(DIR_L8); $(MAKE) all-l8-sr);
 
 install-l8-sr:
 	echo "make install in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) install);
+        (cd $(DIR_L8); $(MAKE) install-l8-sr);
 
 clean-l8-sr:
 	echo "make clean in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) clean);
+        (cd $(DIR_L8); $(MAKE) clean-l8-sr);
+
+#-----------------------------------------------------------------------------
+all-l8-sr-aux:
+	echo "make all in $(DIR_L8)"; \
+        (cd $(DIR_L8); $(MAKE) all-l8-sr-aux);
+
+install-l8-sr-aux:
+	echo "make install in $(DIR_L8)"; \
+        (cd $(DIR_L8); $(MAKE) install-l8-sr-aux);
+
+clean-l8-sr-aux:
+	echo "make clean in $(DIR_L8)"; \
+        (cd $(DIR_L8); $(MAKE) clean-l8-sr-aux);
 
 #-----------------------------------------------------------------------------
 all-ledaps:
