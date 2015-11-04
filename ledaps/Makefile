@@ -13,7 +13,7 @@ all: all-ledaps
 
 install: install-ledaps
 
-clean: clean-ledaps
+clean: clean-ledaps clean-ledaps-aux
 
 #-----------------------------------------------------------------------------
 all-ledaps:
