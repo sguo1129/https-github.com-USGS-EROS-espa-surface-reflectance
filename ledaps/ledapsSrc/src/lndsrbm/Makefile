@@ -13,8 +13,7 @@ include $(TOP)/make.config
 # Set up compile options
 CC    = gcc
 RM    = rm
-EXTRA_OPTIONS = $(static_option) $(threading_options) $(profiling_options)
-EXTRA   = -Wall -g -O2 $(EXTRA_OPTIONS)
+EXTRA = -Wall $(EXTRA_OPTIONS)
 
 # Define the source code and object files
 SRC1 = lndsrbm.c

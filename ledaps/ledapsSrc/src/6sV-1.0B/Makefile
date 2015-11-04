@@ -14,8 +14,7 @@ include $(TOP)/make.config
 CC    = gcc
 FC    = gfortran
 RM    = rm
-EXTRA_OPTIONS = $(static_option) $(threading_options) $(profiling_options)
-EXTRA   = -Wall -g -O2 $(EXTRA_OPTIONS)
+EXTRA = -Wall $(EXTRA_OPTIONS)
 
 # Define the source code and object files
 F_SRC = AATSR.f ABSTRA.f AEROSO.f AKTOOL.f ATMREF.f AVHRR.f BBM.f BDM.f \

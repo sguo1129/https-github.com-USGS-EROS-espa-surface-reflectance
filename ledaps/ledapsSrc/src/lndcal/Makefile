@@ -13,8 +13,7 @@ include $(TOP)/make.config
 # Set up compile options
 CC    = gcc
 RM    = rm
-EXTRA_OPTIONS = $(static_option) $(threading_options) $(profiling_options)
-EXTRA   = -Wall -g -O2 $(EXTRA_OPTIONS)
+EXTRA = -Wall $(EXTRA_OPTIONS)
 
 # Define the include files
 INC = bool.h cal.h const.h date.h error.h input.h keyvalue.h lndcal.h lut.h \

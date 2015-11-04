@@ -14,8 +14,7 @@ include $(TOP)/make.config
 CC    = gcc
 FC    = gfortran
 RM    = rm
-EXTRA_OPTIONS = $(static_option) $(threading_options) $(profiling_options)
-EXTRA   = -Wall -g -O2 $(EXTRA_OPTIONS)
+EXTRA = -Wall $(EXTRA_OPTIONS)
 
 # Define the include files
 C_INC = ar.h bool.h clouds.h const.h date.h error.h external_pgm.h grib.h \
