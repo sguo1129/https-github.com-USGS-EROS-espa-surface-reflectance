@@ -15,11 +15,7 @@ include $(TOP)/make.config
 # Set up compile options
 CC    = gcc
 RM    = rm
-EXTRA_OPTIONS = $(static_option) $(threading_options) $(profiling_options)
-EXTRA   = -Wall -g -O2 $(EXTRA_OPTIONS)
-
-# Define the include files
-INC = lndpm.h
+EXTRA = -Wall $(EXTRA_OPTIONS)
 
 # Define the source code and object files
 SRC1 = convert_ozone.c
@@ -31,7 +27,7 @@ OBJ2 = $(SRC2:.c=.o)
 ALL_OBJ = $(OBJ1) $(OBJ2)
 
 # Define include paths
-INCDIR  = -I. -I$(NCDF4INC) -I$(HDF5INC) -I$(HDFINC) -I$(JPEGINC) 
+INCDIR  = -I. -I$(NCDF4INC) -I$(HDF5INC) -I$(HDFINC) -I$(JPEGINC) -I$(ZLIBINC)
 NCFLAGS = $(EXTRA) $(INCDIR)
 
 # Define the object libraries and paths
