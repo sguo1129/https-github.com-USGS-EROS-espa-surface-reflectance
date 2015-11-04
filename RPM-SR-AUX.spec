@@ -30,7 +30,7 @@ BuildArch:	x86_64
 Packager:	USGS EROS LSRD
 
 BuildRequires:	espa-common
-Requires:	espa-common >= 1.4.0
+Requires:	espa-common >= 1.5.0
 
 # ----------------------------------------------------------------------------
 %description
@@ -57,9 +57,8 @@ Provides science application executables for generating surface reflectance prod
 rm -rf %{clonedname}
 git clone --depth 1 --branch %{tagname} %{url} %{clonedname}
 # Build the applications
-# Currently nothing to build for this auxiliary data
-# cd %{clonedname}
-# make BUILD_TYPE=-static
+cd %{clonedname}
+make all-aux BUILD_STATIC=yes
 
 
 # ----------------------------------------------------------------------------
@@ -83,11 +82,16 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 # All sub-directories are automatically included
 /usr/local/bin/*
-/usr/local/%{name}
+/usr/local/%{name}/l8_sr/bin/combine_l8_aux_data
+/usr/local/%{name}/l8_sr/bin/updatelads.py
+/usr/local/%{name}/ledaps/bin/convert_ozone
+/usr/local/%{name}/ledaps/bin/ncep_repackage
+/usr/local/%{name}/ledaps/bin/updatencep.py
+/usr/local/%{name}/ledaps/bin/updatetoms.py
 
 
 # ----------------------------------------------------------------------------
 %changelog
-* Tue Nov 03 2015 Ronald D Dilley <rdilley@usgs.gov>
+* Wed Nov 04 2015 Ronald D Dilley <rdilley@usgs.gov>
 - Build for Dec 2015 release
 - Initial implementation
