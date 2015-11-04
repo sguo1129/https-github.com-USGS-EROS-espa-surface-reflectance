@@ -41,9 +41,10 @@ EXLIB = -L$(CURLLIB) -lcurl \
 HDF_EXLIB = -L$(HDFLIB) -lmfhdf -ldf \
             -L$(JPEGLIB) -ljpeg
 NCDF_EXLIB = -L$(NCDF4LIB) -lnetcdf \
-             -L$(HDF5LIB) -lhdf5_hl -lhdf5
+             -L$(HDF5LIB) -lhdf5_hl -lhdf5 -pthread
 MATHLIB = -lm
-LOADLIB = $(EXLIB) $(HDF_EXLIB) $(MATHLIB)
+LOADLIB1 = $(HDF_EXLIB) $(EXLIB) $(MATHLIB)
+LOADLIB2 = $(HDF_EXLIB) $(NCDF_EXLIB) $(EXLIB) $(MATHLIB)
 
 # Define scripts
 SCRIPTS = updatencep.py updatetoms.py
@@ -57,11 +58,11 @@ ALL_EXE = $(EXE1) $(EXE2)
 all: $(ALL_OBJ) $(ALL_EXE)
 
 $(EXE1): $(OBJ1)
-	$(CC) $(EXTRA) $(OBJ1) -o $(EXE1) $(LOADLIB)
+	$(CC) $(EXTRA) $(OBJ1) -o $(EXE1) $(LOADLIB1)
 
 
 $(EXE2): $(OBJ2)
-	$(CC) $(EXTRA) $(OBJ2) -o $(EXE2) $(NCDF_EXLIB) $(LOADLIB)
+	$(CC) $(EXTRA) $(OBJ2) -o $(EXE2) $(LOADLIB2)
 
 #-----------------------------------------------------------------------------
 install:
