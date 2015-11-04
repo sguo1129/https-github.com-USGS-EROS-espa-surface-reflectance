@@ -109,7 +109,9 @@ int compute_toa_refl
             refl_mult = input->meta.gain[iband];
             refl_add = input->meta.bias[iband];
 
+#ifdef _OPENMP
             #pragma omp parallel for private (i, rotoa)
+#endif
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
@@ -153,7 +155,9 @@ int compute_toa_refl
 
             /* Compute brightness temp for band 10.  Make sure it falls
                within the min/max range for the thermal bands. */
+#ifdef _OPENMP
             #pragma omp parallel for private (i, tmpf)
+#endif
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
@@ -198,7 +202,9 @@ int compute_toa_refl
 
             /* Compute brightness temp for band 11.  Make sure it falls
                within the min/max range for the thermal bands. */
+#ifdef _OPENMP
             #pragma omp parallel for private (i, tmpf)
+#endif
             for (i = 0; i < nlines*nsamps; i++)
             {
                 /* If this pixel is not fill */
@@ -361,7 +367,9 @@ int compute_sr_refl
     bool hole;            /* is this a hole in the aerosol retrieval area? */
     float ros4, ros5;     /* surface reflectance for band 4 and band 5 */
     int tmp_percent;      /* current percentage for printing status */
+#ifndef _OPENMP
     int curr_tmp_percent; /* percentage for current line */
+#endif
 
     float lat, lon;       /* pixel lat, long location */
     int lcmg, scmg;       /* line/sample index for the CMG */
@@ -585,7 +593,9 @@ int compute_sr_refl
         bsatm[ib] = satm;
 
         /* Perform atmospheric corrections for bands 1-7 */
+#ifdef _OPENMP
         #pragma omp parallel for private (i, rotoa, roslamb)
+#endif
         for (i = 0; i < nlines*nsamps; i++)
         {
             /* If this pixel is not fill.  Otherwise fill pixels have
@@ -628,7 +638,9 @@ int compute_sr_refl
     /* Interpolate the auxiliary data for each pixel location */
     printf ("Interpolating the auxiliary data ...\n");
     tmp_percent = 0;
+#ifdef _OPENMP
     #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
+#endif
     for (i = 0; i < nlines; i++)
     {
 #ifndef _OPENMP
@@ -1141,7 +1153,9 @@ int compute_sr_refl
 
     /* Expand the cloud shadow using the residual */
     printf ("Expanding cloud shadow ...\n");
+#ifdef _OPENMP
     #pragma omp parallel for private (i, j, curr_pix, k, l, win_pix)
+#endif
     for (i = 0; i < nlines; i++)
     {
         curr_pix = i * nsamps;
@@ -1302,7 +1316,9 @@ fclose (tmpfile);
     for (ib = 0; ib <= DN_BAND7; ib++)
     {
         printf ("  Band %d\n", ib+1);
+#ifdef _OPENMP
         #pragma omp parallel for private (i, rsurf, rotoa, raot550nm, pres, uwv, uoz, retval, roslamb, tgo, roatm, ttatmg, satm, xrorayp, next)
+#endif
         for (i = 0; i < nlines * nsamps; i++)
         {
             /* If this pixel is fill, then don't process. Otherwise the
