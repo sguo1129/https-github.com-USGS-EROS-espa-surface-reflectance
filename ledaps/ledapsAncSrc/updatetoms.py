@@ -419,7 +419,7 @@ def downloadToms (year, destination):
                 retry_count += 1
     
             if retval:
-                logger.info('unsuccessful download of {0} (retried 5 times)'
+                logger.warn('unsuccessful download of {0} (retried 5 times)'
                             .format(ds.url))
 
     return SUCCESS
@@ -443,6 +443,7 @@ def downloadToms (year, destination):
 ############################################################################
 def getTomsData (ancdir, year):
     logger = logging.getLogger(__name__)  # Obtain logger for this module.
+
     # download the daily ozone files for the specified year to /tmp/ep_toms
     dloaddir = "/tmp/ep_toms/%d" % year
     status = downloadToms (year, dloaddir)
@@ -516,7 +517,7 @@ def getTomsData (ancdir, year):
                 os.remove(fullOutputPath)
             cmdstr = 'convert_ozone %s %s %s' % (fullInputPath, fullOutputPath,
                 ozoneSource)
-            logger.info('Executing {0}\n'.format(cmdstr))
+            logger.info('Executing {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput (cmdstr)
             logger.info(output)
             exit_code = status >> 8

@@ -216,7 +216,6 @@ def downloadLads (year, doy, destination):
             name = os.path.join(destination, myfile)
             if not os.path.isdir(name):
                 os.remove(name)
-                pass
 
     # obtain the list of URL(s) for our particular date.  this includes the
     # locations for the Aqua and Terra CMG/CMA files.
@@ -487,6 +486,7 @@ def getLadsData (auxdir, year, today):
 ############################################################################
 def main ():
     logger = logging.getLogger(__name__)  # Get logger for the module.
+
     # setup the default logger format and level. log to STDOUT.
     logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
                                 ' %(levelname)-8s'
@@ -521,7 +521,7 @@ def main ():
     quarterly = options.quarterly   # process today back to START_YEAR
 
     if((options.username is None) and (options.password is None)):
-        logger.warn('Credentials obtained from XMLRPC service will be used')
+        logger.info('Credentials obtained from XMLRPC service will be used')
     elif((options.username is not None) and (options.password is not None)):
         DatasourceResolver.user = options.username
         DatasourceResolver.password = options.password

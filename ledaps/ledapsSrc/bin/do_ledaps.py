@@ -91,7 +91,7 @@ class Ledaps():
         # determine the ancillary directory to store the data
         ancdir = os.environ.get('ANC_PATH')
         if ancdir is None:
-            logger.info('ANC_PATH environment variable not set... exiting')
+            logger.error('ANC_PATH environment variable not set... exiting')
             return None
 
         # initialize the doyList to empty and the number of days to 1
@@ -267,7 +267,7 @@ class Ledaps():
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
         cmdstr = "%slndpm %s" % (bin_dir, base_xmlfile)
-        logger.debug('lndpm command: {0}'.format(cmdstr))
+        # logger.debug('lndpm command: {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
         logger.info(output)
         exit_code = status >> 8
@@ -277,7 +277,7 @@ class Ledaps():
             return ERROR
 
         cmdstr = "%slndcal lndcal.%s.txt" % (bin_dir, xml)
-        logger.debug('lndcal command: {0}'.format(cmdstr))
+        # logger.debug('lndcal command: {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
         logger.info(output)
         exit_code = status >> 8
@@ -288,23 +288,23 @@ class Ledaps():
 
         if process_sr == "True":
             cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, xml)
-            logger.debug('lndsr command: {0}'.format(cmdstr))
+            # logger.debug('lndsr command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
             logger.info(output)
             exit_code = status >> 8
             if exit_code != 0:
-                logger.info('Error running lndsr.'
-                            '  Processing will terminate.')
+                logger.error('Error running lndsr.'
+                             '  Processing will terminate.')
                 os.chdir(mydir)
                 return ERROR
 
             cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, xml)
-            logger.debug('lndsrbm command: {0}'.format(cmdstr))
+            # logger.debug('lndsrbm command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
             logger.info(output)
             exit_code = status >> 8
             if exit_code != 0:
-                logger.info('Error running lndsrbm.'
+                logger.error('Error running lndsrbm.'
                             '  Processing will terminate.')
                 os.chdir(mydir)
                 return ERROR

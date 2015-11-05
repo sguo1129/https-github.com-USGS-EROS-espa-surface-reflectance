@@ -175,7 +175,7 @@ def executeNcep (fullinputpath, outputdir, year, clean):
 
     # make sure the output directory exists or create it recursively
     if not os.path.exists(outputdir):
-        logger.error('{0} does not exist... creating'.format(outputdir))
+        logger.warn('{0} does not exist... creating'.format(outputdir))
         os.makedirs(outputdir, 0777)
 
     # loop through each day in the year and process the NCEP REANALYSIS HDF
