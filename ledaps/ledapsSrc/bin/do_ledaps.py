@@ -144,8 +144,8 @@ class Ledaps():
         return doyList
 
     ########################################################################
-    # Description: runLedaps will use the parameters passed for xmlfile,
-    # logfile, and usebin.  If xmlfile is None (i.e. not specified) then
+    # Description: runLedaps will use the parameters passed for xmlfile
+    # and usebin.  If xmlfile is None (i.e. not specified) then
     # the command-line parameters will be parsed for this information.
     # The LEDAPS applications are then executed on the specified XML file.
     # If a log file was specified, then the output from each LEDAPS application
@@ -157,8 +157,6 @@ class Ledaps():
     #       should be completed.  True or False.  Default is True, otherwise
     #       the processing will halt after the TOA reflectance products are
     #       complete.
-    #   logfile - name of the logfile for logging information; if None then
-    #       the output will be written to stdout
     #   usebin - this specifies if the LEDAPS exes reside in the $BIN
     #       directory; if None then the LEDAPS exes are expected to be in
     #       the PATH
@@ -173,8 +171,7 @@ class Ledaps():
     #      xmlfile directory is not writable, then this script exits with
     #      an error.
     #######################################################################
-    def runLedaps(self, xmlfile=None, process_sr="True", logfile=None,
-                  usebin=None):
+    def runLedaps(self, xmlfile=None, process_sr="True", usebin=None):
         # if no parameters were passed then get the info from the
         # command line
         if xmlfile is None:
@@ -196,15 +193,10 @@ class Ledaps():
                               action="store_true",
                               help=("use BIN environment variable as the"
                                     " location of LEDAPS apps"))
-            parser.add_option("-l", "--logfile",
-                              type="string", dest="logfile",
-                              help="name of optional log file",
-                              metavar="FILE")
             (options, args) = parser.parse_args()
 
             # validate the command-line options
             usebin = options.usebin    # should $BIN directory be used
-            logfile = options.logfile  # name of the log file
             xmlfile = options.xmlfile  # name of the XML file
             if xmlfile is None:
                 parser.error("missing xmlfile command-line argument")
@@ -212,11 +204,6 @@ class Ledaps():
             process_sr = options.process_sr  # process SR or not
             if process_sr is None:
                 process_sr = "True"  # If not provided, default to True
-
-        # open the log file if it exists; use line buffering for the output
-        log_handler = None
-        if logfile is not None:
-            log_handler = open(logfile, 'w', buffering=1)
 
         # Obtain logger from logging using the module's name
         logger = logging.getLogger(__name__)
@@ -312,11 +299,16 @@ class Ledaps():
         # successful completion.  return to the original directory.
         os.chdir(mydir)
         logger.info('Completion of LEDAPS.')
-        if logfile is not None:
-            log_handler.close()
         return SUCCESS
 
 # ##### end of Ledaps class #####
 
 if __name__ == "__main__":
+    # setup the default logger format and level. log to STDOUT.
+    logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
+                                ' %(levelname)-8s'
+                                ' %(filename)s:%(lineno)d:'
+                                '%(funcName)s -- %(message)s'),
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.INFO)
     sys.exit(Ledaps().runLedaps())

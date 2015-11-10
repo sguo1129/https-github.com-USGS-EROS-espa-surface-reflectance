@@ -487,14 +487,6 @@ def getLadsData (auxdir, year, today):
 def main ():
     logger = logging.getLogger(__name__)  # Get logger for the module.
 
-    # setup the default logger format and level. log to STDOUT.
-    logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
-                                ' %(levelname)-8s'
-                                ' %(filename)s:%(lineno)d:'
-                                '%(funcName)s -- %(message)s'),
-                        datefmt='%Y-%m-%d %H:%M:%S',
-                        level=logging.INFO)
-
     # get the command line arguments
     parser = OptionParser()
     parser.add_option ("-s", "--start_year", type="int", dest="syear",

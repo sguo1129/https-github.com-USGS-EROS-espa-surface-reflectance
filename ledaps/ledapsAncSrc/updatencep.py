@@ -231,6 +231,7 @@ def executeNcep (fullinputpath, outputdir, year, clean):
 ############################################################################
 def cleanNcepTargetDir (ancdir, year):
     mydir = "%s/REANALYSIS/RE_%d" % (ancdir, year)
+    logger = logging.getLogger(__name__)  # Obtain logger for this module.
     logger.info('Cleaning NCEP target directory: {0}'.format(mydir))
     regex = re.compile('REANALYSIS_' + str(year) + '\d*.hdf')
     if os.path.exists(mydir):
