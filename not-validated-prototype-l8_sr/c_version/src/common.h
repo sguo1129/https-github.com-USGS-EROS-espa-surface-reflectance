@@ -5,6 +5,12 @@
 #include "mfhdf.h"
 typedef char byte;
 
+/* Surface reflectance version */
+#define SR_VERSION "0.4.0"
+
+/* How many lines of data should be processed at one time */
+#define PROC_NLINES 1000
+
 /* For angle conversions -
    degrees to radians = PI/180
    radians to degrees = 180/PI */
@@ -104,11 +110,5 @@ typedef struct {
   int nsamps;
   double pixsize[2];
 } Img_coord_info_t;
-
-/* Surface reflectance version */
-#define SR_VERSION "0.3.2"
-
-/* How many lines of data should be processed at one time */
-#define PROC_NLINES 1000
 
 #endif

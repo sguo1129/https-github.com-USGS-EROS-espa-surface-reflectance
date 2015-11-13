@@ -30,6 +30,7 @@ Date         Programmer       Reason
 10/28/2014   Gail Schmidt     Changed the ANC_PATH environment variable to
                               LEDAPS_AUX_DIR to be more consistent with the
                               Landsat8 auxiliary directory name.
+11/13/2015   Gail Schmidt     Removed log file since it wasn't used
 
 NOTES:
   1. The XML metadata format written via this library follows the ESPA internal
@@ -40,9 +41,6 @@ NOTES:
 #include <sys/stat.h>
 #include "lndpm.h"
 
-FILE *LOG_FP = NULL;     /* pointer to the log file */
-int open_log (char name[]);
-void LOG (char *fmt, ...);
 int conv_date (int *mm, int *dd, int yyyy);
 int find_file(char *path, char *name);
 
@@ -67,14 +65,7 @@ int main (int argc, char *argv[])
     FILE *out = NULL;              /* pointer to the output parameter file */
     Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
 
-    /* Open the log file */
     printf ("\nRunning lndpm ...\n");
-    if (open_log ("lndpm : Landsat Metadata Parser") == ERROR)
-    {
-        sprintf (errmsg, "Create log report file");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
 
     /* Check the command-line arguments and get the name of the XML file */
     if (argc != 2)
@@ -244,7 +235,6 @@ int main (int argc, char *argv[])
     fprintf (out, "LEDAPSVersion = %s\n", LEDAPS_VERSION);
     fprintf (out, "END\n");
     fclose (out);
-    fclose (LOG_FP);
 
     /* Free the metadata structure */
     free_metadata (&xml_metadata);
@@ -344,87 +334,6 @@ int conv_date
     }
 
     return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  open_log
-
-PURPOSE: Open the log file as a text file for appending and add a time stamp.
-
-RETURN VALUE:
-Type = int
-Value           Description
------           -----------
-ERROR           Error opening log file
-SUCCESS         Successfully opened log file
-
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-1/17/2014    Gail Schmidt     Updated to follow ESPA software guidelines an
-                              use common ESPA funtions.
-
-NOTES:
-1. LOG_FP and logFile are global variables for all routines in this file to
-   log to.
-******************************************************************************/
-int open_log
-(
-    char app_name[]     /* I: application name/info string */
-)
-{
-    struct tm *currtime;    /* current time in GMT */
-    time_t t;               /* current time variable */
-    char str[STR_SIZE];     /* current time in HMS */
-    char FUNC_NAME[] = "open_log";    /* function name */
-    char errmsg[STR_SIZE];            /* error message */
-
-    /* Open the log file for appending */
-    LOG_FP = fopen (logFile, "a");
-    if (LOG_FP == NULL)
-    {
-        sprintf (errmsg, "Cannot open log file for appending: %s", logFile);
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    /* Log the time and application name or string */
-    t = time(NULL);
-    currtime = (struct tm *) gmtime (&t);
-    strftime (str, 100, "%FT%H:%M:%SZ", currtime);
-    LOG ("\n\n##################################\n");
-    LOG ("Starting <%s> on %s\n", app_name, str);
-    return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  LOG
-
-PURPOSE: Log a message to the log file
-
-RETURN VALUE: None
-
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-1/17/2014    Gail Schmidt     Updated to follow ESPA software guidelines an
-                              use common ESPA funtions.
-
-NOTES:
-1. LOG_FP is a global variable for all routines in this file to log to.
-******************************************************************************/
-void LOG
-(
-    char *fmt, ...   /* format of log information */
-)
-{
-    va_list ap;
-    
-    va_start (ap, fmt);
-    vfprintf (LOG_FP, fmt, ap);
-    va_end (ap);
 }
 
 

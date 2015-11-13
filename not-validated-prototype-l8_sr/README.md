@@ -1,5 +1,5 @@
-## L8SR Version 0.3.1 Release Notes
-Release Date: September 23, 2015
+## L8SR Version 0.4.0 Release Notes
+Release Date: November 23, 2015
 
 ### Downloads
 L8SR source code
@@ -10,7 +10,7 @@ L8SR auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [l8_sr-version_0.3.1]
+See git tag [l8_sr-version_0.4.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -117,8 +117,11 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Changes From Previous Version
-#### Updates on September 23, 2015 - USGS EROS
-  1. Fixed a bug accessing the 9x9 window in the land/water mask array. We were accessing invalid memory if the window was on the edges of the scene.
-  2. Fixed a bug accessing the CMG arrays for line+1 and sample+1.  We were accessing invalid memory if the scene was at the right or bottom edge of the CMG array.
-  3. Modified the update auxiliary files script (updatelads.py) to retry the file download in the event the wget fails.  Cleaned up a few logger issues in this script as well.
+#### Updates on November 23, 2015 - USGS EROS
+  1. Updated scripts to use Python logging vs. print statements
+  2. Added a command-line option for specifying the username and password for updatelads.py.  If the username and password are specified, then they are used.  Otherwise the script tries to pull the username and password from our ESPA remote procedure calls (XMLRPC).
+  3. Modified the interpolation code for ozone, water vapor, and DEMs to wrap around the dateline in the event the scene straddles -180, 180 line or -90, 90 pole.
+  4. Updated the Makefiles
+  5. Added RPM support
+  6. Provided top-level surface-reflectance script helper for espa processing
 
