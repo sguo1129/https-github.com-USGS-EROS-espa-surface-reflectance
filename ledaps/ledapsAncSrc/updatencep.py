@@ -20,6 +20,7 @@ import re
 import time
 import subprocess
 from optparse import OptionParser
+import logging
 
 # Global static variables
 ERROR = 1
@@ -87,21 +88,25 @@ def getNcepData (ancdir, year):
     if os.path.isfile(waterFileSource):
         os.remove(waterFileSource)
 
+    logger = logging.getLogger(__name__)
+
     # download the air temp, surface pressure, and precipitable water files
     # for the specified year to /tmp/ncep
     status = downloadNcep(pressureFile, '/tmp/ncep')
     if status == ERROR:
-        print "could not download pressureFile data: %s" % pressureFile
+        logger.error('could not download pressureFile data: {0}'
+                     .format(pressureFile))
         return ERROR
         
     status = downloadNcep(waterFile, '/tmp/ncep')
     if status == ERROR:
-        print "could not download waterFile data: %s" % waterFile
+        logger.error('could not download waterFile data: {0}'
+                     .format(waterFile))
         return ERROR
 
     status = downloadNcep(airFile, '/tmp/ncep')
     if status == ERROR:
-        print "could not download airFile data: %s" % airFile
+        logger.error('could not download airFile data: {0}'.format(airFile))
         return ERROR
     
     # use the downloaded netCDF files to create the daily HDF files needed
@@ -109,17 +114,19 @@ def getNcepData (ancdir, year):
     outputDest = ancdir + '/REANALYSIS/RE_' + str(year)
     status = executeNcep(pressureFileSource, outputDest, year, True)
     if status == ERROR:
-        print "could not process pressureFile: %s" % pressureFileSource
+        logger.error('could not process pressureFile: {0}'
+                     .format(pressureFileSource))
         return ERROR
 
     status = executeNcep(waterFileSource, outputDest, year, False)
     if status == ERROR:
-        print "could not process waterFile: %s" % waterFileSource
+        logger.error('could not process waterFile: {0}'
+                     .format(waterFileSource))
         return ERROR
 
     status = executeNcep(airFileSource, outputDest, year, False)
     if status == ERROR:
-        print "could not process airFile: %s" % airFileSource
+        logger.error('could not process airFile: {0}'.format(airFileSource))
         return ERROR
 
     # cleanup the downloaded annual netCDF files
@@ -153,6 +160,8 @@ def getNcepData (ancdir, year):
 #   message is printed and processing continues.
 ############################################################################
 def executeNcep (fullinputpath, outputdir, year, clean):
+    logger = logging.getLogger(__name__)
+
     # if the specified year is the current year, only process up through
     # today otherwise process through all the days in the year
     now = datetime.datetime.now()
@@ -166,7 +175,7 @@ def executeNcep (fullinputpath, outputdir, year, clean):
 
     # make sure the output directory exists or create it recursively
     if not os.path.exists(outputdir):
-        print "%s does not exist... creating" % outputdir
+        logger.warn('{0} does not exist... creating'.format(outputdir))
         os.makedirs(outputdir, 0777)
 
     # loop through each day in the year and process the NCEP REANALYSIS HDF
@@ -186,18 +195,19 @@ def executeNcep (fullinputpath, outputdir, year, clean):
         if clean == True and os.path.isfile(fulloutputpath):
             os.remove(fulloutputpath)
         cmdstr = 'ncep_repackage %s %s %s' % (fullinputpath,fulloutputpath,doy)
-        print "\nExecuting %s" % cmdstr
+        logger.info('\nExecuting {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput (cmdstr)
-        print output
+        logger.info(output)
         exit_code = status >> 8
         if exit_code == 157:  # return value of -99 (2s complement of 157)
-            print ("ERROR: Input file for year %d, DOY %d is not readable.  "
-                "Stop processing since this same file is used for all days in "
-                "the current year." % (year, doy))
+            logger.error('Input file for year {0}, DOY {1} is not'
+                         ' readable.  Stop processing since this same file is'
+                         ' used for all days in the current year.'
+                         .format(year, doy))
             return ERROR
         elif exit_code != 0:
-            print ("WARNING: error running ncep for year %d, DOY %d.  "
-                "Processing will continue ..." % (year, doy))
+            logger.warn('error running ncep for year {0}, DOY {1}.  '
+                        'Processing will continue ...'.format(year, doy))
             if os.path.isfile(fulloutputpath):
                 os.remove(fulloutputpath)
 
@@ -221,7 +231,8 @@ def executeNcep (fullinputpath, outputdir, year, clean):
 ############################################################################
 def cleanNcepTargetDir (ancdir, year):
     mydir = "%s/REANALYSIS/RE_%d" % (ancdir, year)
-    print "Cleaning NCEP target directory: %s" % mydir
+    logger = logging.getLogger(__name__)  # Obtain logger for this module.
+    logger.info('Cleaning NCEP target directory: {0}'.format(mydir))
     regex = re.compile('REANALYSIS_' + str(year) + '\d*.hdf')
     if os.path.exists(mydir):
         # look at each file in the specified directory
@@ -232,9 +243,9 @@ def cleanNcepTargetDir (ancdir, year):
                 name = os.path.join(mydir, myfile)
                 try:
                     os.remove(name)
-                    # print "Removed %s" % name
+                    # logger.info('Removed {0}'.format(name))
                 except:
-                    print "Could not remove %s" % name
+                    logger.error('Could not remove {0}'.format(name))
 
 
 ############################################################################
@@ -257,13 +268,14 @@ def cleanNcepTargetDir (ancdir, year):
 #   function is pretty short and sweet, so we'll stick with wget.
 ############################################################################
 def downloadNcep (sourcefilename, destination):
-    print "Retrieving %s to %s" % (sourcefilename, destination)
+    logger = logging.getLogger(__name__)  # Get logger for the module.
+    logger.info('Retrieving {0} to {1}'.format(sourcefilename, destination))
     url = 'ftp://ftp.cdc.noaa.gov/Datasets/ncep.reanalysis/surface/%s' %  \
         sourcefilename
 
     # make sure the path exists or create it recursively
     if not os.path.exists(destination):
-        print "%s does not exist... creating" % destination
+        logger.info('{0} does not exist... creating'.format(destination))
         os.makedirs(destination, 0777)
 
     # make sure the file to be downloaded doesn't exist, remove it if it does
@@ -285,14 +297,15 @@ def downloadNcep (sourcefilename, destination):
         retry_count = 1
         while ((retry_count <= 5) and (retval)):
             time.sleep(60)
-            print "Retry %d of wget for %s" % (retry_count, url)
+            logger.info('Retry {0} of wget for {1}'.format(retry_count, url))
             retval = subprocess.call(cmd, shell=True, cwd=destination)
             retry_count += 1
 
         if retval:
-            print "unsuccessful download of %s (retried 5 times)" % url
+            logger.info('unsuccessful download of {0} (retried 5 times)'
+                        .format(url))
 
-    print "successful download of %s to %s" % (url, destination)
+    logger.info('successful download of {0} to {1}'.format(url, destination))
     return SUCCESS
 
 
@@ -339,24 +352,25 @@ def main ():
     today = options.today           # process most recent year of data
     quarterly = options.quarterly   # process today back to START_YEAR
 
+    logger = logging.getLogger(__name__)  # Get the logger for this module.
     # check the arguments
     if (today == False) and (quarterly == False) and \
        (syear == 0 or eyear == 0):
-        print ("Invalid command line argument combination.  Type --help \ "
-            "for more information")
+        logger.error('Invalid command line argument combination.  Type --help'
+                     ' for more information')
         return ERROR
 
     # determine the ancillary directory to store the data
     ancdir = os.environ.get('LEDAPS_AUX_DIR')
     if ancdir == None:
-        print "LEDAPS_AUX_DIR environment variable not set... exiting"
+        logger.error('LEDAPS_AUX_DIR environment variable not set... exiting')
         return ERROR
 
     # if processing today then process the current year.  if the current
     # DOY is within the first month, then process the previous year as well
     # to make sure we have all the recently available data processed.
     if today:
-        print "Processing NCEP data for the most recent year"
+        logger.info('Processing NCEP data for the most recent year')
         now = datetime.datetime.now()
         day_of_year = now.timetuple().tm_yday
         eyear = now.year
@@ -366,22 +380,30 @@ def main ():
             syear = now.year
 
     elif quarterly:
-        print "Processing NCEP data back to %d" % START_YEAR
+        logger.info('Processing NCEP data back to {0}'.format(START_YEAR))
         now = datetime.datetime.now()
         day_of_year = now.timetuple().tm_yday
         eyear = now.year
         syear = START_YEAR
 
-    print 'Processing NCEP data for %d - %d' % (syear, eyear)
+    logger.info('Processing NCEP data for {0} - {1}'.format(syear, eyear))
     for yr in range(syear, eyear+1):
-        print 'Processing year: %d' % yr
+        logger.info('Processing year: {0}'.format(yr))
         status = getNcepData(ancdir, yr)
         if status == ERROR:
-            print ("WARNING: Problems occurred while processing NCEP data for "
-                "year %d.  Processing will continue." % yr)
+            logger.warn('Problems occurred while processing NCEP'
+                        ' data for year {0}.  Processing will continue.'
+                        .format(yr))
 
-    print 'NCEP processing complete.'
+    logger.info('NCEP processing complete.')
     return SUCCESS
 
 if __name__ == "__main__":
+    # setup the default logger format and level. log to STDOUT.
+    logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
+                                ' %(levelname)-8s'
+                                ' %(filename)s:%(lineno)d:'
+                                '%(funcName)s -- %(message)s'),
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.INFO)
     sys.exit (main())

@@ -21,6 +21,9 @@ SUCCESS = 0
 # History:
 #   Updated on 9/9/2014 by Gail Schmidt, USGS/EROS
 #   Use standard python logging instead of a user-defined log file
+#   Updated on 11/13/2015 by Gail Schmidt, USGS/EROS
+#   Removed the --usebin command line argument.  All executables are expected
+#       to be in the PATH.
 #
 # Usage: do_l8_sr.py --help prints the help message
 ############################################################################
@@ -31,13 +34,12 @@ class SurfaceReflectance():
 
 
     ########################################################################
-    # Description: runSr will use the parameters passed for the input/output
-    # files, and usebin.  If input/output files are None (i.e. not
-    # specified) then the command-line parameters will be parsed for this
-    # information.  The surface reflectance application is then executed to
-    # generate the desired outputs on the specified input file.  If a log
-    # file was specified, then the output from this application will be
-    # logged to that file.
+    # Description: runSr will use the parameters passed for the input and
+    # output files.  If input/output files are None (i.e. not specified) then
+    # the command-line parameters will be parsed for this information.  The
+    # surface reflectance application is then executed to generate the desired
+    # outputs on the specified input file.  If a log file was specified, then
+    # the output from this application will be logged to that file.
     #
     # Inputs:
     #   xml_infile - name of the input XML file
@@ -45,9 +47,6 @@ class SurfaceReflectance():
     #       should be completed.  True or False.  Default is True, otherwise
     #       the processing will halt after the TOA reflectance products are
     #       complete.
-    #   usebin - this specifies if the surface reflectance exe resides in the
-    #       $BIN directory; if None then the surface reflectance exe is
-    #       expected to be in the PATH
     #
     # Returns:
     #     ERROR - error running the surface reflectance application
@@ -62,8 +61,7 @@ class SurfaceReflectance():
     #      going to be grabbed from the command line, then it's assumed all
     #      the parameters will be pulled from the command line.
     #######################################################################
-    def runSr (self, xml_infile=None, process_sr=None, write_toa=False, \
-        usebin=None):
+    def runSr (self, xml_infile=None, process_sr=None, write_toa=False):
         # if no parameters were passed then get the info from the
         # command line
         if xml_infile == None:
@@ -81,15 +79,8 @@ class SurfaceReflectance():
             parser.add_option ("--write_toa", dest="write_toa", default=False,
                 action="store_true",
                 help="write the intermediate TOA reflectance products")
-            parser.add_option ("--usebin", dest="usebin", default=False,
-                action="store_true",
-                help="use BIN environment variable as the location of " + \
-                     "surface reflectance application")
             (options, args) = parser.parse_args()
     
-            # validate the command-line options
-            usebin = options.usebin          # should $BIN directory be used
-
             # XML input file
             xml_infile = options.xml
             if xml_infile == None:
@@ -104,20 +95,6 @@ class SurfaceReflectance():
         logger = logging.getLogger(__name__)
         msg = 'Surface reflectance processing of Landsat file: %s' % xml_infile
         logger.info (msg)
-        
-        # should we expect the surface reflectance application to be in the
-        # PATH or in the BIN directory?
-        if usebin:
-            # get the BIN dir environment variable
-            bin_dir = os.environ.get('BIN')
-            bin_dir = bin_dir + '/'
-            msg = 'BIN environment variable: %s' % bin_dir
-            logger.info (msg)
-        else:
-            # don't use a path to the surface reflectance application
-            bin_dir = ""
-            msg = 'L8 surface reflectance executable expected to be in the PATH'
-            logger.info (msg)
         
         # make sure the XML file exists
         if not os.path.isfile(xml_infile):
@@ -164,9 +141,8 @@ class SurfaceReflectance():
         if write_toa:
             write_toa_opt_str = "--write_toa "
 
-        cmdstr = "%sl8_sr --xml=%s --aux=%s %s%s--verbose" % \
-            (bin_dir, xml_infile, aux_file, process_sr_opt_str, \
-             write_toa_opt_str)
+        cmdstr = "l8_sr --xml=%s --aux=%s %s%s--verbose" % \
+            (xml_infile, aux_file, process_sr_opt_str, write_toa_opt_str)
         msg = 'Executing l8_sr command: %s' % cmdstr
         logger.info (msg)
         (status, output) = commands.getstatusoutput (cmdstr)

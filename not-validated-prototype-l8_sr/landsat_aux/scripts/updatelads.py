@@ -38,52 +38,30 @@ class DatasourceResolver:
     AQUA_CMA = '/allData/22/MYD09CMA/'
     AQUA_CMG = '/allData/22/MYD09CMG/'
 
+    user = None
+    password = None
+
     def __init__(self):
-        # get the logger
-        logger = logging.getLogger(__name__)
+        if(self.user is None or self.password is None):
+            (self.user, self.password) = get_credentials_from_xmlrpc()
 
-        # determine the auxiliary directory to store the data
-        xmlrpc = os.environ.get('ESPA_XMLRPC')
-        if xmlrpc is None:
-            msg = "ESPA_XMLRPC environment variable not set... exiting"
-            logger.error(msg)
-            return None
+        logger = logging.getLogger(__name__)  # Obtain logger for this module.
+        logger.info('LADSFTP username: {0}'.format(self.user))
+        logger.info('LADSFTP password: {0}'.format(self.password))
 
-        # get the LADS username and password
-        try:
-            server = xmlrpclib.ServerProxy(xmlrpc)
-            self.user = server.get_configuration('ladsftp.username')
-            self.password = server.get_configuration('ladsftp.password')
-        except xmlrpclib.ProtocolError, e:
-            msg = "Error connecting to XMLRPC service to fetch credentials: " \
-                "%s" % e
-            logger.error(msg)
-            return None
-
-        # verify that the XMLRPC service returned valid information and
-        # the username and password were set in the configuration
-        if len(self.user) <= 0 or len(self.password) <= 0:
-            msg = "Received invalid sized credentials for LADS FTP from " \
-                "XMLRPC service. Make sure ladsftp.username and " \
-                "ladsftp.password are set in the ESPA_XMLRPC."
-            logger.error(msg)
-            return None
-
-        print "LADSFTP username: " + self.user
-        print "LADSFTP password: " + self.password
 
     #######################################################################
     # Description: buildURL builds the URLs for the Terra and Aqua CMG and
     # CMA products for the current year and DOY, and put that URL on the list.
     #
     # Inputs:
-    #   year - year of desired LADS data
-    #   DOY - day of year of desired LADS data
+    #   year - year of desired LAADS data
+    #   DOY - day of year of desired LAADS data
     #
     # Returns:
     #   None - error resolving the instrument and associated URL for the
     #          specified year and DOY
-    #   urlList - List of URLs to pull the LADS data from for the specified
+    #   urlList - List of URLs to pull the LAADS data from for the specified
     #             year and DOY.
     #
     # Notes:
@@ -122,6 +100,56 @@ class DatasourceResolver:
 ############################################################################
 
 
+#######################################################################
+# Description: Obtains ftp credentials (username and password) from
+# XMLRPC service.
+#
+# Precondition:
+#   Requires environmental variable, ESPA_XMLRPC, to be set equal to the
+#       address of the service.
+#   Assumes XMLRPC service is accessable from local system.
+#
+# Postcondition:
+#   Returns tuple containing (username, password)
+#   Returns None if error occured
+#       Occurs if service could not be reached
+#       Occurs if empty credentials were recieved from the service
+#
+#######################################################################
+def get_credentials_from_xmlrpc():
+    # get the logger
+    logger = logging.getLogger(__name__)
+
+    # determine the auxiliary directory to store the data
+    xmlrpc = os.environ.get('ESPA_XMLRPC')
+    if xmlrpc is None:
+        msg = "ESPA_XMLRPC environment variable not set... exiting"
+        logger.error(msg)
+        return None
+
+    # get the LAADS username and password
+    try:
+        server = xmlrpclib.ServerProxy(xmlrpc)
+        user = server.get_configuration('ladsftp.username')
+        password = server.get_configuration('ladsftp.password')
+    except xmlrpclib.ProtocolError, e:
+        msg = "Error connecting to XMLRPC service to fetch credentials: " \
+            "%s" % e
+        logger.error(msg)
+        return None
+
+    # verify that the XMLRPC service returned valid information and
+    # the username and password were set in the configuration
+    if len(user) <= 0 or len(password) <= 0:
+        msg = "Received invalid sized credentials for LAADS FTP from " \
+            "XMLRPC service. Make sure ladsftp.username and " \
+            "ladsftp.password are set in the ESPA_XMLRPC."
+        logger.error(msg)
+        return None
+
+    return (user, password)
+
+
 ############################################################################
 # Description: isLeapYear will determine if the specified year is a leap
 # year.
@@ -150,7 +178,7 @@ def isLeapYear (year):
 
 ############################################################################
 # Description: downloadLads will retrieve the files for the specified year
-# and DOY from the LADS ftp site and download to the desired destination.
+# and DOY from the LAADS ftp site and download to the desired destination.
 # If the destination directory does not exist, then it is made before
 # downloading.  Existing files in the download directory are removed/cleaned.
 # This will download the Aqua/Terra CMG and CMA files for the current year, DOY.
@@ -159,7 +187,7 @@ def isLeapYear (year):
 #   year - year of data to download (integer)
 #   doy - day of year of data to download (integer)
 #   destination - name of the directory on the local system to download the
-#                 LADS files
+#                 LAADS files
 #
 # Returns:
 #     ERROR - error occurred while processing
@@ -193,7 +221,7 @@ def downloadLads (year, doy, destination):
     # locations for the Aqua and Terra CMG/CMA files.
     urlList = DatasourceResolver().buildURLs(year, doy)
     if urlList is None:
-        msg = "LADS URLs could not be resolved for year %d and DOY %d." % \
+        msg = "LAADS URLs could not be resolved for year %d and DOY %d." % \
             (year, doy)
         logger.error(msg)
         return ERROR
@@ -216,12 +244,14 @@ def downloadLads (year, doy, destination):
             retry_count = 1
             while ((retry_count <= 5) and (retval)):
                 time.sleep(60)
-                print "Retry %d of wget for %s" % (retry_count, url)
+                logger.info('Retry {0} of wget for {1}'
+                            .format(retry_count, url))
                 retval = subprocess.call(cmd, shell=True, cwd=destination)
                 retry_count += 1
 
             if retval:
-                print "Unsuccessful download of %s (retried 5 times)" % url
+                logger.warn('Unsuccessful download of {0} (retried 5 times)'
+                            .format(url))
 
     return SUCCESS
 
@@ -233,9 +263,9 @@ def downloadLads (year, doy, destination):
 #
 # Inputs:
 #   auxdir - name of the base L8_SR auxiliary directory which contains
-#            the LADS directory
-#   year - year of LADS data to be downloaded and processed (integer)
-#   today - specifies if we are just bringing the LADS data up to date vs.
+#            the LAADS directory
+#   year - year of LAADS data to be downloaded and processed (integer)
+#   today - specifies if we are just bringing the LAADS data up to date vs.
 #           reprocessing the data
 #
 # Returns:
@@ -250,7 +280,7 @@ def getLadsData (auxdir, year, today):
 
     # determine the directory for the output auxiliary data files to be
     # processed.  create the directory if it doesn't exist.
-    outputDir = "%s/LADS/%d" % (auxdir, year)
+    outputDir = "%s/LAADS/%d" % (auxdir, year)
     if not os.path.exists(outputDir):
         msg = "%s does not exist... creating" % outputDir
         logger.info(msg)
@@ -270,7 +300,7 @@ def getLadsData (auxdir, year, today):
     # set the download directory in /tmp/lads
     dloaddir = "/tmp/lads/%d" % year
 
-    # loop through each day in the year and process the LADS data.  process
+    # loop through each day in the year and process the LAADS data.  process
     # in the reverse order so that if we are handling data for "today", then
     # we can stop as soon as we find the current DOY has been processed.
     for doy in range(day_of_year, 0, -1):
@@ -292,7 +322,7 @@ def getLadsData (auxdir, year, today):
         if skip_date:
             continue
 
-        # download the daily LADS files for the specified year and DOY
+        # download the daily LAADS files for the specified year and DOY
         status = downloadLads (year, doy, dloaddir)
         if status == ERROR:
             # warning message already printed
@@ -307,7 +337,7 @@ def getLadsData (auxdir, year, today):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            msg = "No LADS MOD09CMA data available for doy %d year %d." % \
+            msg = "No LAADS MOD09CMA data available for doy %d year %d." % \
                 (doy, year)
             logger.warning(msg)
             continue
@@ -318,7 +348,7 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 terra_cma = dloaddir + '/' + fileList[0]
             else:
-                msg = "Multiple LADS MOD09CMA files found for doy %d year " \
+                msg = "Multiple LAADS MOD09CMA files found for doy %d year " \
                     "%d." % (doy, year)
                 logger.error(msg)
                 return ERROR
@@ -332,7 +362,7 @@ def getLadsData (auxdir, year, today):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            msg = "No LADS MOD09CMG data available for doy %d year %d." % \
+            msg = "No LAADS MOD09CMG data available for doy %d year %d." % \
                 (doy, year)
             logger.warning(msg)
             continue
@@ -343,7 +373,7 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 terra_cmg = dloaddir + '/' + fileList[0]
             else:
-                msg = "Multiple LADS MOD09CMG files found for doy %d year " \
+                msg = "Multiple LAADS MOD09CMG files found for doy %d year " \
                     "%d." % (doy, year)
                 logger.error(msg)
                 return ERROR
@@ -357,7 +387,7 @@ def getLadsData (auxdir, year, today):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            msg = "No LADS MYD09CMA data available for doy %d year %d." % \
+            msg = "No LAADS MYD09CMA data available for doy %d year %d." % \
                 (doy, year)
             logger.warning(msg)
             continue
@@ -368,7 +398,7 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 aqua_cma = dloaddir + '/' + fileList[0]
             else:
-                msg = "Multiple LADS MYD09CMA files found for doy %d year " \
+                msg = "Multiple LAADS MYD09CMA files found for doy %d year " \
                     "%d." % (doy, year)
                 logger.error(msg)
                 return ERROR
@@ -382,7 +412,7 @@ def getLadsData (auxdir, year, today):
         # make sure files were found or print a warning
         nfiles = len(fileList)
         if nfiles == 0:
-            msg = "No LADS MYD09CMG data available for doy %d year %d." % \
+            msg = "No LAADS MYD09CMG data available for doy %d year %d." % \
                 (doy, year)
             logger.warning(msg)
             continue
@@ -393,7 +423,7 @@ def getLadsData (auxdir, year, today):
             if nfiles == 1:
                 aqua_cmg = dloaddir + '/' + fileList[0]
             else:
-                msg = "Multiple LADS MYD09CMG files found for doy %d year " \
+                msg = "Multiple LAADS MYD09CMG files found for doy %d year " \
                     "%d." % (doy, year)
                 logger.error(msg)
                 return ERROR
@@ -430,7 +460,7 @@ def getLadsData (auxdir, year, today):
 ############################################################################
 # Description: Main routine which grabs the command-line arguments, determines
 # which years/days of data need to be processed, then processes the user-
-# specified dates of LADS data.
+# specified dates of LAADS data.
 #
 # Developer(s):
 #     Gail Schmidt, USGS EROS - Original development
@@ -448,35 +478,49 @@ def getLadsData (auxdir, year, today):
 #    this option is used for nightly updates.  If the hdf fused data products
 #    already exist for a particular year/doy, they will not be reprocessed.
 # 3. --quarterly will process the data for today all the way back to the
-#    earliest year so that any updated LADS files are picked up and
+#    earliest year so that any updated LAADS files are picked up and
 #    processed.  Thus this option is used for quarterly updates.
-# 4. Existing LADS HDF files are removed before processing data for that
+# 4. Existing LAADS HDF files are removed before processing data for that
 #    year and DOY, but only if the downloaded auxiliary data exists for that
 #    date.
 ############################################################################
 def main ():
-    # get the logger
-    logger = logging.getLogger(__name__)
+    logger = logging.getLogger(__name__)  # Get logger for the module.
 
     # get the command line arguments
     parser = OptionParser()
-    parser.add_option ("-s", "--start_year", type="int", dest="syear",
-        default=0, help="year for which to start pulling LADS data")
-    parser.add_option ("-e", "--end_year", type="int", dest="eyear",
-        default=0, help="last year for which to pull LADS data")
-    parser.add_option ("--today", dest="today", default=False,
-        action="store_true",
-        help="process LADS data up through the most recent year and DOY")
-    msg = "Process or reprocess all LADS data from today back to %d" %  \
+    parser.add_option ('-s', '--start_year', type='int', dest='syear',
+        default=0, help='year for which to start pulling LAADS data')
+    parser.add_option ('-e', '--end_year', type='int', dest='eyear',
+        default=0, help='last year for which to pull LAADS data')
+    parser.add_option('-u', '--username', dest='username', type='string',
+                      help='username to use for LAADS ftp site '
+                           '(ladssci.nascom.nasa.gov)')
+    parser.add_option('-p', '--password', dest='password', type='string',
+                      help='password to use for LAADS ftp site '
+                           '(ladssci.nascom.nasa.gov)')
+    parser.add_option ('--today', dest='today', default=False,
+        action='store_true',
+        help='process LAADS data up through the most recent year and DOY')
+    msg = 'process or reprocess all LAADS data from today back to %d' %  \
         START_YEAR
-    parser.add_option ("--quarterly", dest="quarterly", default=False,
-        action="store_true", help=msg)
+    parser.add_option ('--quarterly', dest='quarterly', default=False,
+        action='store_true', help=msg)
 
     (options, args) = parser.parse_args()
     syear = options.syear           # starting year
     eyear = options.eyear           # ending year
     today = options.today           # process most recent year of data
     quarterly = options.quarterly   # process today back to START_YEAR
+
+    if((options.username is None) and (options.password is None)):
+        logger.info('Credentials obtained from XMLRPC service will be used')
+    elif((options.username is not None) and (options.password is not None)):
+        DatasourceResolver.user = options.username
+        DatasourceResolver.password = options.password
+    else:
+        raise Exception('It is invalid to specify --username or --password'
+                        ' argument without the other.')
 
     # check the arguments
     if (today == False) and (quarterly == False) and \
@@ -497,7 +541,7 @@ def main ():
     # DOY is within the first month, then process the previous year as well
     # to make sure we have all the recently available data processed.
     if today:
-        msg = "Processing LADS data up to the most recent year and DOY."
+        msg = "Processing LAADS data up to the most recent year and DOY."
         logger.info(msg)
         now = datetime.datetime.now()
         day_of_year = now.timetuple().tm_yday
@@ -505,26 +549,26 @@ def main ():
         syear = START_YEAR
 
     elif quarterly:
-        msg = "Processing LADS data back to %d" % START_YEAR
+        msg = "Processing LAADS data back to %d" % START_YEAR
         logger.info(msg)
         now = datetime.datetime.now()
         day_of_year = now.timetuple().tm_yday
         eyear = now.year
         syear = START_YEAR
 
-    msg = 'Processing LADS data for %d - %d' % (syear, eyear)
+    msg = 'Processing LAADS data for %d - %d' % (syear, eyear)
     logger.info(msg)
     for yr in range(eyear, syear-1, -1):
         msg = 'Processing year: %d' % yr
         logger.info(msg)
         status = getLadsData(auxdir, yr, today)
         if status == ERROR:
-            msg = "Problems occurred while processing LADS data for year " \
+            msg = "Problems occurred while processing LAADS data for year " \
                 "%d." % yr
             logger.error(msg)
             return ERROR
 
-    msg = 'LADS processing complete.'
+    msg = 'LAADS processing complete.'
     logger.info(msg)
     return SUCCESS
 
