@@ -29,7 +29,7 @@ Provides science application executables for generating surface reflectance prod
 
 # ----------------------------------------------------------------------------
 # Specify the repository tag/branch to clone and build from
-%define tagname dev_nov2015
+%define tagname dev_dec2015
 # Specify the name of the directory to clone into
 %define clonedname %{name}-%{tagname}
 
