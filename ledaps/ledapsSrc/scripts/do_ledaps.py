@@ -4,6 +4,7 @@ import os
 import re
 import commands
 import datetime
+import logging
 from optparse import OptionParser
 
 ERROR = 1
@@ -36,25 +37,6 @@ def isLeapYear(year):
         return False
 
 
-############################################################################
-# Description: logIt logs the information to the logfile (if valid) or to
-# stdout if the logfile is None.
-#
-# Inputs:
-#   msg - message to be printed/logged
-#   log_handler - log file handler; if None then print to stdout
-#
-# Returns: nothing
-#
-# Notes:
-############################################################################
-def logIt(msg, log_handler):
-    if log_handler is None:
-        print msg
-    else:
-        log_handler.write(msg + '\n')
-
-
 #############################################################################
 # Created on November 13, 2012 by Gail Schmidt, USGS/EROS
 # Created Python script so that lnd* application status values can be checked
@@ -74,6 +56,11 @@ def logIt(msg, log_handler):
 #       part of the switch to utilize the ESPA internal raw binary file
 #   Updated on 10/09/2014 by Ron Dilley, USGS/EROS
 #   Modified to be pep8 compliant.
+#   Updated on 11/12/2015 by Nathan Genetzky, USGS/EROS
+#   Modified to use the Python logger vs. print statements
+#   Updated on 11/13/2015 by Gail Schmidt, USGS/EROS
+#   Removed the --usebin command-line option.  All executables for LEDAPS
+#       will be expected in the PATH.
 #
 # Usage: do_ledaps.py --help prints the help message
 ############################################################################
@@ -105,10 +92,11 @@ class Ledaps():
     #         contains the REANALYSIS and EP/TOMS subdirectories.
     #######################################################################
     def findAncillary(self, year, doy=-99):
+        logger = logging.getLogger(__name__)
         # determine the ancillary directory to store the data
         ancdir = os.environ.get('ANC_PATH')
         if ancdir is None:
-            print "ANC_PATH environment variable not set... exiting"
+            logger.error('ANC_PATH environment variable not set... exiting')
             return None
 
         # initialize the doyList to empty and the number of days to 1
@@ -161,12 +149,11 @@ class Ledaps():
         return doyList
 
     ########################################################################
-    # Description: runLedaps will use the parameters passed for xmlfile,
-    # logfile, and usebin.  If xmlfile is None (i.e. not specified) then
-    # the command-line parameters will be parsed for this information.
-    # The LEDAPS applications are then executed on the specified XML file.
-    # If a log file was specified, then the output from each LEDAPS application
-    # will be logged to that file.
+    # Description: runLedaps will use the parameter passed for the xmlfile.
+    # If xmlfile is None (i.e. not specified) then the command-line parameters
+    # will be parsed for this information.  The LEDAPS applications are then
+    # executed on the specified XML file.  If a log file was specified, then
+    # the output from each LEDAPS application will be logged to that file.
     #
     # Inputs:
     #   xmlfile - name of the Landsat XML file to be processed
@@ -174,11 +161,6 @@ class Ledaps():
     #       should be completed.  True or False.  Default is True, otherwise
     #       the processing will halt after the TOA reflectance products are
     #       complete.
-    #   logfile - name of the logfile for logging information; if None then
-    #       the output will be written to stdout
-    #   usebin - this specifies if the LEDAPS exes reside in the $BIN
-    #       directory; if None then the LEDAPS exes are expected to be in
-    #       the PATH
     #
     # Returns:
     #     ERROR - error running the LEDAPS applications
@@ -190,8 +172,7 @@ class Ledaps():
     #      xmlfile directory is not writable, then this script exits with
     #      an error.
     #######################################################################
-    def runLedaps(self, xmlfile=None, process_sr="True", logfile=None,
-                  usebin=None):
+    def runLedaps(self, xmlfile=None, process_sr="True"):
         # if no parameters were passed then get the info from the
         # command line
         if xmlfile is None:
@@ -207,21 +188,12 @@ class Ledaps():
                                     " True or False (default is True) "
                                     " If False, then processing will halt"
                                     " after the TOA reflectance products are"
-                                    " complete."))
-            parser.add_option("--usebin",
-                              dest="usebin", default=False,
-                              action="store_true",
-                              help=("use BIN environment variable as the"
-                                    " location of LEDAPS apps"))
-            parser.add_option("-l", "--logfile",
-                              type="string", dest="logfile",
-                              help="name of optional log file",
-                              metavar="FILE")
+                                    " complete. (Note: scenes with solar"
+                                    " zenith angles above 76 degrees should"
+                                    " use process_sr=False)"))
             (options, args) = parser.parse_args()
 
             # validate the command-line options
-            usebin = options.usebin    # should $BIN directory be used
-            logfile = options.logfile  # name of the log file
             xmlfile = options.xmlfile  # name of the XML file
             if xmlfile is None:
                 parser.error("missing xmlfile command-line argument")
@@ -230,40 +202,22 @@ class Ledaps():
             if process_sr is None:
                 process_sr = "True"  # If not provided, default to True
 
-        # open the log file if it exists; use line buffering for the output
-        log_handler = None
-        if logfile is not None:
-            log_handler = open(logfile, 'w', buffering=1)
-        msg = 'LEDAPS processing of Landsat XML file: %s' % xmlfile
-        logIt(msg, log_handler)
-
-        # should we expect the lnd* applications to be in the PATH or in the
-        # BIN directory?
-        if usebin:
-            # get the BIN dir environment variable
-            bin_dir = os.environ.get('BIN')
-            bin_dir = bin_dir + '/'
-            msg = 'BIN environment variable: %s' % bin_dir
-            logIt(msg, log_handler)
-        else:
-            # don't use a path to the lnd* applications
-            bin_dir = ""
-            msg = 'LEDAPS executables expected to be in the PATH'
-            logIt(msg, log_handler)
+        # Obtain logger from logging using the module's name
+        logger = logging.getLogger(__name__)
+        logger.info('LEDAPS processing of Landsat XML file: {0}'
+                    .format(xmlfile))
 
         # make sure the XML file exists
         if not os.path.isfile(xmlfile):
-            msg = ("Error: XML file does not exist or is not accessible: %s"
-                   % xmlfile)
-            logIt(msg, log_handler)
+            logger.error('XML file does not exist or is not accessible'
+                         ': {0}'.format(xmlfile))
             return ERROR
 
         # parse the XML filename, strip off the .xml
         # use the base XML filename and not the full path.
         base_xmlfile = os.path.basename(xmlfile)
         xml = re.sub('\.xml$', '', base_xmlfile)
-        msg = 'Processing XML basefile: %s' % xml
-        logIt(msg, log_handler)
+        logger.info('Processing XML basefile: {0}'.format(xml))
 
         # get the path of the XML file and change directory to that location
         # for running this script.  save the current working directory for
@@ -274,71 +228,72 @@ class Ledaps():
         mydir = os.getcwd()
         xmldir = os.path.dirname(os.path.abspath(xmlfile))
         if not os.access(xmldir, os.W_OK):
-            msg = ('Path of XML file is not writable: %s.'
-                   '  LEDAPS needs write access to the XML directory.'
-                   % xmldir)
-            logIt(msg, log_handler)
+            logger.error('Path of XML file is not writable: {0}.'
+                         '  LEDAPS needs write access to the XML directory.'
+                         .format(xmldir))
             return ERROR
-        msg = 'Changing directories for LEDAPS processing: %s' % xmldir
-        logIt(msg, log_handler)
+        logger.info('Changing directories for LEDAPS processing: {0}'
+                    .format(xmldir))
         os.chdir(xmldir)
 
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
-        cmdstr = "%slndpm %s" % (bin_dir, base_xmlfile)
-#        print 'DEBUG: lndpm command: %s' % cmdstr
+        cmdstr = "lndpm %s" % base_xmlfile
+        # logger.debug('lndpm command: {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
-        logIt(output, log_handler)
+        logger.info(output)
         exit_code = status >> 8
         if exit_code != 0:
-            msg = 'Error running lndpm.  Processing will terminate.'
-            logIt(msg, log_handler)
+            logger.error('Error running lndpm.  Processing will terminate.')
             os.chdir(mydir)
             return ERROR
 
-        cmdstr = "%slndcal lndcal.%s.txt" % (bin_dir, xml)
-#        print 'DEBUG: lndcal command: %s' % cmdstr
+        cmdstr = "lndcal lndcal.%s.txt" % xml
+        # logger.debug('lndcal command: {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
-        logIt(output, log_handler)
+        logger.info(output)
         exit_code = status >> 8
         if exit_code != 0:
-            msg = 'Error running lndcal.  Processing will terminate.'
-            logIt(msg, log_handler)
+            logger.error('Error running lndcal.  Processing will terminate.')
             os.chdir(mydir)
             return ERROR
 
         if process_sr == "True":
-            cmdstr = "%slndsr lndsr.%s.txt" % (bin_dir, xml)
-#            print 'DEBUG: lndsr command: %s' % cmdstr
+            cmdstr = "lndsr lndsr.%s.txt" % xml
+            # logger.debug('lndsr command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
-            logIt(output, log_handler)
+            logger.info(output)
             exit_code = status >> 8
             if exit_code != 0:
-                msg = 'Error running lndsr.  Processing will terminate.'
-                logIt(msg, log_handler)
+                logger.error('Error running lndsr.'
+                             '  Processing will terminate.')
                 os.chdir(mydir)
                 return ERROR
 
-            cmdstr = "%slndsrbm.ksh lndsr.%s.txt" % (bin_dir, xml)
-#            print 'DEBUG: lndsrbm command: %s' % cmdstr
+            cmdstr = "lndsrbm.ksh lndsr.%s.txt" % xml
+            # logger.debug('lndsrbm command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
-            logIt(output, log_handler)
+            logger.info(output)
             exit_code = status >> 8
             if exit_code != 0:
-                msg = 'Error running lndsrbm.  Processing will terminate.'
-                logIt(msg, log_handler)
+                logger.error('Error running lndsrbm.'
+                            '  Processing will terminate.')
                 os.chdir(mydir)
                 return ERROR
 
         # successful completion.  return to the original directory.
         os.chdir(mydir)
-        msg = 'Completion of LEDAPS.'
-        logIt(msg, log_handler)
-        if logfile is not None:
-            log_handler.close()
+        logger.info('Completion of LEDAPS.')
         return SUCCESS
 
 # ##### end of Ledaps class #####
 
 if __name__ == "__main__":
+    # setup the default logger format and level. log to STDOUT.
+    logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
+                                ' %(levelname)-8s'
+                                ' %(filename)s:%(lineno)d:'
+                                '%(funcName)s -- %(message)s'),
+                        datefmt='%Y-%m-%d %H:%M:%S',
+                        level=logging.INFO)
     sys.exit(Ledaps().runLedaps())

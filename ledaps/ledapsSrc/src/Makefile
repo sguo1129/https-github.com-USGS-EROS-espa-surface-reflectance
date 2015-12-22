@@ -1,18 +1,23 @@
+#-----------------------------------------------------------------------------
+# Makefile
+#
+# Simple makefile for building and installing Ledaps.
+#-----------------------------------------------------------------------------
+.PHONY: all install clean
 
-MODLIST = lndpm lndcal lndsr lndsrbm 6sV-1.0B
+MODULES = lndpm lndcal lndsr lndsrbm 6sV-1.0B
 
 all:
-	@for i in $(MODLIST); do \
-	(cd $$i; make; cd ..) \
+	@for module in $(MODULES); do \
+	    (cd $$module; $(MAKE)) \
 	done
 
 install:
-	@for i in $(MODLIST); do \
-	(cd $$i; make install; cd ..) \
+	@for module in $(MODULES); do \
+	    (cd $$module; $(MAKE) install) \
 	done
-	install -m 755 ../bin/do_ledaps.py $(PREFIX)/bin
 
 clean:
-	@for i in $(MODLIST); do \
-	(cd $$i; make clean; cd ..) \
+	@for module in $(MODULES); do \
+	    (cd $$module; $(MAKE) clean) \
 	done

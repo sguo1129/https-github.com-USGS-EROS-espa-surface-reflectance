@@ -1,42 +1,97 @@
-EXTRA   = -g -D_BSD_SOURCE -Wall -O2
+#-----------------------------------------------------------------------------
+# Makefile
+#
+# For building lndcal.
+#-----------------------------------------------------------------------------
+.PHONY: all install clean
 
-INCDIR  = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) -I$(ESPAINC)
-NCFLAGS  = $(CFLAGS) $(EXTRA) $(INCDIR)
+# Inherit from upper-level make.config
+TOP = ../../../..
+include $(TOP)/make.config
 
-EXLIB	= -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
-  -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
-  -L$(XML2LIB) -lxml2 -L$(HDFEOS_GCTPLIB) -lGctp -lz
+#-----------------------------------------------------------------------------
+# Set up compile options
+CC    = gcc
+FC    = gfortran
+RM    = rm
+EXTRA = -Wall $(EXTRA_OPTIONS)
+
+# Define the include files
+C_INC = ar.h bool.h clouds.h const.h date.h error.h external_pgm.h grib.h \
+        input.h keyvalue.h lndsr.h lut.h myhdf.h myproj_const.h myproj.h \
+        mystring.h output.h param.h prwv_input.h read_grib_tools.h \
+        sixs_runs.h sr.h
+
+# Define the source code and object files
+C_SRC = \
+        ar.c              \
+        clouds.c          \
+        date.c            \
+        error.c           \
+        grib.c            \
+        input.c           \
+        lndsr.c           \
+        lut.c             \
+        myhdf.c           \
+        mystring.c        \
+        output.c          \
+        param.c           \
+        prwv_input.c      \
+        read_grib_tools.c \
+        sixs_runs.c       \
+        sr.c
+C_OBJ = $(C_SRC:.c=.o)
+
+F_SRC = \
+        CHAND.f \
+        CSALBR.f
+F_OBJ = $(F_SRC:.f=.o)
+
+ALL_OBJ = $(C_OBJ) $(F_OBJ)
+
+# Define include paths
+INCDIR  = -I. -I$(ESPAINC) -I$(XML2INC)
+HDF_INCDIR = -I$(JPEGINC) -I$(HDFINC) -I$(HDFEOS_GCTPINC)
+NCFLAGS = $(EXTRA) $(INCDIR) $(HDF_INCDIR)
+
+# Define the object libraries and paths
+EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
+        -L$(XML2LIB) -lxml2 \
+        -L$(LZMALIB) -llzma \
+        -L$(ZLIBLIB) -lz
+HDF_EXLIB = -L$(HDFLIB) -lmfhdf -ldf \
+            -L$(JPEGLIB) -ljpeg \
+            -L$(HDFEOS_GCTPLIB) -lGctp
 MATHLIB = -lm
-LOADLIB = $(EXLIB) $(MATHLIB)
+LOADLIB = $(EXLIB) $(HDF_EXLIB) $(MATHLIB)
 
-TARGET1	= lndsr
-OBJ1    = lndsr.o param.o input.o prwv_input.o lut.o output.o sr.o ar.o \
-          date.o mystring.o error.o grib.o read_grib_tools.o myhdf.o \
-          CHAND.o CSALBR.o sixs_runs.o clouds.o
-INC1    = lndsr.h keyvalue.h param.h input.h prwv_input.h lut.h output.h \
-          sr.h ar.h date.h mystring.h bool.h const.h error.h grib.h myhdf.h \
-          read_grib_tools.h myproj.h myproj_const.h
+# Define C executables
+EXE = lndsr
 
-all: $(TARGET1)
+#-----------------------------------------------------------------------------
+all: $(EXE)
 
-x: $(TARGET1)
+$(EXE): $(ALL_OBJ)
+	$(CC) $(EXTRA) -o $(EXE) $(ALL_OBJ) $(LOADLIB)
 
-$(OBJ1): $(INC1)
-
-$(TARGET1): $(OBJ1)
-	$(CC) $(EXTRA) -o $(TARGET1) $(OBJ1) $(LOADLIB)
-
-clean:
-	rm -f *.o $(TARGET1)
-
+#-----------------------------------------------------------------------------
 install:
-	install -d $(PREFIX)/bin
-	install -m 755 $(TARGET1) $(PREFIX)/bin
+	install -d $(link_path)
+	install -d $(ledaps_bin_install_path)
+	install -m 755 $(EXE) $(ledaps_bin_install_path)
+	ln -sf $(ledaps_link_source_path)/$(EXE) $(link_path)/$(EXE)
 
-#
-# Rules
-#
+#-----------------------------------------------------------------------------
+clean:
+	rm -f *.o $(EXE)
+
+#-----------------------------------------------------------------------------
+$(C_OBJ): $(C_SRC) $(C_INC)
+
 .c.o:
-	$(CC) $(EXTRA) $(NCFLAGS) -c $< -o $@
+	$(CC) $(NCFLAGS) -c $< -o $@
+
+$(F_OBJ): $(F_SRC)
+
 .f.o:
-	gfortran -c $< -o $@
+	$(FC) $(NCFLAGS) -c $< -o $@

@@ -32,8 +32,7 @@ NOTES:
 
 /* Defines */
 /* LEDAPS VERSION definitions */
-#define LEDAPS_VERSION "2.3.1"
-#define logFile "LogReport"
+#define LEDAPS_VERSION "2.4.0"
 
 /* define useful constants */
 #define MAX_STRING_LENGTH 1000

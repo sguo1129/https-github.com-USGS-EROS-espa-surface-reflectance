@@ -1,19 +1,20 @@
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
 # Makefile for L8 SR code
-#------------------------------------------------------------------------------
+#-----------------------------------------------------------------------------
+.PHONY: all install clean
 
-# Set up compile options; add -fopenmp to use the OpenMP support for processing
-# L8SR.
-# EXTRA = -Wall -O2 -fopenmp
-CC = gcc
-RM = rm -f
-EXTRA = -Wall -O2
+# Inherit from upper-level make.config
+TOP = ../../..
+include $(TOP)/make.config
+
+#-----------------------------------------------------------------------------
+# Set up compile options
+CC    = gcc
+RM    = rm
+EXTRA = -Wall $(EXTRA_OPTIONS)
 
 # Define the include files
 INC = common.h date.h input.h output.h lut_subr.h l8_sr.h
-INCDIR = -I. -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC) -I$(XML2INC) \
--I$(ESPAINC)
-NCFLAGS  = $(EXTRA) $(INCDIR)
 
 # Define the source code and object files
 SRC = compute_refl.c      \
@@ -26,32 +27,45 @@ SRC = compute_refl.c      \
       l8_sr.c
 OBJ = $(SRC:.c=.o)
 
-# Define the object libraries
+# Define include paths
+INCDIR = -I. -I$(ESPAINC) -I$(XML2INC)
+HDF_INCDIR = -I$(HDFINC) -I$(HDFEOS_INC) -I$(HDFEOS_GCTPINC)
+NCFLAGS  = $(EXTRA) $(INCDIR) $(HDF_INCDIR)
+
+# Define the object libraries and paths
 EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
-  -L$(HDFEOS_LIB) -lhdfeos -L$(HDFLIB) -lmfhdf -ldf -L$(JPEGLIB) -ljpeg \
-  -L$(XML2LIB) -lxml2 -L$(HDFEOS_GCTPLIB) -lGctp -L$(ZLIBLIB) -lz
+        -L$(XML2LIB) -lxml2 \
+        -L$(LZMALIB) -llzma \
+        -L$(ZLIBLIB) -lz
+HDF_EXLIB = -L$(HDFEOS_LIB) -lhdfeos \
+            -L$(HDFLIB) -lmfhdf -ldf \
+            -L$(JPEGLIB) -ljpeg \
+            -L$(HDFEOS_GCTPLIB) -lGctp
 MATHLIB = -lm
-LOADLIB = $(EXLIB) $(MATHLIB)
+LOADLIB = $(EXLIB) $(HDF_EXLIB) $(MATHLIB)
 
-# Define the executable
-EXE	= l8_sr
+# Define C executables
+EXE = l8_sr
 
-# Target for the executable
+#-----------------------------------------------------------------------------
 all: $(EXE)
 
-l8_sr: $(OBJ) $(INC)
+$(EXE): $(OBJ) $(INC)
 	$(CC) $(EXTRA) -o $(EXE) $(OBJ) $(LOADLIB)
 
+#-----------------------------------------------------------------------------
 install:
-	install -d $(PREFIX)/bin
-	install -m 755 $(EXE) $(PREFIX)/bin
-	install -m 755 ../scripts/*.py $(PREFIX)/bin
+	install -d $(link_path)
+	install -d $(l8_bin_install_path)
+	install -m 755 $(EXE) $(l8_bin_install_path)
+	ln -sf $(l8_link_source_path)/$(EXE) $(link_path)/$(EXE)
 
+#-----------------------------------------------------------------------------
 clean:
-	$(RM) *.o $(EXE)
+	$(RM) -f *.o $(EXE)
 
+#-----------------------------------------------------------------------------
 $(OBJ): $(INC)
 
 .c.o:
 	$(CC) $(NCFLAGS) -c $<
-

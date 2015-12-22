@@ -1,34 +1,63 @@
-#############################################################################
-# !make
+#-----------------------------------------------------------------------------
+# Makefile
 #
-# makefile name: makefile (for linux)
-#
-##!END
-#############################################################################
-EXTRA  = -g -D_BSD_SOURCE -Wall -O2
+# For building lndcal.
+#-----------------------------------------------------------------------------
+.PHONY: all install clean
 
-TARGET = lndpm
+# Inherit from upper-level make.config
+TOP = ../../../..
+include $(TOP)/make.config
 
-INC = -I. -I$(ESPAINC) -I$(XML2INC)
+#-----------------------------------------------------------------------------
+# Set up compile options
+CC    = gcc
+RM    = rm
+EXTRA = -Wall $(EXTRA_OPTIONS)
 
-LIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -L$(XML2LIB) -lxml2 \
-      -lz -lm
+# Define the include files
+INC = lndpm.h
 
-OBJ =  lndpm.c
+# Define the source code and object files
+SRC = lndpm.c
+OBJ = $(SRC:.c=.o)
 
-all: $(TARGET)
+# Define the object libraries and paths
+EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \
+        -L$(XML2LIB) -lxml2 \
+        -L$(LZMALIB) -llzma \
+        -L$(ZLIBLIB) -lz
 
-# Make the program
-$(TARGET) : $(OBJ)
-	$(CC) $(EXTRA) $(INC) $(OBJ) $(LIB)  -o $@
+MATHLIB = -lm
+LOADLIB = $(EXLIB) $(MATHLIB)
 
-clean:
-	rm -f *.o $(TARGET)
+# Define include paths
+INCDIR  = -I. -I$(ESPAINC) -I$(XML2INC)
+NCFLAGS = $(EXTRA) $(INCDIR)
 
+# Define C executables
+EXE = lndpm
+
+#-----------------------------------------------------------------------------
+all: $(EXE)
+
+$(EXE): $(OBJ) $(INC)
+	$(CC) $(EXTRA) -o $(EXE) $(OBJ) $(LOADLIB)
+
+#-----------------------------------------------------------------------------
 install:
-	install -d $(PREFIX)/bin
-	install -m 755 $(TARGET) $(PREFIX)/bin
+	install -d $(link_path)
+	install -d $(ledaps_bin_install_path)
+	install -m 755 $(EXE) $(ledaps_bin_install_path)
+	ln -sf $(ledaps_link_source_path)/$(EXE) $(link_path)/$(EXE)
 
-#******************* End of make file *******************************
 
+#-----------------------------------------------------------------------------
+clean:
+	$(RM) -f *.o $(EXE)
 
+#-----------------------------------------------------------------------------
+$(OBJ): $(INC)
+
+.c.o:
+	$(CC) $(NCFLAGS) -c $< -o $@
