@@ -75,7 +75,6 @@ typedef struct {
   double atmos_opacity_scale_factor;  /* Atmospheric opacity scale factor */
   double add_offset;       /* add offset */
   double add_offset_err;   /* add offset error */
-  double calibrated_nt;    /* calibrated nt */
 } Lut_t;
 
 /* Prototypes */

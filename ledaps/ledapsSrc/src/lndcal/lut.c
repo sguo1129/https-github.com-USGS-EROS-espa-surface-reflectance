@@ -25,8 +25,6 @@
 #define SCALE_FACTOR_ERR_TH  (0.0)
 #define ADD_OFFSET_ERR_REF   (0.0)
 #define ADD_OFFSET_ERR_TH    (0.0)
-#define CALIBRATED_NT_REF    (5.0)  /* HDF definition of DFNT_FLOAT32 */
-#define CALIBRATED_NT_TH     (5.0)  /* HDF definition of DFNT_FLOAT32 */
 
 
 /* Relative sun-earth distance variation (Ref. L7 handbook)
@@ -302,7 +300,6 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
   this->scale_factor_err_ref=   SCALE_FACTOR_ERR_REF;
   this->add_offset_ref=         ADD_OFFSET_REF;
   this->add_offset_err_ref=     ADD_OFFSET_ERR_REF;
-  this->calibrated_nt_ref=      CALIBRATED_NT_REF;
 
   this->long_name_prefix_th = DupString(LONG_NAME_PREFIX_TH);
   if (this->long_name_prefix_th == NULL) {
@@ -322,7 +319,6 @@ Lut_t *GetLut(Param_t *param, int nband, Input_t *input) {
   this->scale_factor_err_th=   SCALE_FACTOR_ERR_TH;
   this->add_offset_th=         ADD_OFFSET_TH;
   this->add_offset_err_th=     ADD_OFFSET_ERR_TH;
-  this->calibrated_nt_th=      CALIBRATED_NT_TH;
 
   return this;
 }

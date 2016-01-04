@@ -69,7 +69,6 @@ typedef struct {
   double scale_factor_err_ref; /* ref scale factor error                    */
   double add_offset_ref;       /* ref add offset                            */
   double add_offset_err_ref;   /* ref add offset error                      */
-  double calibrated_nt_ref;    /* ref calibrated nt                         */
   char* long_name_prefix_th;   /* thermal long name prefix (append band num)*/ 
   char* units_th;              /* thermal units                             */
   int valid_range_th[2];       /* thermal valid range                       */
@@ -77,7 +76,6 @@ typedef struct {
   double scale_factor_err_th;  /* thermal scale factor error                */
   double add_offset_th;        /* thermal add offset                        */
   double add_offset_err_th;    /* thermal add offset error                  */
-  double calibrated_nt_th;     /* thermal calibrated nt                     */
   double refl_conv[NBAND_REFL_MAX];
 } Lut_t;
 

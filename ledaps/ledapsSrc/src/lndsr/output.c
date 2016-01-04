@@ -227,7 +227,6 @@ revision on 1/15/2015 by Gail Schmidt, USGS/EROS
       strcpy (bmeta[ib].data_units, lut->units);
       bmeta[ib].valid_range[0] = lut->min_valid_sr;
       bmeta[ib].valid_range[1] = lut->max_valid_sr;
-      bmeta[ib].calibrated_nt = lut->calibrated_nt;
     }
     else if (ib == nband)  /* atmospheric opacity */
     {

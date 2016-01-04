@@ -74,7 +74,6 @@ typedef struct {
   double scale_factor_err;  /* scale factor error */
   double add_offset;        /* add offset */
   double add_offset_err;    /* add offset error */
-  double calibrated_nt;     /* calibrated nt */
 } Lut_t;
 
 /* Prototypes */

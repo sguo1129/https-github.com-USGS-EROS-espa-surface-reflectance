@@ -21,7 +21,6 @@
 #define ADD_OFFSET       (0.0)
 #define SCALE_FACTOR_ERR (0.0)
 #define ADD_OFFSET_ERR   (0.0)
-#define CALIBRATED_NT    (DFNT_FLOAT32)
 
 Lut_t *GetLut(int nband, Input_meta_t *meta, Img_coord_int_t *input_size) {
   Lut_t *this;
@@ -50,7 +49,6 @@ Lut_t *GetLut(int nband, Input_meta_t *meta, Img_coord_int_t *input_size) {
   this->scale_factor_err= SCALE_FACTOR_ERR; /* scale factor error      */
   this->add_offset=       ADD_OFFSET;       /* add offset              */
   this->add_offset_err=   ADD_OFFSET_ERR;   /* add offset error        */
-  this->calibrated_nt=    CALIBRATED_NT;    /* calibrated nt           */
 
   this->long_name_prefix = DupString(LONG_NAME_PREFIX);
   if (this->long_name_prefix == NULL) {

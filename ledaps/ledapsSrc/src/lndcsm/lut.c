@@ -32,7 +32,6 @@
 #define ADD_OFFSET       (0.0)
 #define SCALE_FACTOR_ERR (0.0)
 #define ADD_OFFSET_ERR   (0.0)
-#define CALIBRATED_NT    (DFNT_FLOAT32)
 #define MIN_VALID_CSM (0)
 #define MAX_VALID_CSM (5)
 
@@ -87,7 +86,6 @@ Lut_t *GetLut(char *file_name, int nband, Input_meta_t *meta) {
   this->scale_factor_err=   SCALE_FACTOR_ERR;
   this->add_offset=         ADD_OFFSET;
   this->add_offset_err=     ADD_OFFSET_ERR;
-  this->calibrated_nt=      CALIBRATED_NT;
   this->output_fill=        CLOUD_FILL;
 
   if (!InputMetaCopy(meta, nband, &this->meta)) {

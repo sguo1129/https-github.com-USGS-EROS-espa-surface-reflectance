@@ -83,7 +83,6 @@
 #define OUTPUT_ADD_OFFSET       ("add_offset")
 #define OUTPUT_SCALE_FACTOR_ERR ("scale_factor_err")
 #define OUTPUT_ADD_OFFSET_ERR   ("add_offset_err")
-#define OUTPUT_CALIBRATED_NT    ("calibrated_nt")
 
 #define OUTPUT_FILL_VALUE       ("_FillValue")
 #define OUTPUT_LAND_VALUE       ("_LandValue")
@@ -803,13 +802,6 @@ bool PutMetadata(Output_t *this, Input_meta_t *meta, Lut_t *lut,  Param_t *param
   dval[0] = (double)lut->add_offset_err;
   if (!PutAttrDouble(this->sds_csm[0].id, &attr, dval))
     RETURN_ERROR("writing attribute (add offset err ref)", "PutMetadata", false);
-
-  attr.type = DFNT_FLOAT32;
-  attr.nval = 1;
-  attr.name = OUTPUT_CALIBRATED_NT;
-  dval[0] = (double)lut->calibrated_nt;
-  if (!PutAttrDouble(this->sds_csm[0].id, &attr, dval))
-    RETURN_ERROR("writing attribute (calibrated nt ref)","PutMetadata",false);
 
   attr.type = DFNT_UINT8;
   attr.nval = 1;

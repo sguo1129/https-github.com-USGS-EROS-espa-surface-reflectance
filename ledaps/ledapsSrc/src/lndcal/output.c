@@ -239,7 +239,6 @@ revision 2.0.1 3/25/2014
         strcpy (bmeta[ib].data_units, lut->units_ref);
         bmeta[ib].valid_range[0] = lut->valid_range_ref[0];
         bmeta[ib].valid_range[1] = lut->valid_range_ref[1];
-        bmeta[ib].calibrated_nt = lut->calibrated_nt_ref;
       }
       else
       {
@@ -252,7 +251,6 @@ revision 2.0.1 3/25/2014
         strcpy (bmeta[ib].data_units, lut->units_th);
         bmeta[ib].valid_range[0] = lut->valid_range_th[0];
         bmeta[ib].valid_range[1] = lut->valid_range_th[1];
-        bmeta[ib].calibrated_nt = lut->calibrated_nt_th;
       }
     }
     else  /* QA band */
