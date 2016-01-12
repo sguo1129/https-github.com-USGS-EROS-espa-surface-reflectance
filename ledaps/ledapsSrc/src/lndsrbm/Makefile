@@ -39,7 +39,7 @@ ALL_OBJ = $(OBJ1) $(OBJ2) $(OBJ3) $(OBJ4) $(OBJ5) $(OBJ6) $(OBJ7) $(OBJ8)
 INCDIR  = -I. -I$(ESPAINC) -I$(XML2INC)
 SDS_INCDIR = -I$(HDFINC)
 GEOLOC_INCDIR = -I$(HDFEOS_GCTPINC)
-NCFLAGS = $(EXTRA) $(INCDIR) $(SDS_INCDIR) $(GEOLOC_INC_DIR)
+NCFLAGS = $(EXTRA) $(INCDIR) $(SDS_INCDIR) $(GEOLOC_INCDIR)
 
 # Define the object libraries and paths
 EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common \

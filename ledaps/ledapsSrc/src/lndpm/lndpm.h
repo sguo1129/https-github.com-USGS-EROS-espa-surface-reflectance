@@ -29,10 +29,12 @@ NOTES:
 #include "espa_metadata.h"
 #include "parse_metadata.h"
 #include "error_handler.h"
+#include "envi_header.h"
+#include "gctp_defines.h"
 
 /* Defines */
 /* LEDAPS VERSION definitions */
-#define LEDAPS_VERSION "2.4.0"
+#define LEDAPS_VERSION "2.5.0"
 
 /* define useful constants */
 #define MAX_STRING_LENGTH 1000
@@ -86,16 +88,6 @@ NOTES:
 #define FILE_END            39
 #define MAX_CM_PARAMS       (FILE_END + 1)
 #define NMETA               MAX_CM_PARAMS
-
-/* ENVI projection numbers for UTM and PS */
-#define ENVI_GEO_PROJ 1
-#define ENVI_UTM_PROJ 2
-#define ENVI_PS_PROJ 31
-
-/* GCTP projection numbers for UTM and PS */
-#define GCTP_GEO_PROJ 0
-#define GCTP_UTM_PROJ 1
-#define GCTP_PS_PROJ 6 
 
 typedef struct metadata
 {
