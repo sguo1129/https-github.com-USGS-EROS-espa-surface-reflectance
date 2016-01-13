@@ -21,9 +21,13 @@ SUCCESS = 0
 # History:
 #   Updated on 9/9/2014 by Gail Schmidt, USGS/EROS
 #   Use standard python logging instead of a user-defined log file
+#
 #   Updated on 11/13/2015 by Gail Schmidt, USGS/EROS
 #   Removed the --usebin command line argument.  All executables are expected
 #       to be in the PATH.
+#
+#   Updated on 1/13/2016 by Gail Schmidt, USGS/EROS
+#   Modified to support the new L1T filenaming convention
 #
 # Usage: do_l8_sr.py --help prints the help message
 ############################################################################
@@ -128,8 +132,28 @@ class SurfaceReflectance():
 
         # pull the date from the XML filename to determine which auxiliary
         # file should be used for input.  Example: LC80410272013181LGN00.xml
-        # uses L8ANC2013181.hdf_fused.
-        aux_file = 'L8ANC' + base_xmlfile[9:16] + '.hdf_fused'
+        # uses L8ANC2013181.hdf_fused.  Similarly, the new L1T naming convention
+        # LC08_L1T_041027_20130630_20140312_02.xml also used the 2013181 HDF
+        # file.
+        if base_xmlfile[0:3] == 'LC8':
+            # Old-style L1T naming convention. Just pull the year and DOY from
+            # the XML filename.
+            aux_file = 'L8ANC' + base_xmlfile[9:16] + '.hdf_fused'
+        elif base_xmlfile[0:4] == 'LC08':
+            # New-style L1T naming convention. Pull the year, month, day from
+            # the XML filename. Then convert month, day to DOY.
+            aux_year = base_xmlfile[16:20]
+            aux_month = base_xmlfile[20:22]
+            aux_day = base_xmlfile[22:24]
+            myday = datetime.date(int(aux_year), int(aux_month), int(aux_day))
+            aux_doy = myday.strftime("%j")
+            aux_file = 'L8ANC' + aux_year + aux_doy + '.hdf_fused'
+        else:
+            msg = ('Base XML filename is not recognized as a valid Landsat8 '
+                   'scene name' + base_xmlfile)
+            logger.error (msg)
+            os.chdir (mydir)
+            return ERROR
 
         # run surface reflectance algorithm, checking the return status.  exit
         # if any errors occur.
