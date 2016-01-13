@@ -97,12 +97,18 @@ def parse_cmd_line():
 def get_science_application_name(satellite_sensor_code):
     '''Returns name of executable that needs to be called'''
 
-    l8_prefixes = ['LC8', 'LO8', 'LT8', 'LC08', 'LO08', 'LT08']
-    other_prefixes = ['LT4', 'LT5', 'LE7', 'LT04', 'LT05', 'LE07']
+    l8_prefixes_old = ['LC8', 'LO8', 'LT8']
+    l8_prefixes_new = ['LC08', 'LO08', 'LT08']
+    other_prefixes_old = ['LT4', 'LT5', 'LE7']
+    other_prefixes_new = ['LT04', 'LT05', 'LE07']
 
-    if satellite_sensor_code in l8_prefixes:
+    if satellite_sensor_code[0:3] in l8_prefixes_old:
         return 'do_l8_sr.py'
-    elif satellite_sensor_code in other_prefixes:
+    elif satellite_sensor_code[0:3] in other_prefixes_old:
+        return 'do_ledaps.py'
+    elif satellite_sensor_code in l8_prefixes_new:
+        return 'do_l8_sr.py'
+    elif satellite_sensor_code in other_prefixes_new:
         return 'do_ledaps.py'
     else:
         raise Exception('Satellite-Sensor code ({0}) not understood'
@@ -125,7 +131,7 @@ def main():
     logger = logging.getLogger(__name__)
 
     xml_filename = parse_cmd_line()
-    satellite_sensor_code = os.path.basename(xml_filename)[0:3]
+    satellite_sensor_code = os.path.basename(xml_filename)[0:4]
 
     # Get the science application
     cmd = [get_science_application_name(satellite_sensor_code)]
