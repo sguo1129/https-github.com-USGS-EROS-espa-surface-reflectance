@@ -187,7 +187,6 @@ revision on 1/15/2015 by Gail Schmidt, USGS/EROS
     else
       mychar++;
   }
-printf ("DEBUG: lndsr scene_name is %s\n", scene_name);
 
   /* Get the current date/time (UTC) for the production date of each band */
   if (time (&tp) == -1)
