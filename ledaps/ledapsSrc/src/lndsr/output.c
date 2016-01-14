@@ -178,9 +178,15 @@ revision on 1/15/2015 by Gail Schmidt, USGS/EROS
 
   /* Determine the scene name */
   strcpy (scene_name, in_meta->band[rep_indx].file_name);
-  mychar = strchr (scene_name, '_');
-  if (mychar != NULL)
-    *mychar = '\0';
+  mychar = scene_name;
+  while (mychar != NULL) {
+    if (!strncmp (mychar, "_toa", 4)) {
+      *mychar = '\0';
+      break;
+    }
+    else
+      mychar++;
+  }
 
   /* Get the current date/time (UTC) for the production date of each band */
   if (time (&tp) == -1)

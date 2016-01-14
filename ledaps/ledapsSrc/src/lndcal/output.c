@@ -179,7 +179,7 @@ revision 2.0.1 3/25/2014
 
   /* Determine the scene name */
   strcpy (scene_name, in_meta->band[rep_indx].file_name);
-  mychar = strchr (scene_name, '_');
+  mychar = strrchr (scene_name, '_');
   if (mychar != NULL)
     *mychar = '\0';
 
