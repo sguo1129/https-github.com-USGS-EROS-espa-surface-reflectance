@@ -34,15 +34,16 @@ NCFLAGS  = $(EXTRA) $(INCDIR) $(HDF_INCDIR)
 
 # Define the object libraries and paths
 EXLIB = -L$(ESPALIB) -l_espa_raw_binary -l_espa_common -l_espa_format_conversion \
+        -L$(HDFEOS_LIB) -lhdfeos \
+        -L$(HDFLIB) -lmfhdf -ldf \
+        -L$(HDFEOS_GCTPLIB) -lGctp \
         -L$(XML2LIB) -lxml2 \
+        -L$(JPEGLIB) -ljpeg \
         -L$(LZMALIB) -llzma \
+        -L$(SZIPLIB) -lsz \
         -L$(ZLIBLIB) -lz
-HDF_EXLIB = -L$(HDFEOS_LIB) -lhdfeos \
-            -L$(HDFLIB) -lmfhdf -ldf \
-            -L$(JPEGLIB) -ljpeg \
-            -L$(HDFEOS_GCTPLIB) -lGctp
 MATHLIB = -lm
-LOADLIB = $(EXLIB) $(HDF_EXLIB) $(MATHLIB)
+LOADLIB = $(EXLIB) $(MATHLIB)
 
 # Define C executables
 EXE = l8_sr
