@@ -17,7 +17,7 @@
 %define _build_name_fmt %%{NAME}-aux.%%{VERSION}.%%{RELEASE}.rpm
 
 Name:		espa-surface-reflectance
-Version:	201512
+Version:	201603
 Release:	1%{?dist}
 Summary:	ESPA Surface Reflectance Auxiliary Software
 
@@ -29,8 +29,8 @@ BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-aux-%{version}-%{release}-XXXXXX)
 BuildArch:	x86_64
 Packager:	USGS EROS LSRD
 
-BuildRequires:	espa-common
-Requires:	espa-common >= 1.5.0
+BuildRequires:	espa-product-formatter
+Requires:	espa-product-formatter >= 1.6.0
 
 # ----------------------------------------------------------------------------
 %description
@@ -39,7 +39,7 @@ Provides science application executables for generating surface reflectance prod
 
 # ----------------------------------------------------------------------------
 # Specify the repository tag/branch to clone and build from
-%define tagname dev_dec2015
+%define tagname dev_mar2016
 # Specify the name of the directory to clone into
 %define clonedname %{name}-%{tagname}
 
@@ -91,6 +91,9 @@ rm -rf %{buildroot}
 
 # ----------------------------------------------------------------------------
 %changelog
+* Mon Jan 25 2016 Ronald D Dilley <rdilley@usgs.gov>
+- Build for Mar 2016 release
+
 * Wed Nov 04 2015 Ronald D Dilley <rdilley@usgs.gov>
 - Build for Dec 2015 release
 - Initial implementation
