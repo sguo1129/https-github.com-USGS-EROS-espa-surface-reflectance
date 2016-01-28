@@ -1,5 +1,5 @@
-## Ledaps Version 2.4.0 Release Notes
-Release Date: November 23, 2015
+## Ledaps Version 2.5.0 Release Notes
+Release Date: March 23, 2016
 
 ### Downloads
 Ledaps source code
@@ -10,7 +10,7 @@ Ledaps auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/ledaps_auxiliary/ledaps_aux.1978-2014.tar.gz
 
-See git tag [ledaps-version_2.4.0]
+See git tag [ledaps-version_2.5.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -92,8 +92,11 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Changes From Previous Version
-#### Updates on November 23, 2015 - USGS EROS
+#### Updates on March 23, 2016 - USGS EROS
+  * All
+    1. Updated to support Albers products in addition to the current UTM and PS.
+    2. Updated to support the new L1T file naming convention.
   * lndsr
-    1. lndcal flags saturated pixels however lndsr processes those pixels the same all other valid pixels.  Modifying lndsr to detect saturated pixels, flag them in the output product as such, and keep track of the number of saturated pixels in the lndsr stats output to the screen.
-  * ledapsAncSrc
-    1. Modified the update auxiliary files scripts (updatencep.py and updatetoms.py) to retry the file download in the event the wget fails.  Also updated convert_ozone.c to handle both OMI and pre-OMI lat/long min/max and step values instead of flagging OMI values as “unexpected”.  Added the scripts to the install section of the Makefile.
+    1. Removed calibrated_nt from being written for the band metadata.  It's not used in ESPA processing.
+  * lndsrbm
+    1. Modified lndsrbm to call GCTP forward and inverse functions vs. duplicating the needed functions and defines from GCTP locally.  This makes maintenance easier and addition of new projections cleaner.  (Involves LS_geoloc.c and LS_geoloc_driver.c which generate geo2xy and xy2geo.)
