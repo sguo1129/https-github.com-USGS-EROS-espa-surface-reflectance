@@ -9,43 +9,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-7/15/2014    Gail Schmidt     Cleaned up some of the divide by constants so
-                              that we could speed up the processing
-7/21/2014    Gail Schmidt     Flipped the use of xmuv, xmus in the call to
-                              local_chand to match the parameter order.  This
-                              is a cosmetic change, however, since the nature
-                              of the equations means them being flip-flopped
-                              really doesn't matter.
-7/22/2014    Gail Schmidt     Cleaned up unused ogtransa0, ogtransc0,
-                              ogtransc1, wvtransc arrays.  Made the rest of
-                              these transmission arrays doubles and hard-coded
-                              their static values in this code vs. reading
-                              from a static ASCII file.
-7/29/2014    Gail Schmidt     Defined a static NSR_BANDS variable for the
-                              variables that refer to the surface reflectance
-                              band-related bands (ogtrans, wvtrans, tauray,
-                              erelc, etc.)  These previously were of size 16.
-8/7/2014     Gail Schmidt     Removed the unused functions (invaero,
-                              invaeroocean, atmcorocea2, raycorlamb2,
-                              atmcorlamb, local_csalbr, fintexp3, fintexp1,
-                              comptransray).
-8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
-11/4/2014    Gail Schmidt     Instead of recalculating the xmus and xmuv values
-                              over and over again, just pass them in from the
-                              main calling routine.  Same goes for the cosine
-                              of azimuthal difference between sun and obs angles
-11/5/2014    Gail Schmidt     Calculated index variables for surface pressure
-                              and AOT within atmcorlamb2 and pass to the lower
-                              functions vs. recalculating in each function
-11/5/2014    Gail Schmidt     Calculated index variables for solar zenith and
-                              observation zenith angle and pass to the lower
-                              functions vs. recalculating in each function
-
 NOTES:
 *****************************************************************************/
 #include "lut_subr.h"
@@ -63,12 +26,6 @@ Value          Description
 -----          -----------
 ERROR          Error occurred doing the atmospheric corrections.
 SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
 
 NOTES:
     1. Standard sea level pressure is 1013 millibars.
@@ -245,15 +202,6 @@ sun and observation angles.
 RETURN VALUE:
 Type = None
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-11/5/2014    Gail Schmidt     xfd is based on xdep, which is a constant; might
-                              as well calculate xfd and make it a constant vs
-                              recomputing it every time
-
 NOTES:
  1. Here's how the xfd value was originally calculated. Given that these
     are static values, the xfd itself can really be static.
@@ -357,14 +305,6 @@ PURPOSE:  Computes the transmission of the water vapor, ozone, and other gases.
 RETURN VALUE:
 Type = N/A
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-12/1/2014    Gail Schmidt     Pass in the pressure at sea level vs.
-                              recalculating it
-
 NOTES:
 1. Standard sea level pressure is 1013 millibars.
 ******************************************************************************/
@@ -431,13 +371,6 @@ PURPOSE:  Computes spherical albedo
 RETURN VALUE:
 Type = N/A
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
-
 NOTES:
 ******************************************************************************/
 void compsalb
@@ -502,12 +435,6 @@ PURPOSE:  Compute transmission
 
 RETURN VALUE:
 Type = none
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
 
 NOTES:
 1. This is called by subaeroret for both the solar zenith angle and the
@@ -592,19 +519,6 @@ PURPOSE:  Computes the atmospheric reflectance
 
 RETURN VALUE:
 Type = none
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-7/1/2014     Gail Schmidt     Passed in xtsstep, xtsmin, xtvstep, and xtvmin
-                              since they are defined in the main routine and
-                              then duplicated here.
-12/2/2014    Gail Schmidt     The calculations for t, u, and deltaaot are
-                              made several times.  Removed the duplicate
-                              calculations for these variables and simply
-                              reused the previous values.
 
 NOTES:
 1. This function is heavily dependent upon the solar zenith and observation
@@ -1232,20 +1146,6 @@ Value          Description
 ERROR          Error occurred reading the look-up tables or atmospheric files
 SUCCESS        Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/27/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-7/1/2014     Gail Schmidt     Passed in xtsstep and xtsmin since they are
-                              defined in the main routine and then duplicated
-                              here.
-7/22/2014    Gail Schmidt     Removed the read of the tauray file, since it's
-                              a small, static ASCII file.  Just made it a
-                              hard-coded array in the main function.  Ditto for
-                              the gaseous transmission coefficient file.
-8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
-
 NOTES:
 ******************************************************************************/
 int readluts
@@ -1858,13 +1758,6 @@ Value          Description
 ERROR          Error occurred allocating memory
 SUCCESS        Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-8/25/2014    Gail Schmidt     Original development
-12/9/2014    Gail Schmidt     Removed the uband allocation since it's handled
-                              in a different function (compute_refl)
-
 NOTES:
   1. Memory is allocated for each of the input variables, so it is up to the
      calling routine to free this memory.
@@ -1929,14 +1822,6 @@ Value          Description
 -----          -----------
 ERROR          Error occurred allocating memory
 SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-8/25/2014    Gail Schmidt     Original development
-12/9/2014    Gail Schmidt     Removed the uband allocation since it's handled
-                              in a different function (compute_refl)
-4/9/2015     Gail Schmidt     Added support for land/water mask
 
 NOTES:
   1. Memory is allocated for each of the input variables, so it is up to the
@@ -2553,11 +2438,6 @@ Value          Description
 -----          -----------
 ERROR          Error occurred reading one of the auxiliary files
 SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-8/25/2014    Gail Schmidt     Original development
 
 NOTES:
   1. It is assumed that memory has already been allocated for the input data

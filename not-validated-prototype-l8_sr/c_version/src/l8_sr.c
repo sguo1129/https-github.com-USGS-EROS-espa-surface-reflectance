@@ -548,13 +548,6 @@ PURPOSE:  Prints the usage information for this application.
 RETURN VALUE:
 Type = None
 
-HISTORY:
-Date        Programmer       Reason
----------   ---------------  -------------------------------------
-7/6/2014    Gail Schmidt     Original Development
-7/31/2014   Gail Schmidt     Added flag to write the TOA and process option
-                             for surface reflectance
-
 NOTES:
 ******************************************************************************/
 void usage ()
@@ -618,11 +611,6 @@ Value      Description
 -----      -----------
 false      bit n is not set in byte_val
 true       bit n is set in byte_val
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-7/10/2014    Gail Schmidt     Original Development
 
 NOTES:
 ******************************************************************************/

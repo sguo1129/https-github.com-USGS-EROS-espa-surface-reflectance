@@ -8,11 +8,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-6/23/2014    Gail Schmidt     Original development
-
 NOTES:
 *****************************************************************************/
 
@@ -34,11 +29,6 @@ Value      Description
 -----      -----------
 false      Error occurred during the initialization
 true       Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/23/2014    Gail Schmidt     Original Development (copied from LEDAPS)
 
 NOTES:
 ******************************************************************************/
@@ -324,11 +314,6 @@ Value      Description
 false      Error occurred computing the difference
 true       Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/23/2014    Gail Schmidt     Original Development (copied from LEDAPS)
-
 NOTES:
 ******************************************************************************/
 bool date_diff
@@ -375,11 +360,6 @@ Value      Description
 -----      -----------
 false      Error occurred during the copy
 true       Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/23/2014    Gail Schmidt     Original Development (copied from LEDAPS)
 
 NOTES:
 ******************************************************************************/
@@ -428,11 +408,6 @@ Value      Description
 -----      -----------
 false      Error occurred during the initialization
 true       Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/23/2014    Gail Schmidt     Original Development (copied from LEDAPS)
 
 NOTES:
 ******************************************************************************/

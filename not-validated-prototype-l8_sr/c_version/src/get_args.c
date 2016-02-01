@@ -18,11 +18,6 @@ SUCCESS         No errors encountered
 PROJECT:  Land Satellites Data System Science Research and Development (LSRD)
 at the USGS EROS
 
-HISTORY:
-Date          Programmer       Reason
-----------    ---------------  -------------------------------------
-7/1/2014      Gail Schmidt     Original Development
-
 NOTES:
   1. The input files should be character a pointer set to NULL on input. Memory
      for these pointers is allocated by this routine. The caller is responsible

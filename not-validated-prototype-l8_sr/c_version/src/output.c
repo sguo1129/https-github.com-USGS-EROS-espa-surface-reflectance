@@ -9,11 +9,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-6/23/2014    Gail Schmidt     Original development
-
 NOTES:
 *****************************************************************************/
 
@@ -33,16 +28,6 @@ Value          Description
 -----          -----------
 NULL           Error occurred opening the file
 not-NULL       Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
-8/1/2014     Gail Schmidt     Modified to support either TOA or SR bands, and
-                              to be flexible with the setup of the TOA
-                              reflectance bands
-10/22/2014   Gail Schmidt     Band 10 and 11 need to be of product type toa_bt
-11/17/2014   Gail Schmidt     Modified to handle OLI-only scenes
 
 NOTES:
 ******************************************************************************/
@@ -307,12 +292,6 @@ Value      Description
 ERROR      Error occurred closing the output files
 SUCCESS    Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
-11/17/2014   Gail Schmidt     Modified to handle OLI-only scenes
-
 NOTES:
 ******************************************************************************/
 int close_output
@@ -365,11 +344,6 @@ Value      Description
 ERROR      Error occurred freeing the data structure
 SUCCESS    Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
-
 NOTES:
 ******************************************************************************/
 int free_output
@@ -420,11 +394,6 @@ Value      Description
 -----      -----------
 ERROR      Error occurred writing the output data
 SUCCESS    Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
 
 NOTES:
 ******************************************************************************/
@@ -509,11 +478,6 @@ Type = char *
 Value      Description
 -----      -----------
 up_str     Upper case version of the input string
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
 
 NOTES:
 ******************************************************************************/

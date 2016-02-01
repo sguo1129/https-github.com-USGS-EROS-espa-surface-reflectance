@@ -9,14 +9,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-6/23/2014    Gail Schmidt     Original development
-4/9/2015     Gail Schmidt     Modified to add a land/water mask band
-5/1/2015     Gail Schmidt     Only read the land/water mask if we are processing
-                              surface reflectance
-
 NOTES:
 *****************************************************************************/
 
@@ -35,12 +27,6 @@ Value      Description
 -----      -----------
 NULL       Error occurred opening or reading the file
 non-NULL   Successful completion
-
-HISTORY:
-Date         Programmer       Reason
-----------   ---------------  -------------------------------------
-6/20/2014    Gail Schmidt     Original Development
-11/17/2014   Gail Schmidt     Modified to support OLI-only scenes
 
 NOTES:
   1. This routine opens the input L8 files.  It also allocates memory for
@@ -197,12 +183,6 @@ PURPOSE:  Ends SDS access and closes the input file.
 RETURN VALUE:
 Type = None
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-5/19/2014    Gail Schmidt     Original Development (based on input routines
-                              from the spectral indices application)
-
 NOTES:
 ******************************************************************************/
 void close_input
@@ -269,11 +249,6 @@ PURPOSE:  Frees memory in the input data structure.
 RETURN VALUE:
 Type = None
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
-
 NOTES:
 ******************************************************************************/
 void free_input
@@ -324,11 +299,6 @@ Value      Description
 -----      -----------
 ERROR      Error occurred reading data for this band
 SUCCESS    Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
 
 NOTES:
   1. The Input_t data structure needs to be populated and memory allocated
@@ -408,11 +378,6 @@ Value      Description
 ERROR      Error occurred reading data for this band
 SUCCESS    Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
-
 NOTES:
   1. The Input_t data structure needs to be populated and memory allocated
      before calling this routine.  Use open_input to do that.
@@ -490,11 +455,6 @@ Value      Description
 -----      -----------
 ERROR      Error occurred reading data for this band
 SUCCESS    Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
 
 NOTES:
   1. The Input_t data structure needs to be populated and memory allocated
@@ -574,11 +534,6 @@ Value      Description
 ERROR      Error occurred reading data for this band
 SUCCESS    Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
-
 NOTES:
   1. The Input_t data structure needs to be populated and memory allocated
      before calling this routine.  Use open_input to do that.
@@ -657,11 +612,6 @@ Value      Description
 ERROR      Error occurred reading data for this land/water band
 SUCCESS    Successful completion
 
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/24/2014    Gail Schmidt     Original Development
-
 NOTES:
   1. The Input_t data structure needs to be populated and memory allocated
      before calling this routine.  Use open_input to do that.
@@ -734,15 +684,6 @@ Value        Description
 -------      -----------
 ERROR        Error occurred opening or reading the file
 SUCCESS      Successful completion
-
-HISTORY:
-Date         Programmer       Reason
-----------   ---------------  -------------------------------------
-6/20/2014    Gail Schmidt     Original Development
-11/17/2014   Gail Schmidt     Modified to support OLI-only scenes
-4/13/2015    Gail Schmidt     Updated to use rad_gain/bias vs. toa_gain/bias
-                              to be compliant with the latest espa-common
-                              metadata changes
 
 NOTES:
 ******************************************************************************/

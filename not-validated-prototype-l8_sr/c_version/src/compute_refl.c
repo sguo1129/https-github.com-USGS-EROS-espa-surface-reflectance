@@ -17,17 +17,6 @@ SUCCESS         No errors encountered
 PROJECT:  Land Satellites Data System Science Research and Development (LSRD)
 at the USGS EROS
 
-HISTORY:
-Date          Programmer       Reason
-----------    ---------------  -------------------------------------
-12/9/2014     Gail Schmidt     Broke the source code into a function to
-                               modularize the source code in the main routine
-4/13/2015     Gail Schmidt     Use the reflectance gain/bias from the XML
-                               file.  Also use the brightness temp gain/bias
-                               and thermal constants (k1/k2) from the XML file.
-5/18/2015     Gail Schmidt     Updated the rounding to handle postitive and
-                               negative values
-
 NOTES:
   1. These TOA and BT algorithms match those as published by the USGS Landsat
      team in http://landsat.usgs.gov/Landsat8_Using_Product.php
@@ -256,31 +245,6 @@ SUCCESS         No errors encountered
 
 PROJECT:  Land Satellites Data System Science Research and Development (LSRD)
 at the USGS EROS
-
-HISTORY:
-Date          Programmer       Reason
-----------    ---------------  -------------------------------------
-12/9/2014     Gail Schmidt     Broke the source code into a function to
-                               modularize the source code in the main routine
-1/28/2015     Gail Schmidt     When doing the aerosol interpolation, look at
-                               the step x step window surrounding the current
-                               pixel vs. the step x step window from the
-                               current pixel and going to the southeast.
-4/9/2015      Gail Schmidt     Updated to utilize a land/water mask for the
-                               scene vs. using the global DEM to flag water
-                               pixels. Scene-based land/water mask is expected
-                               in the XML file and opened in the input routines.
-4/21/2015     Gail Schmidt     Modified to look at the surrounding 9x9 window
-                               for water pixels.  If any are water then treat
-                               the current pixel as water until it's proven not
-                               to be water.  The land/water mask isn't exact
-                               in many cases.
-5/18/2015     Gail Schmidt     Updated the rounding to handle postitive and
-                               negative values
-8/10/2015     Gail Schmidt     Fixed a bug accessing the 9x9 window in the
-                               land/water mask array
-                               Fixed a bug accessing the CMG arrays for line+1
-                               and sample+1
 
 NOTES:
 1. Initializes the variables and data arrays from the lookup table and
@@ -1622,12 +1586,6 @@ SUCCESS         No errors encountered
 
 PROJECT:  Land Satellites Data System Science Research and Development (LSRD)
 at the USGS EROS
-
-HISTORY:
-Date          Programmer       Reason
-----------    ---------------  -------------------------------------
-12/15/2014    Gail Schmidt     Broke the source code into a function to
-                               modularize the source code in the main routine
 
 NOTES:
 1. The view angle is set to 0.0 and this never changes.

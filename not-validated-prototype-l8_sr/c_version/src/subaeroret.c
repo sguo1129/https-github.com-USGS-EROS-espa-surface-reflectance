@@ -8,13 +8,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
-
 NOTES:
 *****************************************************************************/
 #include "lut_subr.h"
@@ -31,31 +24,6 @@ Value          Description
 -----          -----------
 ERROR          Error occurred reading the LUT or doing the correction
 SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-6/25/2014    Gail Schmidt     Conversion of the original FORTRAN code delivered
-                              by Eric Vermote, NASA GSFC
-7/22/2014    Gail Schmidt     Number of iterations doesn't need to be returned
-                              from this routine since it isn't used
-7/22/2014    Gail Schmidt     Cleaned up unused ogtransa0, ogtransc0,
-                              ogtransc1, wvtransc arrays.  Made the rest of
-                              these transmission arrays doubles and hard-coded
-                              their static values in this code vs. reading
-                              from a static ASCII file.
-7/29/2014    Gail Schmidt     Defined a static NSR_BANDS variable for the
-                              variables that refer to the surface reflectance
-                              band-related bands (ogtrans, wvtrans, tauray,
-                              erelc, etc.)  These previously were of size 16.
-                              Only compute the residual for the NSR_BANDS as
-                              well vs. doing the residual computation for 16
-                              bands.
-8/14/2014    Gail Schmidt     Updated for v1.3 delivered by Eric Vermote
-1/6/2015     Gail Schmidt     Added a loop iterator and check on the number
-                              of iterations for the
-                              while ((ros1 < th1 || ros3 < th3)) loop to prevent
-                              infinite loops.
 
 NOTES:
 ******************************************************************************/
@@ -520,11 +488,6 @@ Value          Description
 -----          -----------
 ERROR          Error occurred reading the LUT or doing the correction
 SUCCESS        Successful completion
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-8/14/2014    Gail Schmidt     Original development
 
 NOTES:
 ******************************************************************************/
