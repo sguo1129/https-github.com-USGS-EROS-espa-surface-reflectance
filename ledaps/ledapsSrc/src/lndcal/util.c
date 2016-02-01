@@ -7,12 +7,6 @@
   
 !Description: Utility Functions (these read radiometric tables)
 
-!Revision History:
- Revision 1.0 2004/06/16
- Jonathan Kutler
- Original Version.
-
-
 !Team Unique Header:
   This software was written for the LEDAPS project and is based on the software 
   written by the MODIS Land Science Team Support Group for the Laboratory for 

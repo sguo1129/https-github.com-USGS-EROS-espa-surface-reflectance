@@ -16,7 +16,7 @@ int main (int argc, char **argv)
     int ret;
     int zonecode, sphercode, rows, cols;
     float orientationangle, pixelsize, upperleftx, upperlefty;
-    double arg2, arg3;    /* sample/line or lat/long values */
+    double arg_x, arg_y;    /* sample/line or long/lat values */
     char *error_file = "geo_xy.ERROR";
     FILE *error_ptr=NULL;
   
@@ -43,8 +43,8 @@ int main (int argc, char **argv)
     #endif
         exit (0);
     }
-    arg2 = atof (argv[2]);
-    arg3 = atof (argv[3]);
+    arg_x = atof (argv[2]);  /* sample or longitude value */
+    arg_y = atof (argv[3]);  /* line or latitude value */
   
     /* Get projection information from the XML file */
     ret = get_data (argv[1], projection, &zonecode, &sphercode,
@@ -93,8 +93,8 @@ int main (int argc, char **argv)
 
 #ifdef INV
     /* Inverse mapping */
-    ds = arg2;
-    dl = arg3;
+    ds = arg_x;
+    dl = arg_y;
     
     if (ds > (double) cols) {
         printf ("Sample argument (%s) exceeds number of columns in file (%d): "
@@ -121,8 +121,8 @@ int main (int argc, char **argv)
         lon, lat, projection);
 #else
     /* Forward mapping */
-    lon = arg2;
-    lat = arg3;
+    lon = arg_x;
+    lat = arg_y;
     
     /* We need sanity checks on these as well */
     if (!strcmp (projection, "GCTP_UTM"))
@@ -146,29 +146,6 @@ int main (int argc, char **argv)
 Module: get_data
 
 Description: Reads the metadata from the input XML file
-
-Inputs:
-  filename:  name of XML file
-
-Outputs:
-  projection:     projection name (GCTP_UTM, GCTP_PS, GCTP_ALBERS, etc.)
-  zonecode:       UTM zone number
-  spherecode:     spheroid number
-  orientationangle:  orientation of the scene (degrees)
-  pixelsize:       size of each pixel (assumed square)
-  upperleft[x/y]: UL x,y corner point (meters)
-  rows:           number of lines in the scene
-  cols:           number of samples in the scene
-  projparms:      array of 13 projection parameters for the projection
-
-History:
-  2/6/2014  Gail Schmidt, USGS/EROS
-    Modified to use the ESPA internal file format
-  4/25/2014  Gail Schmidt, USGS/EROS
-    Modified to handle the change in ESPA which supports additional datums
-    and uses a datum code instead of a sphere code.
-  1/5/2016  Gail Schmidt, USGS/EROS
-    Modified to support Albers projection
 ******************************************************************************/
 int get_data (
     char *filename,            /* I: XML filename */

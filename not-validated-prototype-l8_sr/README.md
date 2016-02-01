@@ -1,5 +1,5 @@
 ## L8SR Version 0.5.0 Release Notes
-Release Date: March 23, 2016
+Release Date: March 2016
 
 ### Downloads
 L8SR source code
@@ -117,7 +117,6 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 
 ### Product Guide
 
-## Changes From Previous Version
-#### Updates on March 23, 2016 - USGS EROS
+## Release Notes
   1. Updated to support the new L1T file naming convention.
   2. Verified Albers project is supported.

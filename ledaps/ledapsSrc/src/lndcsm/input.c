@@ -5,15 +5,6 @@
   
 !Description: Functions reading data from the input data file.
 
-!Revision History:
- Revision 1.0 2001/05/08
- Robert Wolfe
- Original Version.
-
- Revision 1.1 2002/05/02
- Robert Wolfe
- Added handling for SDS's with ranks greater than 2.
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 

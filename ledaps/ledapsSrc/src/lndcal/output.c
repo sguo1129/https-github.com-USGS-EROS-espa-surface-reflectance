@@ -5,50 +5,6 @@
   
 !Description: Functions creating and writing data to the product output file.
 
-!Revision History:
- Revision 1.0 2001/05/08
- Robert Wolfe
- Original Version.
-
- Revision 1.1 2012/10/18
- Gail Schmidt, USGS EROS
- Modified PutMetadata* to mark the bits that are actually set and not set
-   (i.e. for lndcal, bit 6 actually isn't set and for lndth, bit 6 and fill
-    are the only pixels that are set).
-
- Revision 1.1 2012/08/01
- Gail Schmidt, USGS EROS
- Modified OpenOutput to make sure the Output_t->buf array doesn't go past
-   NBAND_REFL_MAX.  Also, initialized Output_t->qabuf at the same time.
-
- Revision 1.2 2013/01/22
- Gail Schmidt, USGS EROS
- Modified applications to use only one version and that is the
-   LEDAPSVersion tag which will get updated with each release of LEDAPS
-
- Revision 1.3 2013/02/20
- Gail Schmidt, USGS EROS
- Modified the put metadata routine to write out the bounding coordinates.
-
- Revision 1.4 2013/03/22
- Gail Schmidt, USGS EROS
- Modified to output the UL and LR corner lat/longs.  We are already writing
-   the bounding coords, however for ascending scenes and scenes in the polar
-   regions, the scenes are flipped upside down.  The bounding coords will be
-   correct in North represents the northernmost latitude and South represents
-   the southernmost latitude.  However, the UL corner in this case would be
-   more south than the LR corner.  Comparing the UL and LR corners will allow
-   the user to determine if the scene is flipped.
-
- Revision 1.5 2013/08/05
- Gail Schmidt, USGS EROS
- Modified to output the gain and bias values for the reflectance and
-   brightness temperature bands.
-
- Revision 2.0 2014/01/27
- Gail Schmidt, USGS EROS
- Modified application to utilize the ESPA internal raw binary format.
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -97,20 +53,10 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
 !Output Parameters:
  (returns)      'output' data structure or NULL when an error occurs
 
-!Revision:
-revision 1.0.0 9/12/2012
- - modified the application to write the thermal band QA bits to the output
-   thermal product and use lndth_qa for the band name vs. lndcal_qa
-revision 2.0.0 1/27/2014
- - modified to utilize the ESPA internal raw binary structure
-revision 2.0.1 3/25/2014
- - modified to output _toa_band6_qa vs. _toa_bt_qa
-
 !END****************************************************************************
 */
 {
   Output_t *this = NULL;       /* pointer to output structure */
-  char *mychar = NULL;         /* pointer to '_' */
   char scene_name[STR_SIZE];   /* scene name for the current scene */
   char rep_band[STR_SIZE];     /* representative band in the XML file */
   int ib;             /* looping variables */
@@ -177,11 +123,8 @@ revision 2.0.1 3/25/2014
     RETURN_ERROR("allocating band metadata", "OpenOutput", NULL);
   bmeta = this->metadata.band;
 
-  /* Determine the scene name */
-  strcpy (scene_name, in_meta->band[rep_indx].file_name);
-  mychar = strrchr (scene_name, '_');
-  if (mychar != NULL)
-    *mychar = '\0';
+  /* Grab the scene name */
+  snprintf (scene_name, sizeof (scene_name), in_meta->global.scene_id);
 
   /* Get the current date/time (UTC) for the production date of each band */
   if (time (&tp) == -1)

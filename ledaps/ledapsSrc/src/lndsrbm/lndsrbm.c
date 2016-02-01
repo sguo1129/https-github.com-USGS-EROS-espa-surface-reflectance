@@ -9,12 +9,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-2/10/2014    Gail Schmidt     Original development (based on FORTRAN and ksh
-                              code from original lndsrbm application)
-
 NOTES:
   1. The XML metadata format read by this application follows the ESPA internal
      metadata format found in ESPA Raw Binary Format v1.0.doc.  The schema for
@@ -39,11 +33,6 @@ PURPOSE: Prints the usage information for this application.
 
 RETURN VALUE:
 Type = None
-
-HISTORY:
-Date         Programmer       Reason
----------    ---------------  -------------------------------------
-1/14/2014    Gail Schmidt     Original Development
 
 NOTES:
 ******************************************************************************/
@@ -81,14 +70,6 @@ Value           Description
 ERROR           Error getting the command-line arguments or a command-line
                 argument and associated value were not specified
 SUCCESS         No errors encountered
-
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-2/10/2014    Gail Schmidt     Original development
-2/11/2014    Gail Schmidt     northern adjustment is now calculated from delta
-                              x and y values; computation is borrowed from
-                              compadjn.f
 
 NOTES:
   1. Memory is allocated for the xml file.  This should be a character pointer

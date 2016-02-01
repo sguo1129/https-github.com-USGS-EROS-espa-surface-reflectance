@@ -5,29 +5,6 @@
   
 !Description: Functions reading data from the input data file.
 
-!Revision History:
- Revision 1.0 2001/05/08
- Robert Wolfe
- Original Version.
-
- Revision 1.1 2002/05/02
- Robert Wolfe
- Added handling for SDS's with ranks greater than 2.
-
- Revision 1.2 2013/03/12
- Gail Schmidt, USGS EROS
- Modified the read header to process the acquisition date, even if it's too
- long by parsing it down to the appropriate number of allowed characters.
-
- Revision 2.0 2014/01/24
- Gail Schmidt, USGS EROS
- Modified to use ESPA internal raw binary format
-
- Revision 2015/03/31
- Gail Schmidt, USGS EROS
- Added support for pulling the TOA reflectance parameters, K1/K2 consts, and
-    earth-sun distance from the XML, if they exist.
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 

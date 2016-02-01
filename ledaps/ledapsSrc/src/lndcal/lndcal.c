@@ -25,26 +25,6 @@
 #define NSDS NBAND_CAL_MAX
 
 /* Functions */
-/* !Revision:
- *
- * revision 1.0.0 9/12/2012  Gail Schmidt, USGS
- * - modified the application to write the thermal band QA bits to the
- *   output thermal product
- *
- * revision 1.0.1 2/20/2013  Gail Schmidt, USGS
- * - modified the application to calculate and write the bounding coords
- *
- * revision 1.1.2 3/22/2013  Gail Schmidt, USGS
- * - modified the application to write the UL and LR lat/long to the metadata
- *
- * revision 2.0.0 1/21/2014  Gail Schmidt, USGS
- * - modified application to use the ESPA internal raw binary file format
- * - removed any recalibration-related or DN map related code
- *
- * revision 2.0.1 8/5/2014  Gail Schmidt, USGS/EROS
- * - obtain the location of the ESPA schema file from an environment variable
- *   vs. the ESPA http site
- */
 
 int main (int argc, const char **argv) {
   Param_t *param = NULL;

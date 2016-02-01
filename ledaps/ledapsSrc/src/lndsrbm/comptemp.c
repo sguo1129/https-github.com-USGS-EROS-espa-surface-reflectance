@@ -9,12 +9,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-2/10/2014    Gail Schmidt     Original development (based on FORTRAN comptemp
-                              code from original lndsrbm application)
-
 NOTES:
 *****************************************************************************/
 
@@ -35,12 +29,6 @@ Value           Description
 -----           -----------
 ERROR           Error computing scene center temp
 SUCCESS         Successfully computed the scene center temp
-
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-2/11/2014    Gail Schmidt     Rewrote the original comptemp.f in C since it
-                              was the only FORTRAN code left in this app.
 
 NOTES:
 *****************************************************************************/

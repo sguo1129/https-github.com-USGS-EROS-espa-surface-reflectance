@@ -1,14 +1,3 @@
-/* 
- 
- 
- Compile with this:
- 
- cc -O0 -o bin/SDSreader3.0 src/SDSreader3.0.c \
-    -I/home/jim/bin/ERICV/include -I$HDFINC \
-    -L$HDFLIB -lmfhdf -ldf -ljpeg -lz -lm
-
-
-*/
 /* Program used to read values from SDSs according to some criteria; 
    Jim Ray, 20-SEP-01. 
 */
@@ -160,9 +149,6 @@ overallULR = overallULC = overallNR = overallNC = -999.0F;
 /***************************
  ** Take care of arguments *
  ***************************/ 
-/* new, 22-FEB-07: if (argc == 2), we may be using a parameter file;
-   Determine ahead of time how many lines it has */
-   
 /* newfileindex is going to contain either 0 or 1, 1 meaning 
    the HDF input file at this argument has never been seen before,
    0 meaning it has.  newfileindex is meant to limit the reads

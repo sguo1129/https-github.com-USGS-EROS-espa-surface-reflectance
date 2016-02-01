@@ -5,22 +5,6 @@
   
 !Description: Functions reading data from the input data file.
 
-!Revision History:
- Revision 1.0 2001/05/08
- Robert Wolfe
- Original Version.
-
- Revision 1.1 2002/05/02
- Robert Wolfe
- Added handling for SDS's with ranks greater than 2.
-
- Revision 1.2 2014/10/24
- Gail Schmidt
- Modified the handling of PRWV variables to be float values without any
-   scale factor or add offset versus the previous version which was int16
-   with a scale factor and add offset.  The underlying NCEP variables have
-   changed, as delivered from NOAA/NCEP.
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -961,11 +945,6 @@ bool GetInputOzon(InputOzon_t *this, int iband, int *read_buffer)
  (returns)      status:
                   'true' = okay
 		  'false' = error return
-
-!History:
-   Updated on 7/11/2013 by Gail Schmidt, USGS EROS LSRD Project
-   Modified to specify the ozone band should be read vs. just saying the
-     first SDS should be read.
 
 !Team Unique Header:
 

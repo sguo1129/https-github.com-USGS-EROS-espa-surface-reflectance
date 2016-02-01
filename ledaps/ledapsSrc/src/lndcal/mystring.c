@@ -5,11 +5,6 @@
   
 !Description: Functions for handling strings.
 
-!Revision History:
- Revision 1.0 2001/05/08
- Robert Wolfe
- Original Version.
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Labatory for Terrestrial Physics (Code 922) at the 

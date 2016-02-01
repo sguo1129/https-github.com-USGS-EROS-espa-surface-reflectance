@@ -5,11 +5,6 @@
 	PURPOSE:  To convert total degrees, total minutes, or total seconds to 
 		  packed degress,minutes,seconds.
 
-	PROGRAM HISTORY:
-	PROGRAMMER	DATE	REASON
-	----------	----	------
-	G. Schmidt  3/2013  Borrowed code from geolib for LEDAPS
-
     RETURNS:
         false - error occured processing
         true -  successful completion
@@ -142,14 +137,7 @@ NAME:			find_deg, find_min, find_sec
 
 PURPOSE:  Extracts deg, min, or sec portions of an angle
 
-PROGRAM HISTORY:
-VERSION	 DATE	AUTHOR	   CODE/CONT   REASON
--------	 ----	------	   ---------   -----------------------------
-  5.0	 5/89	D. Steinwand  CSB      LAS 5.0 (original) Development
-
 COMPUTER HARDWARE AND/OR SOFTWARE LIMITATIONS:   must be run under TAE
-
-PROJECT:  LAS
 
 ALGORITHM DESCRIPTION:
 	Extract portion of angle

@@ -12,16 +12,6 @@
  * set up to mix and match projections.  If one projection is initialized,
  * then another projection is initialized, it will overwrite the first
  * projection information.
- *
- * Modified on 3/12/2013, Gail Schmidt, USGS EROS
- * Updated to add support for the Polar Stereographic projection, in addition
- *   to the existing support for UTM.
- *
- * Modified on 1/5/2016, Gail Schmidt, USGS EROS
- * Given that most of these variables and the code comes from GCTP, we might
- *   as well just use GCTP vs. copying the code from GCTP to this location.
- *   That minimizes the maintenance of code.
- * Updated to support Albers projection.
  */
 static double scale_factor   = 0.9996;   /* scale factor */
 double pixel_size;      /* pixel size */

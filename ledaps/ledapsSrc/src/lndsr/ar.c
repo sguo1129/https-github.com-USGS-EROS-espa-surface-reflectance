@@ -754,25 +754,6 @@ int Fill_Ar_Gaps(Lut_t *lut, int ***line_ar, int ib) {
 !Description: fill in missing values in the OZONE grid based
 on existing values (spatial interpolation). 
 
-!Input parameters: 
-
-	
-	
-!Output Parameters: 
-
-
-!Revision History:
-
-Original version: Thu Dec  7 15:46:05 EST 1995
-
-
-!Developer Header:
-		   	      
-	      
-!References and Credits: 
-
-
-!Design Notes:   
 !END****************************************************************************
 */
    int i,j,k,l,count,last_value,More_Gaps,nbfills;

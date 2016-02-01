@@ -4,17 +4,6 @@
 #include "sixs_runs.h"
 #include "clouds.h"
 
-/****************************************************************************
-History:
-Modified on 2/5/2014 by Gail Schmidt, USGS/EROS
-  Band 6 is now in Kelvin vs. degrees Celsius so conversion (+273.) is no
-    longer needed.
-  The scaling factor of band 6 has changed from 0.01 to 0.1.
-  Instead of dividing by 10000 and 10 for the scaling, modified to multiply
-    by 0.0001 and 0.1.  Multiplication is faster.
-****************************************************************************/
-
-
 /* #define VRA_THRESHOLD 0.1 */
 #define VRA_THRESHOLD 0.08
 
@@ -581,29 +570,8 @@ void fill_cld_diags(cld_diags_t *cld_diags) {
 /*
 !Description: fill in missing values in the T6Clear grid based
 on existing values (spatial interpolation). Missing values have been previously
-set to -9999. A filling can be distincted from a original value by looking at the
-standart deviation of the optical depth which is set to -9999 for a filling.
-
-!Input parameters: 
-
-	
-	
-!Output Parameters: 
-
-
-!Revision History:
-$LOG: process_TM.c,v1.0$
-
-Original version: Thu Dec  7 15:46:05 EST 1995
-
-
-!Developer Header:
-		   	      
-	      
-!References and Credits: 
-
-
-!Design Notes:   
+set to -9999. A filling can be distincted from a original value by looking at
+the standard deviation of the optical depth which is set to -9999 for a filling.
 !END****************************************************************************
 */
    int i,j,k,l,pass,count;

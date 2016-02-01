@@ -5,47 +5,6 @@
   
 !Description: Functions creating and writting data to the product output file.
 
-!Revision History:
- Revision 1.0 2001/05/08
- Robert Wolfe
- Original Version.
-
- Revision 1.1 2012/09/27
- Gail Schmidt - Updated metadata to output information for each of the
- individual QA bands vs. a single packed bit QA band.
-
- Revision 1.2 2012/12/27
- Gail Schmidt - Modified to write the original LPGS L1G/L1T metadata filename
- for future reference by the user
-
- Revision 1.3 2013/01/22
- Gail Schmidt - Modified to utilize only one Version value - LEDAPSVersion
-
- Revision 1.4 2013/03/15
- Gail Schmidt - Removed NumberOfBands and BandNumbers from the lndsr output
- metadata.  Those only applied to the surface reflectance bands themselves
- and don't fully represent the final output bands for the lndsr product,
- therefore potentially leading to user confusion.
-
- Revision 1.5 2013/03/22
- Gail Schmidt, USGS EROS
- Modified to output the UL and LR corner lat/longs.  We are already writing
- the bounding coords, however for ascending scenes and scenes in the polar
- regions, the scenes are flipped upside down.  The bounding coords will be
- correct in North represents the northernmost latitude and South represents
- the southernmost latitude.  However, the UL corner in this case would be
- more south than the LR corner.  Comparing the UL and LR corners will allow
- the user to determine if the scene is flipped.
-
- Revision 1.5 2013/08/05
- Gail Schmidt, USGS EROS
- Modified to output the gain and bias values for the reflectance and
-   brightness temperature bands.
-
- Revision 2.0 2014/02/03
- Gail Schmidt, USGS EROS
- Modified application to utilize the ESPA internal raw binary format.
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
@@ -92,27 +51,10 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
 !Output Parameters:
  (returns)      'output' data structure or NULL when an error occurs
 
-!Revision:
-revision on 1/27/2014 by Gail Schmidt, USGS/EROS
- - modified to utilize the ESPA internal raw binary structure
-
-revision on 11/13/2014 by Gail Schmidt, USGS/EROS
- - modified to not write a fill_value for the output surface reflectance QA
-   bands.  These are either on/off for that quality item, so technically there
-   isn't a fill value.  The user will need to refer to the fill QA band.  Also
-   ENVI doesn't include the fill value as part of the histogram, so you have
-   to play weird games with the histograms in ENVI to be able to see both the
-   0 and 255 when one of the values is flagged as fill.
-
-revision on 1/15/2015 by Gail Schmidt, USGS/EROS
- - descriptions of the on/off QA values were flip-flopped. These have been
-   fixed.
-
 !END****************************************************************************
 */
 {
   Output_t *this = NULL;       /* pointer to output structure */
-  char *mychar = NULL;         /* pointer to '_' */
   char scene_name[STR_SIZE];   /* scene name for the current scene */
   int ib;             /* looping variables */
   int nband;          /* number of bands for this dataset */
@@ -176,17 +118,8 @@ revision on 1/15/2015 by Gail Schmidt, USGS/EROS
     RETURN_ERROR("allocating band metadata", "OpenOutput", NULL);
   bmeta = this->metadata.band;
 
-  /* Determine the scene name */
-  strcpy (scene_name, in_meta->band[rep_indx].file_name);
-  mychar = scene_name;
-  while (mychar != NULL) {
-    if (!strncmp (mychar, "_toa", 4)) {
-      *mychar = '\0';
-      break;
-    }
-    else
-      mychar++;
-  }
+  /* Grab the scene name */
+  snprintf (scene_name, sizeof (scene_name), in_meta->global.scene_id);
 
   /* Get the current date/time (UTC) for the production date of each band */
   if (time (&tp) == -1)

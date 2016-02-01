@@ -6,23 +6,6 @@
 /* Functions */
 /* !Revision:
  *
- * revision 1.1.0 9/13/2012  Gail Schmidt, USGS
- * - modified cal6 application to flag the saturated thermal pixels to be
- *   consistent with the processing of the reflective bands
- * revision 1.2.0 2/20/2013  Gail Schmidt, USGS
- * - added computeBounds routine for computing the bounding coordinates
- * revision 1.2.1 3/22/2013  Gail Schmidt, USGS
- * - writing UL and LR corners to the output metadata to be able to detect
- *   ascending scenes or scenes where the image is flipped North to South
- * revision 1.2.2 8/1/2013  Gail Schmidt, USGS
- * - validated the TOA reflectance values to make sure they were within
- *   the valid range of values
- * - validated the thermal values to make sure they were within the valid
- *   range of values
- * revision 2.0.0 1/30/2014  Gail Schmidt, USGS
- * - modified the brightness temp values to be written in Kelvin vs. degrees
- *   Celsius
- *
  * NOTES:
  * 1. TOA radiance and reflectance equations for Landsat 7 are available in
  *    http://landsathandbook.gsfc.nasa.gov/data_prod/prog_sect11_3.html

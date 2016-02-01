@@ -10,28 +10,6 @@ at the USGS EROS
 
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-1/16/2014    Gail Schmidt     Modified to use ESPA internal file format.
-                              The *.metadata.txt file is no longer needed by
-                              lndcal nor is the MTL file and instead the XML
-                              file is passed to both lndcal and lndsr.
-1/17/2014    Gail Schmidt     Updated to follow ESPA software guidelines an
-                              use common ESPA funtions.
-1/30/2014    Gail Schmidt     Reflective and thermal output files are no
-                              longer needed as parameters in the lndcal*.txt
-                              file, since outputs are handled in the XML file.
-1/30/2014    Gail Schmidt     Removed any recalibration-related or DN map
-                              related code
-2/3/2014     Gail Schmidt     Reflective, thermal input and surface reflectance
-                              output files are no longer needed as parameters
-                              in the lndsr*.txt file, since inputs and outputs
-10/28/2014   Gail Schmidt     Changed the ANC_PATH environment variable to
-                              LEDAPS_AUX_DIR to be more consistent with the
-                              Landsat8 auxiliary directory name.
-11/13/2015   Gail Schmidt     Removed log file since it wasn't used
-
 NOTES:
   1. The XML metadata format written via this library follows the ESPA internal
      metadata format found in ESPA Raw Binary Format v1.0.doc.  The schema for
@@ -44,6 +22,21 @@ NOTES:
 int conv_date (int *mm, int *dd, int yyyy);
 int find_file(char *path, char *name);
 
+/******************************************************************************
+MODULE:  main (lndpm)
+
+PURPOSE: Create the parameter files that are needed by the LEDAPS applications
+(lndcal, lndsr, lndsrbm.)
+
+RETURN VALUE:
+Type = int
+Value           Description
+-----           -----------
+ERROR           Error with the parameter file generation
+SUCCESS         Successfully generated the parameter files
+
+NOTES:
+******************************************************************************/
 int main (int argc, char *argv[])
 {
     char FUNC_NAME[] = "lndpm";    /* function name */
@@ -257,14 +250,6 @@ Value           Description
 ERROR           Error with the conversion
 SUCCESS         Successfully converted the date
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-             Feng Gao         Revised from program "jdoy.c" by MODIS LDOPE QA
-                              team
-1/17/2014    Gail Schmidt     Updated to follow ESPA software guidelines an
-                              use common ESPA funtions.
-
 NOTES:
   1. *mm and *dd are input/output varialbes
      Input julian day number:
@@ -350,12 +335,6 @@ Value           Description
 non-zero        File is found, and path points to full path
 zero            File is not found, and path is unchanged
 
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-1/17/2014    Gail Schmidt     Updated to follow ESPA software guidelines an
-                              use common ESPA funtions.
-
 NOTES:
 ******************************************************************************/
 int scan_dir
@@ -426,12 +405,6 @@ Value           Description
 -----           -----------
 non-zero        File is found, and path points to full path
 zero            File is not found, and path is unchanged
-
-HISTORY:
-Date         Programmer       Reason
-----------   --------------   -------------------------------------
-1/17/2014    Gail Schmidt     Updated to follow ESPA software guidelines an
-                              use common ESPA funtions.
 
 NOTES:
 ******************************************************************************/

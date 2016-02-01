@@ -6,37 +6,6 @@
 !Description: Functions for accepting parameters from the command line or 
  a file.
 
-!Revision History:
- Revision 1.0 2000/11/07
- Robert Wolfe
- Original Version.
-
- Revision 1.1 2000/12/13
- Sadashiva Devadiga
- Modified to accept parameters from command line or file.
-
- Revision 1.2 2001/05/08
- Sadashiva Devadiga
- Added checks for required parameters.
-
- Revision 1.3 2002/03/02
- Robert Wolfe
- Added special handling for input ISINUS case.
-
- Revision 1.4 2002/05/10
- Robert Wolfe
- Added separate output SDS name.
-
- Revision 1.5 01/22/2013 Gail Schmidt, USGS EROS
- Modified applications to use only one version and that is the
- LEDAPSVersion tag which will get updated with each release of LEDAPS
-
- Revision 2.0 01/21/2014 Gail Schmidt, USGS EROS
- Modified applications to use the ESPA internal raw binary file format.
-
- Revision 03/31/2015 Gail Schmidt, USGS EROS
- Added an existance check for the TOA reflectance (and K1/K2 consts).
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 

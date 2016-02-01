@@ -5,24 +5,6 @@
   
 !Description: Functions reading data from the input data file.
 
-!Revision History:
- Revision 1.0 2001/05/08
- Robert Wolfe
- Original Version.
-
- Revision 1.1 2002/05/02
- Robert Wolfe
- Added handling for SDS's with ranks greater than 2.
-
- Modified on 8/17/2012 by Gail Schmidt, USGS EROS
-  When freeing the thermal band in FreeInput, the QA SDS is not valid
-  and should not be attempted to be freed.  OpenInput does not read the
-  QA for the thermal band.
-  
- Revision 2.0 2014/01/24
- Gail Schmidt, USGS EROS
- Modified to use ESPA internal raw binary format
-
 !Team Unique Header:
   This software was developed by the MODIS Land Science Team Support 
   Group for the Laboratory for Terrestrial Physics (Code 922) at the 
