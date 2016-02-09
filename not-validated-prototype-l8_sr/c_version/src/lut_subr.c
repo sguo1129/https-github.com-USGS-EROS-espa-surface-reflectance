@@ -80,10 +80,11 @@ int atmcorlamb2
     float rotoa,                     /* I: top of atmosphere reflectance */
     float *roslamb,                  /* O: lambertian surface reflectance */
     float *tgo,                      /* O: other gaseous transmittance */
-    float *roatm,                    /* O: atmospheric reflectance */
+    float *roatm,                    /* O: atmospheric intrinsic reflectance */
     float *ttatmg,                   /* O: total atmospheric transmission */
     float *satm,                     /* O: spherical albedo */
-    float *xrorayp,                  /* O: molecular reflectance */
+    float *xrorayp,                  /* O: reflectance of the atmosphere due to
+                                           molecular (Rayleigh) scattering */
     float *next                      /* O: */
 )
 {
@@ -162,7 +163,7 @@ int atmcorlamb2
     comptrans (ip1, ip2, iaot1, iaot2, xtv, raot550nm, iband, pres, tpres,
         aot550nm, transt, xtvstep, xtvmin, tts, &xttv);
 
-    /* Compute total transmission (product downward by  upward) */
+    /* Compute total transmission (product downward by upward) */
     ttatm = xtts * xttv;
     
     /* Compute spherical albedo */
@@ -560,7 +561,7 @@ void comproatm
     float xtvmin,       /* I: minimum observation value */
     int its,            /* I: index for the sun angle table */
     int itv,            /* I: index for the view angle table */
-    float *roatm        /* O: atmospheric reflectance */
+    float *roatm        /* O: atmospheric intrinsic reflectance */
 )
 {
     int isca;
@@ -1636,7 +1637,7 @@ int readluts
             }
 
             /* 21 lines per pressure level */
-            for (i = 0; i < 21; i++)   /* GAIL - array is size 22 vs. 21 */
+            for (i = 0; i < 21; i++)   /* TODO - array is size 22 vs. 21 */
             {
                 /* Grab the first value in the line.  Basically this is a
                    repeat of the previous pressure level and band, as all the

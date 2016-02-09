@@ -93,10 +93,11 @@ int subaeroret
     double raot1, raot2;    /* AOT ratios that bracket the predicted ratio */
     float next;             /* ???? */
     float tgo;              /* other gaseous transmittance */
-    float roatm;            /* atmospheric reflectance */
+    float roatm;            /* atmospheric intrinsic reflectance */
     float ttatmg;           /* total atmospheric transmission */
     float satm;             /* spherical albedo */
-    float xrorayp;          /* molecular reflectance */
+    float xrorayp;          /* reflectance of the atmosphere due to molecular
+                               (Rayleigh) scattering */
     double aratio1, aratio2;
     double pratio;          /* targeted ratio between the surface reflectance
                                in two bands */
@@ -556,7 +557,7 @@ int subaeroret_residual
     int retval;             /* function return value */
     float next;             /* ???? */
     float tgo;
-    float roatm;            /* atmospherice reflectance */
+    float roatm;            /* atmospherice intrinsic reflectance */
     float ttatmg;
     float satm;             /* spherical albedo */
     float xrorayp;          /* molecular reflectance */

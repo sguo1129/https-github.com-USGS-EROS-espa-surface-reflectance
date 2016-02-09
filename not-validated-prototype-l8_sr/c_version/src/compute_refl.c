@@ -289,11 +289,12 @@ int compute_sr_refl
     int win;             /* window around current pixel for water mask */
     float rotoa;         /* top of atmosphere reflectance */
     float roslamb;       /* lambertian surface reflectance */
-    float tgo;           /* other gaseous transmittance */
-    float roatm;         /* atmospheric reflectance */
+    float tgo;           /* other gaseous transmittance (tgog * tgoz) */
+    float roatm;         /* atmospheric intrinsic reflectance */
     float ttatmg;        /* total atmospheric transmission */
     float satm;          /* atmosphere sphereical albedo */
-    float xrorayp;       /* molecular reflectance */
+    float xrorayp;       /* reflectance of the atmosphere due to molecular
+                            (Rayleigh) scattering */
     float next;
     float erelc[NSR_BANDS];    /* band ratio variable for bands 1-7 */
     float troatm[NSR_BANDS];   /* atmospheric reflectance table for bands 1-7 */
@@ -433,7 +434,7 @@ int compute_sr_refl
                                     product */
     Envi_header_t envi_hdr;      /* output ENVI header information */
     char envi_file[STR_SIZE];    /* ENVI filename */
-    char *cptr = NULL;       /* pointer to the file extension */
+    char *cptr = NULL;           /* pointer to the file extension */
 
     /* Table constants */
     float aot550nm[22] =  /* AOT look-up table */
@@ -579,8 +580,10 @@ int compute_sr_refl
                 else if (ib == DN_BAND7)
                     aerob7[i] = sband[ib][i];
 
-                /* Apply the atmospheric corrections, and store the scaled
-                   value for further corrections */
+                /* Apply the atmospheric corrections (ignoring the Rayleigh
+                   scattering component and water vapor), and store the scaled
+                   value for further corrections.  (NOTE: the full computations
+                   are in atmcorlamb2) */
                 rotoa = sband[ib][i] * SCALE_FACTOR;
                 roslamb = rotoa / tgo;
                 roslamb = roslamb - roatm;
@@ -915,6 +918,7 @@ int compute_sr_refl
                     }
                     ros4 = roslamb;
 
+                    /* Use the NDVI to validate the reflectance values */
                     if ((ros5 > 0.1) && ((ros5 - ros4) / (ros5 + ros4) > 0))
                     {
                         taero[curr_pix] = raot;
