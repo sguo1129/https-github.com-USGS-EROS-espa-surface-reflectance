@@ -135,11 +135,13 @@ class SurfaceReflectance():
         # uses L8ANC2013181.hdf_fused.  Similarly, the new L1T naming convention
         # LC08_L1T_041027_20130630_20140312_02.xml also used the 2013181 HDF
         # file.
-        if base_xmlfile[0:3] == 'LC8':
+        l8_prefixes_old = ['LC8', 'LO8']
+        l8_prefixes_new = ['LC08', 'LO08']
+        if base_xmlfile[0:3] in l8_prefixes_old:
             # Old-style L1T naming convention. Just pull the year and DOY from
             # the XML filename.
             aux_file = 'L8ANC' + base_xmlfile[9:16] + '.hdf_fused'
-        elif base_xmlfile[0:4] == 'LC08':
+        elif base_xmlfile[0:4] in l8_prefixes_new:
             # New-style L1T naming convention. Pull the year, month, day from
             # the XML filename. Then convert month, day to DOY.
             aux_year = base_xmlfile[16:20]
