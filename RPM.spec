@@ -7,7 +7,7 @@
 # ----------------------------------------------------------------------------
 Name:		espa-surface-reflectance
 Version:	201603
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	ESPA Surface Reflectance Software
 
 Group:		ESPA
@@ -76,9 +76,11 @@ rm -rf %{buildroot}
 
 # ----------------------------------------------------------------------------
 %changelog
+* Fri Feb 12 2016 Ronald D Dilley <rdilley@usgs.gov>
+- Updated release number for a bug fix Mar 2016 release
+
 * Mon Jan 25 2016 Ronald D Dilley <rdilley@usgs.gov>
 - Updated for Mar 2016 release
-
 * Wed Dec 02 2015 Ronald D Dilley <rdilley@usgs.gov>
 - Changed release number for a recompile against the product formatter for Dec 2015 release
 * Wed Nov 04 2015 Ronald D Dilley <rdilley@usgs.gov>
