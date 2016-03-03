@@ -577,14 +577,9 @@ int get_prwv_anc(t_ncep_ancillary *anc,InputPrwv_t *this, float* data,
     anc->lonmin -= 180.0;
     anc->lonmax -= 180.0;
   }
-printf ("DEBUG  lonmin: %f\n", anc->lonmin);
-printf ("DEBUG  lonmax: %f\n", anc->lonmax);
 
   /* Set up the data buffer */
   osize= anc->nblayers * anc->nbrows * anc->nbcols;
-printf ("DEBUG  nblayers: %d\n", anc->nblayers);
-printf ("DEBUG  nblrows: %d\n", anc->nbrows);
-printf ("DEBUG  nblcols: %d\n", anc->nbcols);
 
   buffer = (float *)calloc((size_t)(osize),sizeof(float));
   if (buffer == (float *)NULL) 
