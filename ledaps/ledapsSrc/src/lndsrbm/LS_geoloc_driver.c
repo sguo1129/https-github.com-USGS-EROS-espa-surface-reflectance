@@ -102,7 +102,7 @@ int main (int argc, char **argv)
         ds = (double) cols;
     }
     
-    if (dl > (double)rows) {
+    if (dl > (double) rows) {
         printf ("Sample argument (%s) exceeds number of rows in file (%d): "
             "will use %d\n", argv[3], rows, rows);
         dl = (double) rows;   

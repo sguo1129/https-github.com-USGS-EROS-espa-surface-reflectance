@@ -167,7 +167,6 @@ short get_args
     fac = atan (1.0) / 45.0;
     *north_adj = atan (dx / dy) / fac;
 
-
     return (SUCCESS);
 }
 
