@@ -32,17 +32,14 @@ int main (int argc, const char **argv) {
   Lut_t *lut = NULL;
   Output_t *output = NULL;
   Output_t *output_th = NULL;
-  int iline, isamp,oline, ib, jb, iz, val;
+  int iline, isamp, ib, jb, val;
   unsigned char *line_in = NULL;
-  unsigned char *line_in_thz = NULL;
   unsigned char *line_out_qa = NULL;
   int16 *line_out = NULL;
   int16 *line_out_th = NULL;
-  int16 *line_out_thz = NULL;
   Cal_stats_t cal_stats;
   Cal_stats6_t cal_stats6;
   int nps,nls, nps6, nls6;
-  int zoomx, zoomy;
   int i,odometer_flag=0;
   char msgbuf[1024];
   char envi_file[STR_SIZE]; /* name of the output ENVI header file */
@@ -101,8 +98,6 @@ int main (int argc, const char **argv) {
   nls6=  input->size_th.l;
   nps =  input->size.s;
   nls =  input->size.l;
-  zoomx= nint( (float)nps / (float)nps6 );
-  zoomy= nint( (float)nls / (float)nls6 );
 
   for (ib = 0; ib < input->nband; ib++) 
     cal_stats.first[ib] = true;
@@ -132,19 +127,6 @@ int main (int argc, const char **argv) {
     line_out_th = calloc(input->size_th.s, sizeof(int16));
     if (line_out_th == NULL) 
       EXIT_ERROR("allocating thermal output line buffer", "main");
-
-    if (zoomx == 1) {
-      line_out_thz = line_out_th;
-      line_in_thz = line_in;
-    }
-    else {
-      line_out_thz = calloc (input->size.s, sizeof(int16));
-      if (line_out_thz == NULL) 
-        EXIT_ERROR("allocating thermal zoom output line buffer", "main");
-      line_in_thz = calloc (input->size.s, input_psize);
-      if (line_in_thz == NULL) 
-        EXIT_ERROR("allocating thermal zoom input line buffer", "main");
-    }
   } else {
     printf("*** no output thermal file ***\n"); 
   }
@@ -160,55 +142,37 @@ int main (int argc, const char **argv) {
   memset (line_out_qa, 0, input->size.s * sizeof(unsigned char));    
 
   /* Do for each THERMAL line */
-  oline= 0;
   if (input->nband_th > 0) {
     ifill= (int)lut->in_fill;
     for (iline = 0; iline < input->size_th.l; iline++) {
-      ib=0;
+      if ( odometer_flag && ( iline==0 || iline ==(nls-1) || iline%100==0  ) )
+        printf("--- main loop BAND6 Line %d --- \r",iline); fflush(stdout); 
+
+      memset(line_out_qa, 0, input->size.s*sizeof(unsigned char));    
+
       if (!GetInputLineTh(input, iline, line_in))
         EXIT_ERROR("reading input data for a line", "main");
 
-      if ( odometer_flag && ( iline==0 || iline ==(nls-1) || iline%100==0  ) ){ 
-        if ( zoomy == 1 )
-          printf("--- main loop BAND6 Line %d --- \r",iline); 
-        else
-          printf("--- main loop BAND6 Line in=%d out=%d --- \r",iline,oline); 
-        fflush(stdout); 
-      }
-
-      memset(line_out_qa, 0, input->size.s*sizeof(unsigned char));    
       if (!Cal6(lut, input, line_in, line_out_th, line_out_qa, &cal_stats6,
         iline))
         EXIT_ERROR("doing calibration for a line", "main");
 
-      if ( zoomx>1 ) {
-        zoomIt(line_out_thz, line_out_th, nps/zoomx, zoomx );
-        zoomIt8(line_in_thz, line_in, nps/zoomx, zoomx );
+      for (isamp = 0; isamp < input->size.s; isamp++) {
+        val= getValue(line_in, isamp);
+        if ( val> maxth) maxth=val;
+        if ( val==ifill) line_out_qa[isamp] = lut->qa_fill; 
+        else if ( val>=SATU_VAL6 ) line_out_qa[isamp] = ( 0x000001 << 6 ); 
       }
 
-      for ( iz=0; iz<zoomy; iz++ ) {
-        for (isamp = 0; isamp < input->size.s; isamp++) {
-          val= getValue(line_in_thz, isamp);
-          if ( val> maxth) maxth=val;
-          if ( val==ifill) line_out_qa[isamp] = lut->qa_fill; 
-          else if ( val>=SATU_VAL6 ) line_out_qa[isamp] = ( 0x000001 << 6 ); 
-        }
+      ib=0;
+      if (!PutOutputLine(output_th, ib, iline, line_out_th)) {
+        sprintf(msgbuf,"write thermal error ib=%d iline=%d",ib,iline);
+        EXIT_ERROR(msgbuf, "main");
+      }
 
-        if ( oline<nls ) {
-          if (!PutOutputLine(output_th, ib, oline, line_out_thz)) {
-            sprintf(msgbuf,"write thermal error ib=%d oline=%d iline=%d",ib,
-              oline,iline);
-            EXIT_ERROR(msgbuf, "main");
-          }
-
-          if (input->meta.inst != INST_MSS) 
-            if (!PutOutputLine(output_th, ib+1, oline, line_out_qa)) {
-	          sprintf(msgbuf,"write thermal QA error ib=%d oline=%d iline=%d",
-                ib+1,oline,iline);
-              EXIT_ERROR(msgbuf, "main");
-            }
-        }
-        oline++;
+      if (!PutOutputLine(output_th, ib+1, iline, line_out_qa)) {
+        sprintf(msgbuf,"write thermal QA error ib=%d iline=%d",ib+1,iline);
+        EXIT_ERROR(msgbuf, "main");
       }
     } /* end loop for each thermal line */
   }
@@ -342,12 +306,6 @@ int main (int argc, const char **argv) {
   line_out_qa = NULL;
   free(line_out_th);
   line_out_th = NULL;
-  if (zoomx != 1) {
-    free(line_in_thz);
-    free(line_out_thz);
-  }
-  line_in_thz = NULL;
-  line_out_thz = NULL;
 
   /* All done */
   printf ("lndcal complete.\n");
