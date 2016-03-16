@@ -12,7 +12,6 @@
 #include "cal.h"
 #include "bool.h"
 #include "error.h"
-#include "util.h"
 
 #include <time.h>
 #include <sys/types.h>

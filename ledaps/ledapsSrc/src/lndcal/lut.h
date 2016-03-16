@@ -44,7 +44,6 @@
 #include "lndcal.h"
 #include "input.h"
 #include "param.h"
-#include "util.h"
 #include "bool.h"
 
 /* Structure for the 'lut' data type */

@@ -40,7 +40,6 @@
 
 #include <stdlib.h>
 #include "input.h"
-#include "util.h"
 #include "error.h"
 #include "mystring.h"
 #include "const.h"

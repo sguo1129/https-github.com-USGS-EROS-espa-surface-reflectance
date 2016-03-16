@@ -47,11 +47,11 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <math.h>
 
 #include "lndcal.h"
 #include "param.h"
 #include "mystring.h"
-#include "util.h"
 #include "error.h"
 
 typedef enum {
