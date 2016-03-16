@@ -29,8 +29,7 @@ SRC = \
       lut.c      \
       mystring.c \
       output.c   \
-      param.c    \
-      util.c
+      param.c
 OBJ = $(SRC:.c=.o)
 
 # Define include paths 
