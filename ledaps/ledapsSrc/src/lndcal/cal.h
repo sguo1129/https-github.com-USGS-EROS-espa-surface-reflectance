@@ -18,8 +18,6 @@ typedef struct {
   float ref_max[NBAND_REFL_MAX];
   int iref_min[NBAND_REFL_MAX];
   int iref_max[NBAND_REFL_MAX];
-  long nfill[NBAND_REFL_MAX];
-  long nvalid[NBAND_REFL_MAX];
 } Cal_stats_t;
 
 typedef struct {
@@ -32,8 +30,6 @@ typedef struct {
   float temp_max;
   int itemp_min;
   int itemp_max;
-  long nfill;
-  long nvalid;
 } Cal_stats6_t;
 
 bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in, 
@@ -41,7 +37,5 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
 
 bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, 
   int16 *line_out, unsigned char *line_out_qa, Cal_stats6_t *cal_stats, int iy);
-
-int getValue(unsigned char* line_in, int ind);
 
 #endif

@@ -33,6 +33,7 @@ int main (int argc, const char **argv) {
   Output_t *output = NULL;
   Output_t *output_th = NULL;
   int iline, isamp, ib, jb, val;
+  int my_pix;
   unsigned char *line_in = NULL;
   unsigned char *line_out_qa = NULL;
   int16 *line_out = NULL;
@@ -158,7 +159,7 @@ int main (int argc, const char **argv) {
         EXIT_ERROR("doing calibration for a line", "main");
 
       for (isamp = 0; isamp < input->size.s; isamp++) {
-        val= getValue(line_in, isamp);
+        val= line_in[isamp];
         if ( val> maxth) maxth=val;
         if ( val==ifill) line_out_qa[isamp] = lut->qa_fill; 
         else if ( val>=SATU_VAL6 ) line_out_qa[isamp] = ( 0x000001 << 6 ); 
@@ -199,9 +200,10 @@ int main (int argc, const char **argv) {
     
     for (isamp = 0; isamp < input->size.s; isamp++){
       num_zero=0;
-      for (ib = 0; ib < input->nband; ib++) {
+      my_pix = isamp;
+      for (ib = 0; ib < input->nband; ib++, my_pix += nps) {
         jb= (ib != 5 ) ? ib+1 : ib+2;
-        val= getValue((unsigned char *)&line_in[ib*nps], isamp);
+        val= line_in[my_pix];
 	    if ( val==ifill   )num_zero++;
         if ( val==SATU_VAL[ib] ) line_out_qa[isamp]|= ( 0x000001 <<jb ); 
       }
@@ -225,6 +227,7 @@ int main (int argc, const char **argv) {
 
   if ( odometer_flag )printf("\n");
 
+#ifdef DO_STATS
   for (ib = 0; ib < input->nband; ib++) {
     printf(
       " band %d rad min %8.5g max %8.4f  |  ref min  %8.5f max  %8.4f\n", 
@@ -237,6 +240,7 @@ int main (int argc, const char **argv) {
       " band %d rad min %8.5g max %8.4f  |  tmp min  %8.5f max  %8.4f\n", 6,
       cal_stats6.rad_min,  cal_stats6.rad_max,
       cal_stats6.temp_min, cal_stats6.temp_max);
+#endif
 
   /* Close input and output files */
   if (!CloseInput(input)) EXIT_ERROR("closing input file", "main");
