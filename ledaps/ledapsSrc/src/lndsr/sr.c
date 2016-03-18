@@ -105,8 +105,9 @@ int SrInterpAtmCoef
 (
     Lut_t *lut,                    /* I: lookup table info */
     Img_coord_int_t *input_loc,    /* I: input line/sample location */
-    atmos_t *atmos_coef,
-    atmos_t *interpol_atmos_coef
+    atmos_t *atmos_coef,           /* I: actual atmospheric coefficients */
+    atmos_t *interpol_atmos_coef   /* O: interpolated atmospheric
+                                         coefficients */
 )
 /* 
   Point order:
@@ -218,7 +219,6 @@ int SrInterpAtmCoef
             interpol_atmos_coef->tu_r[ib][0] = sum[ib][10] / sum_w;
             interpol_atmos_coef->S_r[ib][0] = sum[ib][11] / sum_w;
             interpol_atmos_coef->rho_r[ib][0] = sum[ib][12] / sum_w;
-
         }
     }
 
