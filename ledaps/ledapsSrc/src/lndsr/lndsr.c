@@ -1076,10 +1076,9 @@ int main (int argc, const char **argv) {
                 EXIT_ERROR("running cloud mask dilation", "main");
 
             /* Cloud shadow */
-            if (!cast_cloud_shadow(lut, input->size.s, il_start, line_in,
-                b6_line, &cld_diags,ptr_rot_cld,&ar_gridcell,
-                space_def.pixel_size[0], adjust_north))
-                EXIT_ERROR("running cloud shadow detection", "main");
+            cast_cloud_shadow(lut, input->size.s, il_start, line_in, b6_line,
+                &cld_diags,ptr_rot_cld,&ar_gridcell, space_def.pixel_size[0],
+                adjust_north);
 
             /* Dilate Cloud shadow */
             dilate_shadow_mask(lut, input->size.s, ptr_rot_cld, 5);
@@ -1109,6 +1108,9 @@ int main (int argc, const char **argv) {
         EXIT_ERROR("writing dark target to temporary file", "main");
 
     fclose(fdtmp);
+
+    /* Done with the cloud diagnostics */
+    free_cld_diags (&cld_diags);
 
     /***
     Open temporary file for read and write
