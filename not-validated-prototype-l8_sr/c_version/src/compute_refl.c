@@ -468,6 +468,22 @@ int compute_sr_refl
         {9.57011e-16, 9.57011e-16, 9.57011e-16, -0.348785, 0.275239, 0.0117192,
          0.0616101, 0.04728};
 
+
+#define DUMP_INTERMEDIATE_VARS 1
+#ifdef DUMP_INTERMEDIATE_VARS
+    FILE *tmpfile = NULL;
+    int16 *interp_dem = NULL;   /* interpolated DEM values, nlines x nsamps */
+
+    /* Allocate space for interpolated data */
+    interp_dem = calloc (nlines*nsamps, sizeof (int16));
+    if (interp_dem == NULL)
+    {
+        sprintf (errmsg, "Error allocating memory for int16 for interp DEM");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+#endif
+
     /* Allocate memory for the many arrays needed to do the surface reflectance
        computations */
     retval = memory_allocation_sr (nlines, nsamps, &aerob1, &aerob2, &aerob4,
@@ -525,7 +541,9 @@ int compute_sr_refl
     }
 
     /* Loop through all the reflectance bands and perform atmospheric
-       corrections based on climatology */
+       corrections based on climatology and scene center variables.  Pressure,
+       water vapor, and ozone are fixed for the scene center.  AOT is fixed
+       at 550. */
     printf ("Performing atmospheric corrections for each reflectance "
         "band ...");
     for (ib = 0; ib <= SR_BAND7; ib++)
@@ -595,6 +613,19 @@ int compute_sr_refl
     }  /* for ib */
     printf ("\n");
 
+#ifdef DUMP_INTERMEDIATE_VARS
+    printf ("WRITING first atm corrections\n");
+    for (ib = 1; ib < 4; ib++)
+    {
+    sprintf (errmsg, "gail_first_atm_corrections_band%d.img", ib+1);
+    tmpfile = fopen (errmsg, "w");
+    if (fwrite (sband[ib], sizeof (int16), nlines*nsamps, tmpfile) !=
+        nlines*nsamps)
+        printf ("ERROR: Can't write the first ATM Corrections array!!!!\n");
+    fclose (tmpfile);
+    }
+#endif
+
     /* Initialize the band ratios */
     for (ib = 0; ib < NSR_BANDS; ib++)
     {
@@ -602,7 +633,9 @@ int compute_sr_refl
         troatm[ib] = 0.0;
     }
 
-    /* Interpolate the auxiliary data for each pixel location */
+    /* Interpolate the auxiliary data for each pixel location and calculate
+       the aerosols. This provides per-pixel pressure, water vapor, ozone, and
+       aerosol optical thickness (AOT). */
     printf ("Interpolating the auxiliary data ...\n");
     tmp_percent = 0;
 #ifdef _OPENMP
@@ -755,6 +788,10 @@ int compute_sr_refl
                 }
             }
 
+#ifdef DUMP_INTERMEDIATE_VARS
+            interp_dem[curr_pix] = dem[lcmg][scmg];
+#endif
+
             /* Get the surface pressure from the global DEM.  Set to 1013.0
                (sea level) if the DEM is fill (= -9999), which is likely
                ocean. */
@@ -854,7 +891,7 @@ int compute_sr_refl
                     }
                 }
        
-                /* Retrieve the aerosol information */
+                /* Retrieve the aerosol information using red and blue band 1 */
                 iband1 = DN_BAND4;
                 iband3 = DN_BAND1;
                 retval = subaeroret (iband1, iband3, xts, xtv, xmus, xmuv,
@@ -957,6 +994,44 @@ int compute_sr_refl
     for (i = 0; i < DEM_NBLAT; i++)
         free (dem[i]);
     free (dem);  dem = NULL;
+
+#ifdef DUMP_INTERMEDIATE_VARS
+    printf ("WRITING interpolated DEM\n");
+    tmpfile = fopen ("gail_interp_dem.img", "w");
+    if (fwrite (interp_dem, sizeof (int16), nlines*nsamps, tmpfile) !=
+        nlines*nsamps)
+        printf ("ERROR: Can't write the interpolated DEM array!!!!\n");
+    fclose (tmpfile);
+    free (interp_dem);  interp_dem = NULL;
+
+
+    printf ("WRITING interpolated ozone\n");
+    tmpfile = fopen ("gail_interp_tozi.img", "w");
+    if (fwrite (tozi, sizeof (float), nlines*nsamps, tmpfile) !=
+        nlines*nsamps)
+        printf ("ERROR: Can't write the interpolated ozone array!!!!\n");
+    fclose (tmpfile);
+
+
+    printf ("WRITING interpolated water vapor\n");
+    tmpfile = fopen ("gail_interp_twvi.img", "w");
+    if (fwrite (twvi, sizeof (float), nlines*nsamps, tmpfile) !=
+        nlines*nsamps)
+        printf ("ERROR: Can't write the interpolated water vapor array!!!!\n");
+    fclose (tmpfile);
+
+    printf ("WRITING tresi1\n");
+    tmpfile = fopen ("gail_tresi1.img", "w");
+    if (fwrite (tresi, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
+        printf ("ERROR: GAIL can't write the tresi1 array!!!!\n");
+    fclose (tmpfile);
+
+    printf ("WRITING taero\n");
+    tmpfile = fopen ("gail_taero.img", "w");
+    if (fwrite (taero, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
+        printf ("ERROR: GAIL can't write the taero array!!!!\n");
+    fclose (tmpfile);
+#endif
 
     /* Refine the cloud mask */
     /* Compute the average temperature of the clear, non-water, non-filled
@@ -1179,21 +1254,20 @@ int compute_sr_refl
         }
     }  /* end for i */
 
-/* GAIL -- This is the potential problem area with the blockiness; consider
-   printing tresi to see where the residual is negative. */
-/*printf ("WRITING intermediate cloud mask\n");
-FILE *tmpfile = NULL;
-tmpfile = fopen ("gail_cloud.img", "w");
-if (fwrite (cloud, sizeof (uint8), nlines*nsamps, tmpfile) != nlines*nsamps)
-    printf ("ERROR: GAIL can't write the cloud array!!!!\n");
-fclose (tmpfile);
 
+#ifdef DUMP_INTERMEDIATE_VARS
 printf ("WRITING tresi\n");
 tmpfile = fopen ("gail_tresi.img", "w");
 if (fwrite (tresi, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
-    printf ("ERROR: GAIL can't write the cloud array!!!!\n");
+    printf ("ERROR: GAIL can't write the tresi array!!!!\n");
 fclose (tmpfile);
-*/
+
+printf ("WRITING tp\n");
+tmpfile = fopen ("gail_tp.img", "w");
+if (fwrite (tp, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
+    printf ("ERROR: GAIL can't write the tp array!!!!\n");
+fclose (tmpfile);
+#endif
 
     /* Aerosol interpolation. Does not use water, cloud, or cirrus pixels. */
     printf ("Performing aerosol interpolation ...\n");
@@ -1275,6 +1349,14 @@ fclose (tmpfile);
         /* Modify the step value */
         step *= 2;
     }  /* end while */
+
+#ifdef DUMP_INTERMEDIATE_VARS
+    printf ("WRITING taero_filled\n");
+    tmpfile = fopen ("gail_taero_filled.img", "w");
+    if (fwrite (taero, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
+        printf ("ERROR: GAIL can't write the taero filled array!!!!\n");
+    fclose (tmpfile);
+#endif
 
     /* Perform the second level of atmospheric correction for the aerosols.
        This is not applied to water, cirrus, or cloud pixels. */
@@ -1613,11 +1695,11 @@ int init_sr_refl
     float *xfi,         /* O: azimuthal difference between sun and
                               observation (deg) */
     float *cosxfi,      /* O: cosine of azimuthal difference */
-    float *raot550nm,   /* O: nearest value of AOT */
-    float *pres,        /* O: surface pressure */
-    float *uoz,         /* O: total column ozone */
+    float *raot550nm,   /* O: AOT in relation to scene center */
+    float *pres,        /* O: surface pressure at scene center */
+    float *uoz,         /* O: total column ozone at scene center */
     float *uwv,         /* O: total column water vapor (precipital water
-                              vapor) */
+                              vapor) at scene center */
     float *xtsstep,     /* O: solar zenith step value */
     float *xtsmin,      /* O: minimum solar zenith value */
     float *xtvstep,     /* O: observation step value */
