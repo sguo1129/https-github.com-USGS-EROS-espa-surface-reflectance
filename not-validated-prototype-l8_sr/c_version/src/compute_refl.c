@@ -409,17 +409,17 @@ int compute_sr_refl
     int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob2 = NULL;   /* mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob7 = NULL;   /* mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1 = NULL;   /* ??? band1 ratio
+    int16 **intratiob1 = NULL;   /* intercept (offset) band1 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2 = NULL;   /* ??? band2 ratio
+    int16 **intratiob2 = NULL;   /* intercept (offset) band2 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7 = NULL;   /* ??? band7 ratio
+    int16 **intratiob7 = NULL;   /* intercept (offset) band7 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob1 = NULL;   /* slope band1 ratio
+    int16 **slpratiob1 = NULL;   /* slope (gain) band1 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob2 = NULL;   /* slope band2 ratio
+    int16 **slpratiob2 = NULL;   /* slope (gain) band2 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob7 = NULL;   /* slope band7 ratio
+    int16 **slpratiob7 = NULL;   /* slope (gain) band7 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
     uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
     uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
@@ -428,6 +428,11 @@ int compute_sr_refl
     float uoz;          /* total column ozone */
     float uwv;          /* total column water vapor (precipital water vapor) */
     float pres;         /* surface pressure */
+    float avg_ndwi;     /* average NDWI for the current pixel */
+    float std_ndwi;     /* standard deviation NDWI for the current pixel */
+    float gain1, gain2, gain7;  /* band ratio gain for bands 1, 2, 7 */
+    float offset1, offset2, offset7;  /* band ratio offset for bands 1, 2, 7 */
+    float band_ratio1;  /* band 1 ratio */
 
     /* Output file info */
     Output_t *sr_output = NULL;  /* output structure and metadata for the SR
@@ -829,8 +834,51 @@ int compute_sr_refl
             }
             else
             {
-                /* Determine the band ratios */
-                if (ratiob1[lcmg][scmg] == 0)
+                /* Compute the average and standard deviation for the NDWI */
+                avg_ndwi = andwi[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                           andwi[lcmg][scmg1] * (1.0 - u) * v +
+                           andwi[lcmg1][scmg] * u * (1.0 - v) +
+                           andwi[lcmg1][scmg1] * u * v;
+
+                std_ndwi = sndwi[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                           sndwi[lcmg][scmg1] * (1.0 - u) * v +
+                           sndwi[lcmg1][scmg] * u * (1.0 - v) +
+                           sndwi[lcmg1][scmg1] * u * v;
+
+                /* Compute the ratio gain and offsets for bands 1, 2, 7 */
+                gain1 = slpratiob1[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                        slpratiob1[lcmg][scmg1] * (1.0 - u) * v +
+                        slpratiob1[lcmg1][scmg] * u * (1.0 - v) +
+                        slpratiob1[lcmg1][scmg1] * u * v;
+
+                gain2 = slpratiob2[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                        slpratiob2[lcmg][scmg1] * (1.0 - u) * v +
+                        slpratiob2[lcmg1][scmg] * u * (1.0 - v) +
+                        slpratiob2[lcmg1][scmg1] * u * v;
+
+                gain7 = slpratiob7[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                        slpratiob7[lcmg][scmg1] * (1.0 - u) * v +
+                        slpratiob7[lcmg1][scmg] * u * (1.0 - v) +
+                        slpratiob7[lcmg1][scmg1] * u * v;
+
+                offset1 = intratiob1[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                          intratiob1[lcmg][scmg1] * (1.0 - u) * v +
+                          intratiob1[lcmg1][scmg] * u * (1.0 - v) +
+                          intratiob1[lcmg1][scmg1] * u * v;
+
+                offset2 = intratiob2[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                          intratiob2[lcmg][scmg1] * (1.0 - u) * v +
+                          intratiob2[lcmg1][scmg] * u * (1.0 - v) +
+                          intratiob2[lcmg1][scmg1] * u * v;
+
+                offset7 = intratiob7[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
+                          intratiob7[lcmg][scmg1] * (1.0 - u) * v +
+                          intratiob7[lcmg1][scmg] * u * (1.0 - v) +
+                          intratiob7[lcmg1][scmg1] * u * v;
+
+                /* Determine the band ratios from the band variables */
+                band_ratio1 = avg_ndwi * gain1 * 0.001 + offset1;
+                if (band_ratio1 == 0)
                 {
                     /* Average the valid ratio around the location */
                     erelc[DN_BAND1] = 0.4817;
@@ -846,22 +894,17 @@ int compute_sr_refl
                             ((double) sband[SR_BAND5][curr_pix] +
                              (double) (sband[SR_BAND7][curr_pix] * 0.5));
 
-                    th1 = (andwi[lcmg][scmg] + 2.0 * sndwi[lcmg][scmg]) *
-                        0.001;
-                    th2 = (andwi[lcmg][scmg] - 2.0 * sndwi[lcmg][scmg]) *
-                        0.001;
+                    th1 = (avg_ndwi + 2.0 * std_ndwi) * 0.001;
+                    th2 = (avg_ndwi - 2.0 * std_ndwi) * 0.001;
                     if (xndwi > th1)
                         xndwi = th1;
                     if (xndwi < th2)
                         xndwi = th2;
 
-                    erelc[DN_BAND1] = (xndwi * slpratiob1[lcmg][scmg] +
-                        intratiob1[lcmg][scmg]) * 0.001;
-                    erelc[DN_BAND2] = (xndwi * slpratiob2[lcmg][scmg] +
-                        intratiob2[lcmg][scmg]) * 0.001;
+                    erelc[DN_BAND1] = (xndwi * gain1 + offset1) * 0.001;
+                    erelc[DN_BAND2] = (xndwi * gain2 + offset2) * 0.001;
                     erelc[DN_BAND4] = 1.0;
-                    erelc[DN_BAND7] = (xndwi * slpratiob7[lcmg][scmg] +
-                        intratiob7[lcmg][scmg]) * 0.001;
+                    erelc[DN_BAND7] = (xndwi * gain7 + offset7) * 0.001;
                 }
 
                 /* Retrieve the TOA reflectance values for the current pixel */
