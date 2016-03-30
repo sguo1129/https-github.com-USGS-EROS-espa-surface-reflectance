@@ -3,7 +3,7 @@
 ##############################################################################
 # cc -O0 -c qa_index_routine.c
 #
-# gfortran -ffixed-line-length-132 -O -o $1 $1.f sub_deg2utm.f sub_utm2deg.f newLUTldcm_subr.f subaeroret.f qa_index_routine.o -I $HDFINC -I JPEGINC -L $HDFLIB -L JPEGLIB -lmfhdf -ldf -ljpeg -lz -ldl -lm -lsz
+# gfortran -ffixed-line-length-132  -O -o $1 $1.f sub_deg2utm.f sub_utm2deg.f LUTldcm_subr_v2.f subaeroret.f qa_index_routine.o -I /usr/local/TOOLKIT/SDPToolkit_gfortran44-5.2.17/hdf/linux/hdf-4.2.5/include -L /usr/local/TOOLKIT/SDPToolkit_gfortran44-5.2.17/hdf/linux/hdf-4.2.5/lib -lmfhdf -ldf -ljpeg -lz -ldl -lm -lsz
 ##############################################################################
 
 CC = cc
@@ -19,9 +19,9 @@ F_EXTRA   = -Wall -O2 -ffixed-line-length-132
 
 C_OBJECTS = qa_index_routine.o
 
-F_OBJECTS = sub_deg2utm.o sub_utm2deg.o subaeroret.o newLUTldcm_subr.o LDCMSR.o
+F_OBJECTS = sub_deg2utm.o sub_utm2deg.o subaeroret.o LUTldcm_subr_v2.o LDCMSR-v1.3.o
 
-TARGET = LDCMSR-v1.1
+TARGET = LDCMSR-v1.3
 
 all: $(TARGET)
 
