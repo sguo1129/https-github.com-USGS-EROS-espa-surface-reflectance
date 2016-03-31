@@ -311,6 +311,18 @@ int subaeroret_residual
     float *snext                     /* O: ????? */
 );
 
+void aerosol_interpolation
+(
+    int nlines,       /* I: number of lines in the aerosol buffer */
+    int nsamps,       /* I: number of samples in the aerosol buffer */
+    uint8 *cloud,     /* I: bit-packed value that represent clouds,
+                            nlines x nsamps */
+    float *tresi,     /* I: residuals for each pixel, nlines x nsamps;
+                            tresi < 0.0 flags water pixels and pixels with
+                            high residuals */
+    float *taero      /* I/O: aerosol values for each pixel, nlines x nsamps */
+);
+
 int memory_allocation_main
 (
     int nlines,          /* I: number of lines in the scene */
