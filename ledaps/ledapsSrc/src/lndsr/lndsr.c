@@ -907,7 +907,7 @@ int main (int argc, const char **argv) {
     for (il = 0; il < input->size.l; il++) {
         if (!(il%100)) 
         {
-            printf("Cloud screening for line %d\r",il);
+            printf("First pass cloud screening for line %d\r",il);
             fflush(stdout);
         }
 
@@ -923,52 +923,69 @@ int main (int argc, const char **argv) {
                 EXIT_ERROR("reading input data for b6_line (1)", "main");
         }
 
-        tmpint=(int)(scene_gmt/anc_ATEMP.timeres);
-        if (tmpint>=(anc_ATEMP.nblayers-1))
-        tmpint=anc_ATEMP.nblayers-2;
-        coef=(double)(scene_gmt-anc_ATEMP.time[tmpint])/anc_ATEMP.timeres;
-        img.is_fill=false;
-        img.l=il;
-        for (is=0;is < input->size.s; is++) {
-            img.s=is;
-            if (!from_space(space, &img, &geo))
-                EXIT_ERROR("mapping from space (2)", "main");
-            flat=geo.lat * DEG;
-            flon=geo.lon * DEG;
+        tmpint = (int)(scene_gmt / anc_ATEMP.timeres);
+        if (tmpint >= anc_ATEMP.nblayers - 1)
+            tmpint = anc_ATEMP.nblayers - 2;
+        coef = (double)(scene_gmt - anc_ATEMP.time[tmpint]) / anc_ATEMP.timeres;
 
-            interpol_spatial_anc(&anc_ATEMP,flat,flon,tmpflt_arr);
-            atemp_line[is]=(1.-coef)*tmpflt_arr[tmpint]+
-                coef*tmpflt_arr[tmpint+1];
+        img.is_fill = false;
+        img.l = il;
+        for (is = 0; is < input->size.s; is++) {
+            /* Get the geolocation info for this pixel */
+            img.s = is;
+            if (!from_space (space, &img, &geo))
+                EXIT_ERROR("mapping from space (2)", "main");
+            flat = geo.lat * DEG;
+            flon = geo.lon * DEG;
+
+            /* Interpolate the anciliary data for this lat/long, then pull the
+               information for the scene center time and adjust */
+            interpol_spatial_anc (&anc_ATEMP, flat, flon, tmpflt_arr);
+            atemp_line[is] = (1. - coef) * tmpflt_arr[tmpint] +
+                coef * tmpflt_arr[tmpint+1];
         }
 
-        /* Run Cld Screening Pass1 and compute stats */
+        /* Run Cld Screening Pass1 and compute stats. This cloud detection
+           function contains statistics gathering that needs to be in a
+           critical section for multi-threading. */
         if (param->thermal_band)
-            if (!cloud_detection_pass1(lut, input->size.s, il, line_in[0],
-                qa_line[0], b6_line[0], atemp_line,&cld_diags))
+            if (!cloud_detection_pass1 (lut, input->size.s, il, line_in[0],
+                qa_line[0], b6_line[0], atemp_line, &cld_diags))
                 EXIT_ERROR("running cloud detection pass 1", "main");
     } /* end for il */
+    printf ("\n");
 
     if (param->thermal_band) {
-        for (il=0;il<cld_diags.nbrows;il++) {
-            tmpint=(int)(scene_gmt/anc_ATEMP.timeres);
-            if (tmpint>=(anc_ATEMP.nblayers-1))
-                tmpint=anc_ATEMP.nblayers-2;
-            coef=(double)(scene_gmt-anc_ATEMP.time[tmpint])/anc_ATEMP.timeres;
-            img.is_fill=false;
-            img.l=il*cld_diags.cellheight+cld_diags.cellheight/2.;
+        for (il = 0; il < cld_diags.nbrows; il++) {
+            if (!(il%100)) 
+            {
+                printf("Second pass cloud screening for line %d\r",il);
+                fflush(stdout);
+            }
+
+            tmpint=(int)(scene_gmt / anc_ATEMP.timeres);
+            if (tmpint >= anc_ATEMP.nblayers - 1)
+                tmpint = anc_ATEMP.nblayers - 2;
+            coef =(double)(scene_gmt - anc_ATEMP.time[tmpint]) /
+                anc_ATEMP.timeres;
+
+            /* Note the right shift by 1 is a faster way of divide by 2 */
+            img.is_fill = false;
+            img.l = il * cld_diags.cellheight + (cld_diags.cellheight >> 1);
             if (img.l >= input->size.l)
                 img.l = input->size.l-1;
-            for (is=0;is<cld_diags.nbcols;is++) {
-                img.s=is*cld_diags.cellwidth+cld_diags.cellwidth/2.;
+            for (is = 0; is < cld_diags.nbcols; is++) {
+                img.s = is * cld_diags.cellwidth + (cld_diags.cellwidth >> 1);
                 if (img.s >= input->size.s)
                     img.s = input->size.s-1;
-                if (!from_space(space, &img, &geo))
+                if (!from_space (space, &img, &geo))
                     EXIT_ERROR("mapping from space (3)", "main");
                 flat=geo.lat * DEG;
                 flon=geo.lon * DEG;
 
                 interpol_spatial_anc(&anc_ATEMP,flat,flon,tmpflt_arr);
-                cld_diags.airtemp_2m[il][is]=(1.-coef)*tmpflt_arr[tmpint]+coef*tmpflt_arr[tmpint+1];
+                cld_diags.airtemp_2m[il][is] = (1.-coef)*tmpflt_arr[tmpint] +
+                    coef * tmpflt_arr[tmpint+1];
 
                 if (cld_diags.nb_t6_clear[il][is] > 0) {
                     sum_value=cld_diags.avg_t6_clear[il][is];
@@ -1010,6 +1027,7 @@ int main (int argc, const char **argv) {
         fclose(fd_cld_diags);
 #endif
     }  /* end if thermal band */
+    printf ("\n");
 
 /***
     Create dark target temporary file
@@ -1614,6 +1632,7 @@ int update_atmos_coefs
 )
 {
     int irow,icol;
+
     for (irow=0;irow<ar_gridcell->nbrows;irow++)
         for (icol=0;icol<ar_gridcell->nbcols;icol++)
             update_gridcell_atmos_coefs(irow,icol,atmos_coef,ar_gridcell,

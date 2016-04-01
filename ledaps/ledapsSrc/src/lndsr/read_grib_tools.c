@@ -115,10 +115,12 @@ int read_grib_anc
 
 int interpol_spatial_anc
 (
-    t_ncep_ancillary *anc,
-    float lat,
-    float lon,
-    float *value
+    t_ncep_ancillary *anc,    /* I: ancillary structure information */
+    float lat,                /* I: latitude */
+    float lon,                /* I: longitude */
+    float *value              /* O: interpolated anciliary data for this
+                                    lat/long location (anc->nblayers values
+                                    reside in this array) */
 )
 {
 /* 

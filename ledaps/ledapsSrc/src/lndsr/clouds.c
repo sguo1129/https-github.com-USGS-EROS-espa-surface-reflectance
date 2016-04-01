@@ -22,7 +22,7 @@ bool cloud_detection_pass1
     int16 **line_in,         /* I: array of input lines, one for each band */
     uint8 *qa_line,          /* I: array of QA data for the current line */
     int16 *b6_line,          /* I: array of thermal data for the current line */
-    float *atemp_line,       /* I: ???? */
+    float *atemp_line,       /* I: auxiliary temperature for the line */
     cld_diags_t *cld_diags   /* I/O: cloud diagnostics (stats are updated) */
 )
 {
@@ -119,7 +119,7 @@ bool cloud_detection_pass1
                 C1 = (int)(vra > VRA_THRESHOLD);
                 C1p = !C1;
                 C2 = (t6 < (atemp_line[is]-7.));  
-                C2p= (t6 > (atemp_line[is]-7.));
+                C2p = (t6 > (atemp_line[is]-7.));
    
                 tmpflt = rho4 / rho3;
                 C3 = ((tmpflt >= 0.9) && (tmpflt <= 1.3));
@@ -160,6 +160,7 @@ bool cloud_detection_pass1
     free_mem_atmos_coeff(&interpol_atmos_coef);
     return true;
 }
+
 
 bool cloud_detection_pass2
 (
