@@ -1,5 +1,5 @@
 ## Ledaps Version 2.6.0 Release Notes
-Release Date: March 2016
+Release Date: May 2016
 
 ### Downloads
 Ledaps source code
