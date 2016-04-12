@@ -1,5 +1,5 @@
-## L8SR Version 0.5.0 Release Notes
-Release Date: March 2016
+## L8SR Version 0.6.0 Release Notes
+Release Date: May 2016
 
 ### Downloads
 L8SR source code
@@ -10,7 +10,7 @@ L8SR auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [l8_sr-version_0.5.0]
+See git tag [l8_sr-version_0.6.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -119,4 +119,10 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 
 ## Release Notes
   1. Updated to support the new L1T file naming convention.
-  2. Verified Albers project is supported.
+  2. Modified the aerosol inversion to interpolate all supporting variables
+     for aerosol inversion are interpolated to the Landsat pixel level instead
+     of the CMG level.  This removes the blockiness seen at the CMG grid
+     boundaries.
+  3. Investigated new methods for aerosol interpolation (gap-filling) to
+     achieve a smooth result in the filled aerosols instead of the blocky
+     features that previously existed in the aerosol interpolation method.
