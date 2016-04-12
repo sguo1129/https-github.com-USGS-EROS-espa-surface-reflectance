@@ -474,6 +474,7 @@ int compute_sr_refl
          0.0616101, 0.04728};
 
 
+#define DUMP_INTERMEDIATE_VARS 1
 #ifdef DUMP_INTERMEDIATE_VARS
     FILE *tmpfile = NULL;
     int16 *interp_dem = NULL;   /* interpolated DEM values, nlines x nsamps */
