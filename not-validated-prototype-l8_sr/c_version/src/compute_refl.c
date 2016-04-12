@@ -323,7 +323,13 @@ int compute_sr_refl
     float tcloud;       /* temperature of the current pixel */
 
     float cfac = 6.0;     /* cloud factor */
+    double aaot;          /* average of AOT */
+    double sresi;         /* sum of 1 / residuals */
     float fndvi;          /* NDVI value */
+    int nbaot;            /* number of AOT pixels (non-cloud/water) for
+                             aerosol interpolation */
+    int step;             /* step value for aerosol interpolation */
+    bool hole;            /* is this a hole in the aerosol retrieval area? */
     float ros4, ros5;     /* surface reflectance for band 4 and band 5 */
     int tmp_percent;      /* current percentage for printing status */
 #ifndef _OPENMP
@@ -468,7 +474,6 @@ int compute_sr_refl
          0.0616101, 0.04728};
 
 
-#define DUMP_INTERMEDIATE_VARS
 #ifdef DUMP_INTERMEDIATE_VARS
     FILE *tmpfile = NULL;
     int16 *interp_dem = NULL;   /* interpolated DEM values, nlines x nsamps */
@@ -616,7 +621,7 @@ int compute_sr_refl
     printf ("WRITING first atm corrections\n");
     for (ib = 1; ib < 4; ib++)
     {
-    sprintf (errmsg, "l8sr_first_atm_corrections_band%d.img", ib+1);
+    sprintf (errmsg, "gail_first_atm_corrections_band%d.img", ib+1);
     tmpfile = fopen (errmsg, "w");
     if (fwrite (sband[ib], sizeof (int16), nlines*nsamps, tmpfile) !=
         nlines*nsamps)
@@ -638,7 +643,7 @@ int compute_sr_refl
     printf ("Interpolating the auxiliary data ...\n");
     tmp_percent = 0;
 #ifdef _OPENMP
-    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4, avg_ndwi, std_ndwi, gain1, gain2, gain7, offset1, offset2, offset7, band_ratio1) firstprivate(erelc, troatm)
+    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
 #endif
     for (i = 0; i < nlines; i++)
     {
@@ -946,15 +951,6 @@ int compute_sr_refl
                 }
                 corf = raot / xmus;
 
-                /* Check the aerosol value and if it's 0 then skip the rest of
-                   the processing */
-                if (raot == 0.0)
-                {  /* skip the rest of the processing */
-                    taero[curr_pix] = 0.0;
-                    tresi[curr_pix] = -0.01;
-                    continue;
-                }
-
                 /* Check the model residual.  Corf represents aerosol impact.
                    Test the quality of the aerosol inversion. */
                 if (residual < (0.015 + 0.005 * corf))
@@ -1043,7 +1039,7 @@ int compute_sr_refl
 
 #ifdef DUMP_INTERMEDIATE_VARS
     printf ("WRITING interpolated DEM\n");
-    tmpfile = fopen ("l8sr_interp_dem.img", "w");
+    tmpfile = fopen ("gail_interp_dem.img", "w");
     if (fwrite (interp_dem, sizeof (int16), nlines*nsamps, tmpfile) !=
         nlines*nsamps)
         printf ("ERROR: Can't write the interpolated DEM array!!!!\n");
@@ -1052,7 +1048,7 @@ int compute_sr_refl
 
 
     printf ("WRITING interpolated ozone\n");
-    tmpfile = fopen ("l8sr_interp_tozi.img", "w");
+    tmpfile = fopen ("gail_interp_tozi.img", "w");
     if (fwrite (tozi, sizeof (float), nlines*nsamps, tmpfile) !=
         nlines*nsamps)
         printf ("ERROR: Can't write the interpolated ozone array!!!!\n");
@@ -1060,22 +1056,22 @@ int compute_sr_refl
 
 
     printf ("WRITING interpolated water vapor\n");
-    tmpfile = fopen ("l8sr_interp_twvi.img", "w");
+    tmpfile = fopen ("gail_interp_twvi.img", "w");
     if (fwrite (twvi, sizeof (float), nlines*nsamps, tmpfile) !=
         nlines*nsamps)
         printf ("ERROR: Can't write the interpolated water vapor array!!!!\n");
     fclose (tmpfile);
 
     printf ("WRITING tresi1\n");
-    tmpfile = fopen ("l8sr_tresi1.img", "w");
+    tmpfile = fopen ("gail_tresi1.img", "w");
     if (fwrite (tresi, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
-        printf ("ERROR: Can't write the tresi1 array!!!!\n");
+        printf ("ERROR: GAIL can't write the tresi1 array!!!!\n");
     fclose (tmpfile);
 
     printf ("WRITING taero\n");
-    tmpfile = fopen ("l8sr_taero.img", "w");
+    tmpfile = fopen ("gail_taero.img", "w");
     if (fwrite (taero, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
-        printf ("ERROR: Can't write the taero array!!!!\n");
+        printf ("ERROR: GAIL can't write the taero array!!!!\n");
     fclose (tmpfile);
 #endif
 
@@ -1303,26 +1299,104 @@ int compute_sr_refl
 
 #ifdef DUMP_INTERMEDIATE_VARS
 printf ("WRITING tresi\n");
-tmpfile = fopen ("l8sr_tresi.img", "w");
+tmpfile = fopen ("gail_tresi.img", "w");
 if (fwrite (tresi, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
-    printf ("ERROR: Can't write the tresi array!!!!\n");
+    printf ("ERROR: GAIL can't write the tresi array!!!!\n");
 fclose (tmpfile);
 
 printf ("WRITING tp\n");
-tmpfile = fopen ("l8sr_tp.img", "w");
+tmpfile = fopen ("gail_tp.img", "w");
 if (fwrite (tp, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
-    printf ("ERROR: Can't write the tp array!!!!\n");
+    printf ("ERROR: GAIL can't write the tp array!!!!\n");
 fclose (tmpfile);
 #endif
 
     /* Aerosol interpolation. Does not use water, cloud, or cirrus pixels. */
-    aerosol_interpolation (nlines, nsamps, cloud, tresi, taero);
+    printf ("Performing aerosol interpolation ...\n");
+    hole = true;
+    step = 10;
+    while (hole && (step < 1000))
+    {
+        hole = false;
+        for (i = 0; i < nlines; i += step)
+        {
+            for (j = 0; j < nsamps; j += step)
+            {
+                nbaot = 0;
+                aaot = 0.0;
+                sresi = 0.0;
+
+                /* Check the step x step window around the current pixel */
+                for (k = i - step*0.5; k <= i + step*0.5; k++)
+                {
+                    /* Make sure the line is valid */
+                    if (k < 0 || k >= nlines)
+                        continue;
+
+                    win_pix = k * nsamps + j - step*0.5;
+                    for (l = j - step*0.5; l <= j + step*0.5; l++, win_pix++)
+                    {
+                        /* Make sure the sample is valid */
+                        if (l < 0 || l >= nsamps)
+                            continue;
+
+                        /* Check for clear pixels with positive residuals */
+                        if ((tresi[win_pix] > 0) && (cloud[win_pix] == 0))
+                        {
+                            nbaot++;
+                            aaot += taero[win_pix] / tresi[win_pix];
+                            sresi += 1.0 / tresi[win_pix];
+                        }
+                    }
+                }
+
+                /* If pixels were found */
+                if (nbaot != 0)
+                {
+                    aaot /= sresi;
+
+                    /* Check the step x step window around the current pixel */
+                    for (k = i - step*0.5; k <= i + step*0.5; k++)
+                    {
+                        /* Make sure the line is valid */
+                        if (k < 0 || k >= nlines)
+                            continue;
+
+                        win_pix = k * nsamps + j - step*0.5;
+                        for (l = j - step*0.5; l <= j + step*0.5;
+                             l++, win_pix++)
+                        {
+                            /* Make sure the sample is valid */
+                            if (l < 0 || l >= nsamps)
+                                continue;
+
+                            if ((tresi[win_pix] < 0) &&
+                                (!btest (cloud[win_pix], CIR_QA)) &&
+                                (!btest (cloud[win_pix], CLD_QA)) &&
+                                (!btest (cloud[win_pix], WAT_QA)))
+                            {
+                                taero[win_pix] = aaot;
+                                tresi[win_pix] = 1.0;
+                            }
+                        }  /* for l */
+                    }  /* for k */
+                }
+                else
+                {  /* this is a hole */
+                    hole = true;
+                }
+            }  /* end for j */
+        }  /* end for i */
+
+        /* Modify the step value */
+        step *= 2;
+    }  /* end while */
 
 #ifdef DUMP_INTERMEDIATE_VARS
     printf ("WRITING taero_filled\n");
-    tmpfile = fopen ("l8sr_taero_filled.img", "w");
+    tmpfile = fopen ("gail_taero_filled.img", "w");
     if (fwrite (taero, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
-        printf ("ERROR: Can't write the taero filled array!!!!\n");
+        printf ("ERROR: GAIL can't write the taero filled array!!!!\n");
     fclose (tmpfile);
 #endif
 
@@ -1594,17 +1668,14 @@ fclose (tmpfile);
             free (rolutt[i][j]);
             free (transt[i][j]);
             free (sphalbt[i][j]);
-            free (normext[i][j]);
         }
         free (rolutt[i]);
         free (transt[i]);
         free (sphalbt[i]);
-        free (normext[i]);
     }
     free (rolutt);
     free (transt);
     free (sphalbt);
-    free (normext);
 
     /* tsmax[20][22] and float tsmin[20][22] and float nbfic[20][22] and
        nbfi[20][22] and float ttv[20][22] */

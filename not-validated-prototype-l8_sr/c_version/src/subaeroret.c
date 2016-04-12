@@ -1,8 +1,7 @@
 /*****************************************************************************
 FILE: subaeroret.c
   
-PURPOSE: Contains functions for handling the aerosol inversion as well as the
-aerosol interpolations.
+PURPOSE: Contains functions for handling the atmosperic corrections.
 
 PROJECT:  Land Satellites Data System Science Research and Development (LSRD)
 at the USGS EROS
@@ -12,13 +11,12 @@ LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 NOTES:
 *****************************************************************************/
 #include "lut_subr.h"
-#include "l8_sr.h"
 
 /******************************************************************************
 MODULE:  subaeroret
 
-PURPOSE:  This subroutine reads the lookup table (LUT) and performs the aerosol
-retrievals, using band ratios.
+PURPOSE:  Main driver for the atmospheric correction.  This subroutine reads
+the lookup table (LUT) and performs the atmospheric corrections.
 
 RETURN VALUE:
 Type = int
@@ -483,13 +481,13 @@ int subaeroret
 /******************************************************************************
 MODULE:  subaeroret_residual
 
-PURPOSE:  Computes the model residual for the aerosol inversion.
+PURPOSE:  Computes the model residual for the subaeroret function.
 
 RETURN VALUE:
 Type = int
 Value          Description
 -----          -----------
-ERROR          Error occurred computing the residual
+ERROR          Error occurred reading the LUT or doing the correction
 SUCCESS        Successful completion
 
 NOTES:
@@ -593,121 +591,5 @@ int subaeroret_residual
 
     /* Successful completion */
     return (SUCCESS);
-}
-
-
-/******************************************************************************
-MODULE:  aerosol_interpolation
-
-PURPOSE:  Performs interpolation for the zero-valued aerosol pixels.
-
-RETURN VALUE: N/A
-
-NOTES:
-1. Does not use the water, cloud, or cirrus pixels as part of the interpolation.
-2. Aerosol values are modified inline in the taero input buffer.
-******************************************************************************/
-void aerosol_interpolation
-(
-    int nlines,       /* I: number of lines in the aerosol buffer */
-    int nsamps,       /* I: number of samples in the aerosol buffer */
-    uint8 *cloud,     /* I: bit-packed value that represent clouds,
-                            nlines x nsamps */
-    float *tresi,     /* I: residuals for each pixel, nlines x nsamps;
-                            tresi < 0.0 flags water pixels and pixels with
-                            high residuals */
-    float *taero      /* I/O: aerosol values for each pixel, nlines x nsamps */
-)
-{
-    int i, j, k, l;    /* looping variable for pixels */
-    int win_pix;       /* current pixel in the line,sample window */
-
-    int nbaot;         /* number of AOT pixels (non-cloud/water) for aerosol
-                          interpolation */
-    int step;          /* step value for aerosol interpolation */
-    bool hole;         /* is this a hole in the aerosol retrieval area? */
-    double aaot;       /* average of AOT */
-    double sresi;      /* sum of 1 / residuals */
-
-    /* Aerosol interpolation. Does not use water, cloud, or cirrus pixels. */
-    printf ("Performing aerosol interpolation ...\n");
-    hole = true;
-    step = 10;
-    while (hole && (step < 1000))
-    {
-        hole = false;
-        for (i = 0; i < nlines; i += step)
-        {
-            for (j = 0; j < nsamps; j += step)
-            {
-                nbaot = 0;
-                aaot = 0.0;
-                sresi = 0.0;
-
-                /* Check the step x step window around the current pixel */
-                for (k = i - step*0.5; k <= i + step*0.5; k++)
-                {
-                    /* Make sure the line is valid */
-                    if (k < 0 || k >= nlines)
-                        continue;
-
-                    win_pix = k * nsamps + j - step*0.5;
-                    for (l = j - step*0.5; l <= j + step*0.5; l++, win_pix++)
-                    {
-                        /* Make sure the sample is valid */
-                        if (l < 0 || l >= nsamps)
-                            continue;
-
-                        /* Check for clear pixels with positive residuals */
-                        if ((tresi[win_pix] > 0) && (cloud[win_pix] == 0))
-                        {
-                            nbaot++;
-                            aaot += taero[win_pix] / tresi[win_pix];
-                            sresi += 1.0 / tresi[win_pix];
-                        }
-                    }
-                }
-
-                /* If pixels were found */
-                if (nbaot != 0)
-                {
-                    aaot /= sresi;
-
-                    /* Check the step x step window around the current pixel */
-                    for (k = i - step*0.5; k <= i + step*0.5; k++)
-                    {
-                        /* Make sure the line is valid */
-                        if (k < 0 || k >= nlines)
-                            continue;
-
-                        win_pix = k * nsamps + j - step*0.5;
-                        for (l = j - step*0.5; l <= j + step*0.5;
-                             l++, win_pix++)
-                        {
-                            /* Make sure the sample is valid */
-                            if (l < 0 || l >= nsamps)
-                                continue;
-
-                            if ((tresi[win_pix] < 0) &&
-                                (!btest (cloud[win_pix], CIR_QA)) &&
-                                (!btest (cloud[win_pix], CLD_QA)) &&
-                                (!btest (cloud[win_pix], WAT_QA)))
-                            {
-                                taero[win_pix] = aaot;
-                                tresi[win_pix] = 1.0;
-                            }
-                        }  /* for l */
-                    }  /* for k */
-                }
-                else
-                {  /* this is a hole */
-                    hole = true;
-                }
-            }  /* end for j */
-        }  /* end for i */
-
-        /* Modify the step value */
-        step *= 2;
-    }  /* end while */
 }
 
