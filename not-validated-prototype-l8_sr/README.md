@@ -1,5 +1,5 @@
 ## L8SR Version 0.5.0 Release Notes
-Release Date: March 2016
+Release Date: May 2016
 
 ### Downloads
 L8SR source code
@@ -118,5 +118,5 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Updated to support the new L1T file naming convention.
-  2. Verified Albers project is supported.
+  1. Updated the FORTRAN code to be the latest version of software received
+     for L8SR instead of the first version received.
