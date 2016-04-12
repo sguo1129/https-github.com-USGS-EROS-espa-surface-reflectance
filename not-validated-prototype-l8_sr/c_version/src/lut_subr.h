@@ -323,64 +323,6 @@ void aerosol_interpolation
     float *taero      /* I/O: aerosol values for each pixel, nlines x nsamps */
 );
 
-int aerosol_interpolation_mw
-(
-    int nlines,       /* I: number of lines in the aerosol buffer */
-    int nsamps,       /* I: number of samples in the aerosol buffer */
-    uint8 *cloud,     /* I: bit-packed value that represent clouds,
-                            nlines x nsamps */
-    float *tresi,     /* I: residuals for each pixel, nlines x nsamps;
-                            tresi < 0.0 flags water pixels and pixels with
-                            high residuals */
-    float *taero      /* I/O: aerosol values for each pixel, nlines x nsamps */
-);
-
-int aerosol_interpolation_mw2
-(
-    int nlines,       /* I: number of lines in the aerosol buffer */
-    int nsamps,       /* I: number of samples in the aerosol buffer */
-    uint8 *cloud,     /* I: bit-packed value that represent clouds,
-                            nlines x nsamps */
-    float *tresi,     /* I: residuals for each pixel, nlines x nsamps;
-                            tresi < 0.0 flags water pixels and pixels with
-                            high residuals */
-    float *taero      /* I/O: aerosol values for each pixel, nlines x nsamps */
-);
-
-void aerosol_interpolation_ndd
-(
-    int nlines,       /* I: number of lines in the aerosol buffer */
-    int nsamps,       /* I: number of samples in the aerosol buffer */
-    uint8 *cloud,     /* I: bit-packed value that represent clouds,
-                            nlines x nsamps */
-    float *tresi,     /* I: residuals for each pixel, nlines x nsamps;
-                            tresi < 0.0 flags water pixels and pixels with
-                            high residuals */
-    float *taero      /* I/O: aerosol values for each pixel, nlines x nsamps */
-);
-
-void nddip
-(
-    float *x_arr,   /* I: array of input x values (0 to n) */
-    float *y_arr,   /* I: array of input f(x) values (0 to n) */
-    int nobs,       /* I: number of observations in each array; the polynomial
-                          will be an (nobs-1) order polynomial */
-    float x,        /* I: x value for the f(x) to be interpolated */
-    float *y        /* I: interpolated f(x) value */
-);
-
-int aerosol_salt_and_pepper_fill
-(
-    int nlines,       /* I: number of lines in the aerosol buffer */
-    int nsamps,       /* I: number of samples in the aerosol buffer */
-    uint8 *cloud,     /* I: bit-packed value that represent clouds,
-                            nlines x nsamps */
-    float *tresi,     /* I: residuals for each pixel, nlines x nsamps;
-                            tresi < 0.0 flags water pixels and pixels with
-                            high residuals */
-    float *taero      /* I/O: aerosol values for each pixel, nlines x nsamps */
-);
-
 int memory_allocation_main
 (
     int nlines,          /* I: number of lines in the scene */
