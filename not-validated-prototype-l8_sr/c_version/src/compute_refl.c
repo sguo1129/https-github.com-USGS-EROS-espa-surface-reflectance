@@ -504,7 +504,7 @@ int compute_sr_refl
     {
         sprintf (errmsg, "Getting the space definition from the XML file");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     space = setup_mapping (&space_def);
@@ -512,7 +512,7 @@ int compute_sr_refl
     {
         sprintf (errmsg, "Setting up the geolocation mapping");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Initialize the look up tables and atmospheric correction variables */
@@ -565,7 +565,7 @@ int compute_sr_refl
             sprintf (errmsg, "Performing lambertian atmospheric correction "
                 "type 2.");
             error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
+            return (ERROR);
         }
 
         /* Save these band-related parameters for later */
@@ -1315,14 +1315,35 @@ if (fwrite (tp, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
 fclose (tmpfile);
 #endif
 
+    /* Aerosol interpolation to fill the small holes, using a simple
+       interpolation algorithm */
+/* IF the moving window interpolation is being used, then this salt and pepper
+   fill is not needed.  It's covered in the moving window algorithm.
+    retval = aerosol_salt_and_pepper_fill (nlines, nsamps, cloud, tresi, taero);
+    if (retval != SUCCESS)
+    {
+        sprintf (errmsg, "Performing salt and pepper aerosol interpolation");
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+*/
+
     /* Aerosol interpolation. Does not use water, cloud, or cirrus pixels. */
-    aerosol_interpolation (nlines, nsamps, cloud, tresi, taero);
+    aerosol_interpolation_mw2 (nlines, nsamps, cloud, tresi, taero);
+//    aerosol_interpolation_mw (nlines, nsamps, cloud, tresi, taero);
+//    aerosol_interpolation_ndd (nlines, nsamps, cloud, tresi, taero);
 
 #ifdef DUMP_INTERMEDIATE_VARS
     printf ("WRITING taero_filled\n");
     tmpfile = fopen ("l8sr_taero_filled.img", "w");
     if (fwrite (taero, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
         printf ("ERROR: Can't write the taero filled array!!!!\n");
+    fclose (tmpfile);
+
+    printf ("WRITING tresi_filled\n");
+    tmpfile = fopen ("l8sr_tresi_filled.img", "w");
+    if (fwrite (tresi, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
+        printf ("ERROR: Can't write the tresi filled array!!!!\n");
     fclose (tmpfile);
 #endif
 
@@ -1449,7 +1470,7 @@ fclose (tmpfile);
     if (sr_output == NULL)
     {   /* error message already printed */
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Loop through the reflectance bands and write the data */
@@ -1462,7 +1483,7 @@ fclose (tmpfile);
         {
             sprintf (errmsg, "Writing output data for band %d", ib);
             error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
+            return (ERROR);
         }
 
         /* Create the ENVI header file this band */
@@ -1471,7 +1492,7 @@ fclose (tmpfile);
         {
             sprintf (errmsg, "Creating ENVI header structure.");
             error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
+            return (ERROR);
         }
 
         /* Write the ENVI header */
@@ -1482,7 +1503,7 @@ fclose (tmpfile);
         {
             sprintf (errmsg, "Writing ENVI header file.");
             error_handler (true, FUNC_NAME, errmsg);
-            exit (ERROR);
+            return (ERROR);
         }
     }
 
@@ -1493,7 +1514,7 @@ fclose (tmpfile);
         sprintf (errmsg, "Appending surface reflectance bands to the "
             "XML file.");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Write the cloud mask band */
@@ -1504,7 +1525,7 @@ fclose (tmpfile);
     {
         sprintf (errmsg, "Writing cloud mask output data");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Free memory for cloud data */
@@ -1516,7 +1537,7 @@ fclose (tmpfile);
     {
         sprintf (errmsg, "Creating ENVI header structure.");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Write the ENVI header */
@@ -1527,7 +1548,7 @@ fclose (tmpfile);
     {
         sprintf (errmsg, "Writing ENVI header file.");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Append the cloud mask band to the XML file */
@@ -1536,7 +1557,7 @@ fclose (tmpfile);
     {
         sprintf (errmsg, "Appending cloud mask band to XML file.");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Close the output surface reflectance products */
@@ -1732,7 +1753,7 @@ int init_sr_refl
     {
         sprintf (errmsg, "Reading the LUTs");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
     printf ("The LUTs for urban clean case v2.0 have been read.  We can "
         "now perform atmospheric correction.\n");
@@ -1747,7 +1768,7 @@ int init_sr_refl
     {
         sprintf (errmsg, "Reading the auxiliary files");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     /* Getting parameters for atmospheric correction */
@@ -1766,7 +1787,7 @@ int init_sr_refl
     {
         sprintf (errmsg, "Mapping scene center to geolocation coords");
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
     center_lat = geo.lat * RAD2DEG;
     center_lon = geo.lon * RAD2DEG;
@@ -1786,7 +1807,7 @@ int init_sr_refl
             "CMG-based tables are %d lines x %d samples.", lcmg, scmg,
             CMG_NBLAT, CMG_NBLON);
         error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        return (ERROR);
     }
 
     if (wv[lcmg][scmg] != 0)
