@@ -1,4 +1,4 @@
-## Ledaps Version 2.5.0 Release Notes
+## Ledaps Version 2.6.0 Release Notes
 Release Date: March 2016
 
 ### Downloads
@@ -10,7 +10,7 @@ Ledaps auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/ledaps_auxiliary/ledaps_aux.1978-2014.tar.gz
 
-See git tag [ledaps-version_2.5.0]
+See git tag [ledaps-version_2.6.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -93,9 +93,18 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 
 ## Release Notes
   * All
-    1. Updated to support Albers products in addition to the current UTM and PS.
-    2. Updated to support the new L1T file naming convention.
+    1. Confirmed the L1T filenames are supported for both the legacy L1T
+       filenames as well as the new Landsat Collection filenames.
   * lndsr
-    1. Removed calibrated_nt from being written for the band metadata.  It's not used in ESPA processing.
-  * lndsrbm
-    1. Modified lndsrbm to call GCTP forward and inverse functions vs. duplicating the needed functions and defines from GCTP locally.  This makes maintenance easier and addition of new projections cleaner.  (Involves LS_geoloc.c and LS_geoloc_driver.c which generate geo2xy and xy2geo.)
+    1. The SrInterpAtmCoef function in sr.c spends time computing 13
+       coefficients for the current pixel, however 4 of those coefficients are
+       not used in the application (td_r, tu_r, S_r, rho_r).  Instead the
+       coefficients from the 6S table are used for these variables.  Therefore
+       the interpolation of these variables is commented out to save processing
+       time.
+  * lndcal
+    1. The lndcal application handles "zooming" the thermal bands to the same
+       resolution as the reflectance bands.  This code is obsolete, given that
+       the thermal and reflective bands are all the same resolution.  The code
+       which handles the zooming has been pulled from lndcal for easier
+       maintenance.
