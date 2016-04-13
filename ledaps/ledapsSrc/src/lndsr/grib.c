@@ -292,6 +292,7 @@ narray -- should be null when this routine is called, should be non-null and fil
  
 
         strcpy(level, levels(PDS_KPDS6(pds), PDS_KPDS7(pds)));
+printf ("GRIB.C: levels is %s\n", level);
         if ((!strcmp(k5toa(pds),what))&&
 	    (!strcmp(level,where))) {
 /*
@@ -509,6 +510,7 @@ none
  
 
         strcpy(level, levels(PDS_KPDS6(pds), PDS_KPDS7(pds)));
+printf ("GRIB.C: levels is %s\n", level);
         if ((!strcmp(k5toa(pds),what))&&
 	    (!strcmp(level,where))) {
 
@@ -767,13 +769,13 @@ double int_power(double x, int y)
 	return value;
 }
 
-extern  struct ParmTable parm_table_ncep_opn[256];
-extern  struct ParmTable parm_table_ncep_reanal[256];
-extern  struct ParmTable parm_table_omb[256];
-extern  struct ParmTable parm_table_ecmwf_128[256];
-extern  struct ParmTable parm_table_ecmwf_160[256];
-extern  struct ParmTable parm_table_user[256];
-extern enum Def_NCEP_Table def_ncep_table;
+struct ParmTable parm_table_ncep_opn[256];
+struct ParmTable parm_table_ncep_reanal[256];
+struct ParmTable parm_table_omb[256];
+struct ParmTable parm_table_ecmwf_128[256];
+struct ParmTable parm_table_ecmwf_160[256];
+struct ParmTable parm_table_user[256];
+enum Def_NCEP_Table def_ncep_table = DEF_T62_NCEP_TABLE;
 
 static struct ParmTable *Parm_Table(unsigned char *pds) 
 /*
@@ -1091,9 +1093,8 @@ char *levels(int kpds6, int kpds7)
 !END*************************************************************
 */
 {
-
-	int o11, o12;
-        char x[128];
+    int o11, o12;
+    char x[128];
 	
 	/* octets 11 and 12 */
 	o11 = kpds7 / 256;
@@ -1192,7 +1193,9 @@ char *levels(int kpds6, int kpds7)
 	default:
 	 	break;
 	}
-return(x);
+printf ("GRIB.C: levels = %s\n", x);
+
+    return(x);
 }
 
 static char *units[] = {

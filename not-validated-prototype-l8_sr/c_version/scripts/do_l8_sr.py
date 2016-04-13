@@ -27,7 +27,7 @@ SUCCESS = 0
 #       to be in the PATH.
 #
 #   Updated on 1/13/2016 by Gail Schmidt, USGS/EROS
-#   Modified to support the new L1T filenaming convention
+#   Modified to support the new collection filenaming convention
 #
 # Usage: do_l8_sr.py --help prints the help message
 ############################################################################
@@ -132,18 +132,18 @@ class SurfaceReflectance():
 
         # pull the date from the XML filename to determine which auxiliary
         # file should be used for input.  Example: LC80410272013181LGN00.xml
-        # uses L8ANC2013181.hdf_fused.  Similarly, the new L1T naming convention
-        # LC08_L1T_041027_20130630_20140312_02.xml also used the 2013181 HDF
-        # file.
+        # uses L8ANC2013181.hdf_fused.  Similarly, the new collection naming
+        # convention LC08_L1T_041027_20130630_20140312_02.xml also used the
+        # 2013181 HDF file.
         l8_prefixes_old = ['LC8', 'LO8']
-        l8_prefixes_new = ['LC08', 'LO08']
+        l8_prefixes_collection = ['LC08', 'LO08']
         if base_xmlfile[0:3] in l8_prefixes_old:
             # Old-style L1T naming convention. Just pull the year and DOY from
             # the XML filename.
             aux_file = 'L8ANC' + base_xmlfile[9:16] + '.hdf_fused'
-        elif base_xmlfile[0:4] in l8_prefixes_new:
-            # New-style L1T naming convention. Pull the year, month, day from
-            # the XML filename. Then convert month, day to DOY.
+        elif base_xmlfile[0:4] in l8_prefixes_collection:
+            # New-style collection naming convention. Pull the year, month,
+            # day from the XML filename. Then convert month, day to DOY.
             aux_year = base_xmlfile[16:20]
             aux_month = base_xmlfile[20:22]
             aux_day = base_xmlfile[22:24]

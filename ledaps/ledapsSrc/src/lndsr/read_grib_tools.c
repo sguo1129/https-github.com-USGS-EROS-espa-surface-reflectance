@@ -3,11 +3,8 @@
 #include <string.h>
 #include <math.h>
 #include "read_grib_tools.h"
-
-#define LEAPYR(y) (!((y)%400) || (!((y)%4) && ((y)%100)))
-#define MARCH 3
-
-short getdoy(short year,short month,short day);
+#include "grib.h"
+#include "date.h"
 
 int read_grib_anc
 (
@@ -20,9 +17,6 @@ int read_grib_anc
     int i,grib_ret,ny,nx;
     short year,doy,month,day,hour,minute;
     float sec;
-    int read_grib_array(FILE *input, char *what, char *where, int *nx, int *ny,
-        float **narray);
-    int read_grib_date(FILE *input, char *what, char *where, char *date);
 
     switch (datatype) {
         case TYPE_OZONE_DATA:
@@ -203,41 +197,6 @@ int free_anc_data(t_ncep_ancillary *anc) {
             free(anc->data[i]);
 
     return 0;
-}
-
-short getdoy(short year,short month,short day)
-{
-    int dayatmonth[]=
-        {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366};
-    int jdate;
-
-    jdate = day + dayatmonth[month];
-    if (!LEAPYR(year) && month >= MARCH)
-        jdate--;
-
-    return(jdate);
-}
-    
-int getdaymonth(short year,short doy,short *month,short *day)
-{
-    int i;
-    int daysinmonth[]= {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
-    short totaldays=0;
-
-    if (LEAPYR(year))
-        daysinmonth[2]=29;
-        
-    for (i=1;(i<=12)&&(totaldays < doy);i++)
-        totaldays += daysinmonth[i];
-
-    if ((totaldays < doy)||(doy<=0))
-        return -1;
-        
-    totaldays -= daysinmonth[i-1];
-    *month=(short)i-1;
-    *day=doy-totaldays;
-
-    return(0);
 }
 
 void print_anc_data(t_ncep_ancillary *anc, char* ancftype)
