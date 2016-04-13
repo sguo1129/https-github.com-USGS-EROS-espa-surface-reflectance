@@ -6,8 +6,8 @@
 
 # ----------------------------------------------------------------------------
 Name:		espa-surface-reflectance
-Version:	201603
-Release:	4%{?dist}
+Version:	201605
+Release:	1%{?dist}
 Summary:	ESPA Surface Reflectance Software
 
 Group:		ESPA
@@ -19,7 +19,7 @@ BuildArch:	x86_64
 Packager:	USGS EROS LSRD
 
 BuildRequires:	espa-product-formatter
-Requires:	espa-product-formatter >= 1.6.0
+Requires:	espa-product-formatter >= 201605
 
 
 # ----------------------------------------------------------------------------
@@ -29,7 +29,7 @@ Provides science application executables for generating surface reflectance prod
 
 # ----------------------------------------------------------------------------
 # Specify the repository tag/branch to clone and build from
-%define tagname dev_mar2016
+%define tagname dev_may2016
 # Specify the name of the directory to clone into
 %define clonedname %{name}-%{tagname}
 
@@ -77,8 +77,10 @@ rm -rf %{buildroot}
 # ----------------------------------------------------------------------------
 %changelog
 * Mon Mar 07 2016 Ronald D Dilley <rdilley@usgs.gov>
-- Updated release number for a recompile against a support library
+- Updated for May 2016 release
 
+* Mon Mar 07 2016 Ronald D Dilley <rdilley@usgs.gov>
+- Updated release number for a recompile against a support library
 * Thu Mar 03 2016 Ronald D Dilley <rdilley@usgs.gov>
 - Updated release number for a recompile against a support library
 * Fri Feb 12 2016 Ronald D Dilley <rdilley@usgs.gov>
