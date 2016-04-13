@@ -76,7 +76,7 @@ rm -rf %{buildroot}
 
 # ----------------------------------------------------------------------------
 %changelog
-* Mon Mar 07 2016 Ronald D Dilley <rdilley@usgs.gov>
+* Wed Apr 13 2016 Ronald D Dilley <rdilley@usgs.gov>
 - Updated for May 2016 release
 
 * Mon Mar 07 2016 Ronald D Dilley <rdilley@usgs.gov>
