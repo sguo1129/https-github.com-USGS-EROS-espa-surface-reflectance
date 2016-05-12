@@ -1,4 +1,4 @@
-## L8SR Version 0.5.0 Release Notes
+## L8SR Version 0.6.0 Release Notes
 Release Date: May 2016
 
 ### Downloads
@@ -10,7 +10,7 @@ L8SR auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [l8_sr-version_0.5.0]
+See git tag [l8_sr-version_0.6.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -118,5 +118,11 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Updated the FORTRAN code to be the latest version of software received
-     for L8SR instead of the first version received.
+  1. Updated the do_l8_sr python script to support the new-style collection
+     naming convention.
+  2. Updated the FORTRAN code to be the latest version (v1.3) of software
+     received for L8SR instead of the first version received (v1.1) at the
+     very start of the project.
+  3. Investigated some aerosol interpolation and aerosol improvements overall,
+     but these are not released at this time and will remain on the
+     l8sr_aerosol_improvements branch.
