@@ -45,6 +45,7 @@ c local variable
         real erelc(8)
 	integer iband1,iband3,iband,nit,iter
 	character*80 err_msg
+	integer nb
 	
 	   
 	
@@ -309,6 +310,7 @@ c	write(6,*) eratio,pratio,ros1,ros3
         endif
 c compute model residual
   91   residual=abs(ros3-ros1*pratio)
+        nb=1
 c       write(6,*) "INITIAL RESIDUAL ",residual
        do iband=1,6
        if (erelc(iband).gt.0.) then
@@ -324,11 +326,17 @@ c       write(6,*) "INITIAL RESIDUAL ",residual
      s       troatm(iband),roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
      s       err_msg,retval)
 c       	ros=roslamb
-        if (iband.eq.iband3) snext=next
+        if (iband.eq.iband3) then
+	 snext=next
+	else
+	
 	residual=residual+abs(roslamb-ros1*(erelc(iband)/erelc(iband1)))
-c	write(6,*) "band ",iband, "residual ", abs(roslamb-ros1*(erelc(iband)/erelc(iband1)))
+	nb=nb+1
+         endif
+c	 write(6,*) "band ",iband, "residual ", abs(roslamb-ros1*(erelc(iband)/erelc(iband1)))
 	endif
 	enddo
+	residual=residual/(nb-1)
 c	write(6,*) "MODEL RESIDUAL ",residual
 	raot=raot550nm
 	
