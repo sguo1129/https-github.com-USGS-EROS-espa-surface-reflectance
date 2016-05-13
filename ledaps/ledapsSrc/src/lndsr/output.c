@@ -119,7 +119,7 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
   bmeta = this->metadata.band;
 
   /* Grab the scene name */
-  snprintf (scene_name, sizeof (scene_name), "%s", in_meta->global.scene_id);
+  snprintf (scene_name, sizeof (scene_name), "%s", in_meta->global.product_id);
 
   /* Get the current date/time (UTC) for the production date of each band */
   if (time (&tp) == -1)
