@@ -554,11 +554,12 @@ int subaeroret_residual
     char FUNC_NAME[] = "subaeroret_residual";   /* function name */
     char errmsg[STR_SIZE];  /* error message */
     int iband;              /* looping variable for bands */
+    int nb;                 /* band counter for the residual */
     int retval;             /* function return value */
     float next;             /* ???? */
-    float tgo;
+    float tgo;              /* other gaseous transmittance */
     float roatm;            /* atmospherice intrinsic reflectance */
-    float ttatmg;
+    float ttatmg;           /* total atmospheric transmission */
     float satm;             /* spherical albedo */
     float xrorayp;          /* molecular reflectance */
 
@@ -566,6 +567,7 @@ int subaeroret_residual
        Note - Eric indicated the residual on Band 7 was not to be used, so
        stop the residual calculations with Band 6. */
     *residual = fabs (ros3 - ros1 * pratio);
+    nb = 1;
     for (iband = 0; iband <= DN_BAND6; iband++)
     {
         if (erelc[iband] > 0.0)
@@ -583,11 +585,20 @@ int subaeroret_residual
                 error_handler (true, FUNC_NAME, errmsg);
                 return (ERROR);
             }
-            *residual += fabs (roslamb - ros1 * (erelc[iband] / erelc[iband1]));
+
             if (iband == iband3)
                 *snext = next;
+            else
+            {
+                *residual += fabs (roslamb - ros1 *
+                    (erelc[iband] / erelc[iband1]));
+                nb++;
+            }
         }
     }
+
+    /* Determine the mean residual - divide by the band count */
+    *residual /= (nb - 1);
 
     /* Successful completion */
     return (SUCCESS);
