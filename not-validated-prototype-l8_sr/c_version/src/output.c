@@ -168,10 +168,10 @@ Output_t *open_output
             SR_VERSION);
         strcpy (bmeta[ib].production_date, production_date);
 
-        /* Handle the cloud band differently.  If this is only TOA then we
-           don't need to process the cloud mask.  If this is SR, then we don't
-           need to process the cirrus or thermal bands. */
-        if (toa && ib == SR_CLOUD)
+        /* Handle the cloud/ipflag bands differently.  If this is only TOA then
+           we don't need to process the cloud or ipflag mask.  If this is SR,
+           then we don't need to process the cirrus or thermal bands. */
+        if (toa && (ib == SR_CLOUD || ib == SR_IPFLAG))
             continue;
         else if (!toa &&
             ((ib == SR_BAND9) || (ib == SR_BAND10) || (ib == SR_BAND11)))
@@ -183,7 +183,7 @@ Output_t *open_output
             strcpy (bmeta[ib].name, "sr_cloud");
             strcpy (bmeta[ib].long_name, "surface reflectance cloud mask");
             strcpy (bmeta[ib].category, "qa");
-            strcpy (bmeta[ib].data_units, "bitmap");
+            strcpy (bmeta[ib].data_units, "quality/feature classification");
 
             /* Set up cloud bitmap information */
             if (allocate_bitmap_metadata (&bmeta[ib], 8) != SUCCESS)
@@ -192,7 +192,7 @@ Output_t *open_output
                 error_handler (true, FUNC_NAME, errmsg);
                 return (NULL);
             }
-          
+
             /* Identify the bitmap values for the mask */
             strcpy (bmeta[ib].bitmap_description[0], "cirrus cloud");
             strcpy (bmeta[ib].bitmap_description[1], "cloud");
@@ -202,6 +202,46 @@ Output_t *open_output
             strcpy (bmeta[ib].bitmap_description[5], "aerosol");
             strcpy (bmeta[ib].bitmap_description[6], "unused");
             strcpy (bmeta[ib].bitmap_description[7], "internal test");
+        }
+        else if (ib == SR_IPFLAG)
+        {
+            bmeta[ib].data_type = ESPA_UINT8;
+            bmeta[ib].fill_value = IPFLAG_FILL;
+            strcpy (bmeta[ib].name, "sr_ipflag");
+            strcpy (bmeta[ib].long_name,
+                "surface reflectance interpolation flag");
+            strcpy (bmeta[ib].category, "qa");
+            strcpy (bmeta[ib].data_units, "quality/feature classification");
+            bmeta[ib].valid_range[0] = 0;
+            bmeta[ib].valid_range[1] = 6;
+
+            /* Set up ipflag class information */
+            if (allocate_class_metadata (&bmeta[ib], 7) != SUCCESS)
+            {
+                sprintf (errmsg, "Allocating ipflag classes.");
+                error_handler (true, FUNC_NAME, errmsg);
+                return (NULL);
+            }
+          
+            /* Identify the class values for the ipflag */
+            bmeta[ib].class_values[0].class = 0;
+            bmeta[ib].class_values[1].class = 1;
+            bmeta[ib].class_values[2].class = 2;
+            bmeta[ib].class_values[3].class = 3;
+            bmeta[ib].class_values[4].class = 4;
+            bmeta[ib].class_values[5].class = 5;
+            bmeta[ib].class_values[6].class = 6;
+            strcpy (bmeta[ib].class_values[0].description,
+                "aerosol retrieval successful");
+            strcpy (bmeta[ib].class_values[1].description,
+                "aerosol retrieval failed, but aerosol was interpolated");
+            strcpy (bmeta[ib].class_values[2].description,
+                "NDVI test failed, but aerosol wasn't interpolated");
+            strcpy (bmeta[ib].class_values[3].description,
+                "residual test failed, but aerosol wasn't interpolated");
+            strcpy (bmeta[ib].class_values[4].description, "not used");
+            strcpy (bmeta[ib].class_values[5].description, "fill pixel");
+            strcpy (bmeta[ib].class_values[6].description, "water pixel");
         }
         else
         {
@@ -314,7 +354,7 @@ int close_output
     /* Close raw binary products */
     for (ib = 0; ib < this->nband; ib++)
     {
-        if (ib == SR_CLOUD && toa)
+        if (toa && (ib == SR_CLOUD || ib == SR_IPFLAG))
             continue;
         else if (!toa &&
             ((ib == SR_BAND9) || (ib == SR_BAND10) || (ib == SR_BAND11)))
@@ -370,6 +410,14 @@ int free_output
             for (b = 0; b < this->metadata.band[SR_CLOUD].nbits; b++)
                 free (this->metadata.band[SR_CLOUD].bitmap_description[b]);
             free (this->metadata.band[SR_CLOUD].bitmap_description);
+        }
+
+        /* Free the bitmap data for the ipflag band */
+        if (this->metadata.band[SR_IPFLAG].nbits > 0)
+        {
+            for (b = 0; b < this->metadata.band[SR_IPFLAG].nbits; b++)
+                free (this->metadata.band[SR_IPFLAG].bitmap_description[b]);
+            free (this->metadata.band[SR_IPFLAG].bitmap_description);
         }
 
         /* Free the band data */

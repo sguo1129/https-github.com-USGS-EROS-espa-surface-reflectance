@@ -32,7 +32,6 @@ typedef struct {
     int iband_th[NBAND_THM_MAX];   /* thermal band numbers */
     int iband_pan[NBAND_PAN_MAX];  /* pan band numbers */
     int iband_qa[NBAND_QA_MAX];    /* QA band numbers */
-    int iband_lw;                  /* land/water mask band number */
     bool gain_set;                 /* are the gains and biases set? */
     float gain[NBAND_REFL_MAX];    /* reflectance band TOA refl gain */
     float gain_th[NBAND_THM_MAX];  /* thermal band brightness temp gain */
@@ -51,12 +50,10 @@ typedef struct {
     int nband_th;             /* number of thermal bands */
     int nband_pan;            /* number of pan bands */
     int nband_qa;             /* number of QA bands */
-    int nband_lw;             /* number of land/water bands */
     Img_coord_info_t size;    /* input file size */
     Img_coord_info_t size_th; /* input thermal file size */
     Img_coord_info_t size_pan;/* input pan file size */
     Img_coord_info_t size_qa; /* input QA file size */
-    Img_coord_info_t size_lw; /* input land/water mask file size */
     float scale_factor;       /* scale factor for reflectance bands */
     float scale_factor_th;    /* scale factor for thermal bands */
     float scale_factor_pan;   /* scale factor for pan bands */
@@ -64,19 +61,16 @@ typedef struct {
     char *file_name_th[NBAND_THM_MAX];   /* name of the input thermal files */
     char *file_name_pan[NBAND_PAN_MAX];  /* name of the input pan files */
     char *file_name_qa[NBAND_QA_MAX];    /* name of the input QA files */
-    char *file_name_lw;        /* name of the input land/water mask file */
     bool open[NBAND_REFL_MAX]; /* flag to indicate whether the specific input
                                   file is open for access; 'true' = open, 
                                   'false' = not open */
     bool open_th[NBAND_THM_MAX];  /* thermal band open flag */
     bool open_pan[NBAND_PAN_MAX]; /* pan band open flag */
     bool open_qa[NBAND_QA_MAX];   /* QA band open flag */
-    bool open_lw;                 /* land/water band open flag */
     FILE *fp_bin[NBAND_REFL_MAX]; /* pointer for reflectance binary files */
     FILE *fp_bin_th[NBAND_THM_MAX];  /* pointer for thermal binary files */
     FILE *fp_bin_pan[NBAND_PAN_MAX]; /* pointer for pan binary files */
     FILE *fp_bin_qa[NBAND_QA_MAX];   /* pointer for QA binary files */
-    FILE *fp_bin_lw;                 /* pointer for land/water binary file */
 } Input_t;
 
 /* Prototypes */
@@ -130,14 +124,6 @@ int get_input_qa_lines
     int iline,       /* I: current line to read (0-based) */
     int nlines,      /* I: number of lines to read */
     uint16 *out_arr  /* O: output array to populate */
-);
-
-int get_input_lw_lines
-(
-    Input_t *this,   /* I: pointer to input data structure */
-    int iline,       /* I: current line to read (0-based) */
-    int nlines,      /* I: number of lines to read */
-    uint8 *out_arr   /* O: output array to populate */
 );
 
 int get_xml_input

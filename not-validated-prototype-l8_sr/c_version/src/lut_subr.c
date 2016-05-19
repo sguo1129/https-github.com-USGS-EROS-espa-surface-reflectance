@@ -1846,13 +1846,14 @@ int memory_allocation_sr
                                (TOA refl), nlines x nsamps */
     uint8 **cloud,       /* O: bit-packed value that represent clouds,
                                nlines x nsamps */
+    uint8 **ipflag,      /* O: QA flag to assist with aerosol interpolation,
+                               nlines x nsamps */
     float **twvi,        /* O: interpolated water vapor value,
                                nlines x nsamps */
     float **tozi,        /* O: interpolated ozone value, nlines x nsamps */
     float **tp,          /* O: interpolated pressure value, nlines x nsamps */
     float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
     float **taero,       /* O: aerosol values for each pixel, nlines x nsamps */
-    uint8 **lw_mask,     /* O: land/water mask data, nlines x nsamps */
     int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
     int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
     int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
@@ -1974,10 +1975,10 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *lw_mask = calloc (nlines*nsamps, sizeof (uint8));
-    if (*lw_mask == NULL)
+    *ipflag = calloc (nlines*nsamps, sizeof (uint8));
+    if (*ipflag == NULL)
     {
-        sprintf (errmsg, "Error allocating memory for lw_mask");
+        sprintf (errmsg, "Error allocating memory for ipflag");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
@@ -2472,7 +2473,7 @@ int read_auxiliary_files
     char FUNC_NAME[] = "read_auxiliary_files"; /* function name */
     char errmsg[STR_SIZE];   /* error message */
     char sds_name[STR_SIZE]; /* name of the SDS being read */
-    int i, j;            /* looping variables */
+    int i;               /* looping variable */
     int status;          /* return status of the HDF function */
     int start[5];        /* starting point to read SDS data; handles up to
                             4D dataset */
@@ -2598,6 +2599,138 @@ int read_auxiliary_files
         return (ERROR);
     }
 
+    /* Find the SDS name (SDS 0) */
+    strcpy (sds_name, "average ratio b3");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, ratiob2[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 1) */
+    strcpy (sds_name, "average ratio b8");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, ratiob1[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Find the SDS name (SDS 4) */
+    strcpy (sds_name, "average ratio b7");
+    sds_index = SDnametoindex (sd_id, sds_name);
+    if (sds_index == -1)
+    {
+        sprintf (errmsg, "Unable to find %s in the RATIO file", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Open the current band as an SDS */
+    sds_id = SDselect (sd_id, sds_index);
+    if (sds_id < 0)
+    {
+        sprintf (errmsg, "Unable to access %s for reading", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
+    /* Read the data one line at a time */
+    for (i = 0; i < RATIO_NBLAT; i++)
+    {
+        start[0] = i;  /* line */
+        start[1] = 0;  /* sample */
+        edges[0] = 1;
+        edges[1] = RATIO_NBLON;
+        status = SDreaddata (sds_id, start, NULL, edges, ratiob7[i]);
+        if (status == -1)
+        {
+            sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
+            error_handler (true, FUNC_NAME, errmsg);
+            return (ERROR);
+        }
+    }
+
+    /* Close the SDS */
+    status = SDendaccess (sds_id);
+    if (status < 0)
+    {
+        sprintf (errmsg, "Ending access to %s", sds_name);
+        error_handler (true, FUNC_NAME, errmsg);
+        return (ERROR);
+    }
+
     /* Find the SDS name (SDS 14) */
     strcpy (sds_name, "standard ndvi");
     sds_index = SDnametoindex (sd_id, sds_name);
@@ -2642,8 +2775,8 @@ int read_auxiliary_files
         return (ERROR);
     }
 
-    /* Find the SDS name (SDS 21) */
-    strcpy (sds_name, "slope ratiob9");
+    /* Find the SDS name (SDS 18) */
+    strcpy (sds_name, "slope ratiob8");
     sds_index = SDnametoindex (sd_id, sds_name);
     if (sds_index == -1)
     {
@@ -2686,8 +2819,8 @@ int read_auxiliary_files
         return (ERROR);
     }
 
-    /* Find the SDS name (SDS 22) */
-    strcpy (sds_name, "inter ratiob9");
+    /* Find the SDS name (SDS 19) */
+    strcpy (sds_name, "inter ratiob8");
     sds_index = SDnametoindex (sd_id, sds_name);
     if (sds_index == -1)
     {
@@ -2913,20 +3046,6 @@ int read_auxiliary_files
         sprintf (errmsg, "Closing RATIO file.");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
-    }
-
-    /* Compute the band ratios based on the averaged NDWI */
-    for (i = 0; i < RATIO_NBLAT; i++)
-    {
-        for (j = 0; j < RATIO_NBLON; j++)
-        {
-            ratiob1[i][j] = (int16) (andwi[i][j] * slpratiob1[i][j] * 0.001 +
-                intratiob1[i][j]);
-            ratiob2[i][j] = (int16) (andwi[i][j] * slpratiob2[i][j] * 0.001 +
-                intratiob2[i][j]);
-            ratiob7[i][j] = (int16) (andwi[i][j] * slpratiob7[i][j] * 0.001 +
-                intratiob7[i][j]);
-        }
     }
 
     /* Read ozone and water vapor from the user-specified auxiliary file */

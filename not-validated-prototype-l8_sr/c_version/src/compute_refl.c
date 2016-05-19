@@ -118,10 +118,17 @@ int compute_toa_refl
                     else if (rotoa > MAX_VALID)
                         sband[sband_ib][i] = MAX_VALID;
                     else
-                        sband[sband_ib][i] = (int) (round (rotoa));
+                        /* TODO FORTRAN code doesn't round here, but it's
+                           probably a good idea */
+//                        sband[sband_ib][i] = (int) (round (rotoa));
+                        sband[sband_ib][i] = (int) rotoa;
                 }
                 else
                     sband[sband_ib][i] = FILL_VALUE;
+if (ib == DN_BAND9 && i == 90 * nsamps + 1815)
+{
+    printf ("DEBUG2: sband[%d][90][1815] = %d\n", sband_ib, sband[sband_ib][i]);
+}
             }
         }  /* end if band <= band 9 */
 
@@ -167,7 +174,10 @@ int compute_toa_refl
                     else if (tmpf > MAX_VALID_TH)
                         sband[SR_BAND10][i] = MAX_VALID_TH;
                     else
-                        sband[SR_BAND10][i] = (int) (round (tmpf));
+                        /* TODO FORTRAN code doesn't round here, but it's
+                           probably a good idea */
+//                        sband[SR_BAND10][i] = (int) (round (tmpf));
+                        sband[SR_BAND10][i] = (int) (tmpf);
                 }
                 else
                     sband[SR_BAND10][i] = FILL_VALUE;
@@ -214,7 +224,10 @@ int compute_toa_refl
                     else if (tmpf > MAX_VALID_TH)
                         sband[SR_BAND11][i] = MAX_VALID_TH;
                     else
-                        sband[SR_BAND11][i] = (int) (round (tmpf));
+                        /* TODO FORTRAN code doesn't round here, but it's
+                           probably a good idea */
+//                        sband[SR_BAND11][i] = (int) (round (tmpf));
+                        sband[SR_BAND11][i] = (int) (tmpf);
                 }
                 else
                     sband[SR_BAND11][i] = FILL_VALUE;
@@ -286,9 +299,12 @@ int compute_sr_refl
     int iband;           /* current band */
     int curr_pix;        /* current pixel in 1D arrays of nlines * nsamps */
     int win_pix;         /* current pixel in the line,sample window */
-    int win;             /* window around current pixel for water mask */
+    int inf_pix;         /* location of inferior pixel in line,sample window */
+    int sup_pix;         /* location of superior pixel in line,sample window */
+    bool isuccess;       /* was the refined corrected value successful? */
     float rotoa;         /* top of atmosphere reflectance */
     float roslamb;       /* lambertian surface reflectance */
+    float ros2b1;        /* temp storage of the roslamb value for band 1 */
     float tgo;           /* other gaseous transmittance (tgog * tgoz) */
     float roatm;         /* atmospheric intrinsic reflectance */
     float ttatmg;        /* total atmospheric transmission */
@@ -323,13 +339,11 @@ int compute_sr_refl
     float tcloud;       /* temperature of the current pixel */
 
     float cfac = 6.0;     /* cloud factor */
-    double aaot;          /* average of AOT */
-    double sresi;         /* sum of 1 / residuals */
     float fndvi;          /* NDVI value */
-    int nbaot;            /* number of AOT pixels (non-cloud/water) for
-                             aerosol interpolation */
-    int step;             /* step value for aerosol interpolation */
-    bool hole;            /* is this a hole in the aerosol retrieval area? */
+    int inf_index;        /* inferior index for aerosol interpolation */
+    int sup_index;        /* superior index for aerosol interpolation */
+    int int_start;        /* index for the start of interpolation */
+    int int_end;          /* index for the end of interpolation */
     float ros4, ros5;     /* surface reflectance for band 4 and band 5 */
     int tmp_percent;      /* current percentage for printing status */
 #ifndef _OPENMP
@@ -349,6 +363,8 @@ int compute_sr_refl
                            line, samp+1; line+1, samp; and line+1, samp+1 */
     uint8 *cloud = NULL;  /* bit-packed value that represent clouds,
                              nlines x nsamps */
+    uint8 *ipflag = NULL; /* QA flag to assist with aerosol interpolation,
+                              nlines x nsamps */
     float *twvi = NULL;   /* interpolated water vapor value,
                              nlines x nsamps */
     float *tozi = NULL;   /* interpolated ozone value, nlines x nsamps */
@@ -409,11 +425,11 @@ int compute_sr_refl
     int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob2 = NULL;   /* mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
     int16 **ratiob7 = NULL;   /* mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1 = NULL;   /* ??? band1 ratio
+    int16 **intratiob1 = NULL;   /* intercept band1 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2 = NULL;   /* ??? band2 ratio
+    int16 **intratiob2 = NULL;   /* intercept band2 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7 = NULL;   /* ??? band7 ratio
+    int16 **intratiob7 = NULL;   /* intercept band7 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
     int16 **slpratiob1 = NULL;   /* slope band1 ratio
                                     [RATIO_NBLAT][RATIO_NBLON] */
@@ -423,11 +439,20 @@ int compute_sr_refl
                                     [RATIO_NBLAT][RATIO_NBLON] */
     uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
     uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
-    uint8 *lw_mask = NULL;    /* land/water mask, nlines x nsamps */
     float raot550nm;    /* nearest input value of AOT */
     float uoz;          /* total column ozone */
     float uwv;          /* total column water vapor (precipital water vapor) */
     float pres;         /* surface pressure */
+    float rb1;          /* band ratio 1 (unscaled) */
+    float rb2;          /* band ratio 2 (unscaled) */
+    float slpr11, slpr12, slpr21, slpr22;  /* band ratio slope at line,samp;
+                           line, samp+1; line+1, samp; and line+1, samp+1 */
+    float intr11, intr12, intr21, intr22;  /* band ratio intercept at line,samp;
+                           line, samp+1; line+1, samp; and line+1, samp+1 */
+    float slprb1, slprb2, slprb7;  /* interpolated band ratio slope values for
+                                      band ratios 1, 2, 7 */
+    float intrb1, intrb2, intrb7;  /* interpolated band ratio intercept values
+                                      for band ratios 1, 2, 7 */
 
     /* Output file info */
     Output_t *sr_output = NULL;  /* output structure and metadata for the SR
@@ -471,7 +496,7 @@ int compute_sr_refl
     /* Allocate memory for the many arrays needed to do the surface reflectance
        computations */
     retval = memory_allocation_sr (nlines, nsamps, &aerob1, &aerob2, &aerob4,
-        &aerob5, &aerob7, &cloud, &twvi, &tozi, &tp, &tresi, &taero, &lw_mask,
+        &aerob5, &aerob7, &cloud, &ipflag, &twvi, &tozi, &tp, &tresi, &taero,
         &dem, &andwi, &sndwi, &ratiob1, &ratiob2, &ratiob7, &intratiob1,
         &intratiob2, &intratiob7, &slpratiob1, &slpratiob2, &slpratiob7, &wv,
         &oz, &rolutt, &transt, &sphalbt, &normext, &tsmax, &tsmin, &nbfic,
@@ -513,14 +538,6 @@ int compute_sr_refl
         sprintf (errmsg, "Error initializing the lookup tables and "
             "atmospheric correction variables.");
         error_handler (false, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    /* Read the land/water mask */
-    if (get_input_lw_lines (input, 0, nlines, lw_mask) != SUCCESS)
-    {
-        sprintf (errmsg, "Reading land/water mask");
-        error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
 
@@ -590,6 +607,10 @@ int compute_sr_refl
                 roslamb = roslamb / ttatmg;
                 roslamb = roslamb / (1.0 + satm * roslamb);
                 sband[ib][i] = (int) (roslamb * MULT_FACTOR);
+if (i == 90 * nsamps + 1815)
+{
+    printf ("DEBUG0: sband[%d][90][1815] = %d\n", ib, sband[ib][i]);
+}
             }
         }  /* end for i */
     }  /* for ib */
@@ -606,7 +627,7 @@ int compute_sr_refl
     printf ("Interpolating the auxiliary data ...\n");
     tmp_percent = 0;
 #ifdef _OPENMP
-    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
+    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, rb1, rb2, slpr11, slpr12, slpr21, slpr22, intr11, intr12, intr21, intr22, slprb1, slprb2, slprb7, intrb1, intrb2, intrb7, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
 #endif
     for (i = 0; i < nlines; i++)
     {
@@ -629,12 +650,15 @@ int compute_sr_refl
         {
             /* If this pixel is fill, then don't process */
             if (qaband[curr_pix] == 1)
+            {
+                ipflag[curr_pix] = IPFLAG_FILL;
                 continue;
+            }
 
             /* Get the lat/long for the current pixel, for the center of
                the pixel */
-            img.l = i - 0.5;
-            img.s = j + 0.5;
+            img.l = (i+1) - 0.5;
+            img.s = (j+1) + 0.5;
             img.is_fill = false;
             if (!from_space (space, &img, &geo))
             {
@@ -656,6 +680,9 @@ int compute_sr_refl
                beginning of the array. */
             /* Each CMG pixel is 0.05 x 0.05 degrees.  Use the center of the
                pixel for each calculation. */
+            /* TODO the line/sample calculation from the x/ycmg values should
+               be rounded.  The FORTRAN code does this, then overwrites it.
+               To be consistent, we will leave it out for now. */
             ycmg = (89.975 - lat) * 20.0;   /* vs / 0.05 */
             xcmg = (179.975 + lon) * 20.0;  /* vs / 0.05 */
             lcmg = (int) (ycmg);
@@ -721,47 +748,18 @@ int compute_sr_refl
                              uoz22 * u * v;
             tozi[curr_pix] = tozi[curr_pix] * 0.0025;   /* vs / 400 */
 
-            /* If this pixel is water, then set the water bit.  If we are
-               on the edges of the scene, just use the current pixel.  OW
-               test the current pixel and the surrounding window pixels, as the
-               land/water mask isn't perfect.  A water test using the NDVI
-               will be applied later to make sure. */
-            for (win = 0; win < 9; win++)
-            {  /* Check 9x9 window */
-                if (i < win || i >= nlines-win-1 ||
-                    j < win || j >= nsamps-win-1)
-                {
-                    if (lw_mask[curr_pix] == 0)
-                    {
-                        cloud[curr_pix] = 128;    /* set water bit */
-                        tresi[curr_pix] = -1.0;
-                        break;
-                    }
-                }
-                else if
-                    (lw_mask[(i-win)*nsamps + j-win] == 0 ||
-                     lw_mask[(i-win)*nsamps + j] == 0 ||
-                     lw_mask[(i-win)*nsamps + j+win] == 0 ||
-                     lw_mask[curr_pix-win] == 0 ||
-                     lw_mask[curr_pix] == 0 ||
-                     lw_mask[curr_pix+win] == 0 ||
-                     lw_mask[(i+win)*nsamps + j-win] == 0 ||
-                     lw_mask[(i+win)*nsamps + j] == 0 ||
-                     lw_mask[(i+win)*nsamps + j+win] == 0)
-                {
-                    cloud[curr_pix] = 128;    /* set water bit */
-                    tresi[curr_pix] = -1.0;
-                    break;
-                }
-            }
-
             /* Get the surface pressure from the global DEM.  Set to 1013.0
                (sea level) if the DEM is fill (= -9999), which is likely
-               ocean. */
+               ocean. Also flag the deep water pixels. */
+            /* TODO -- Switch back to using the land/water mask for finer
+               and more accurate identification of deep coastal waters */
             if (dem[lcmg][scmg] != -9999)
                 pres11 = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
             else
+            {
                 pres11 = 1013.0;
+                cloud[curr_pix] = -128; /* set the water bit in the cloud QA */
+            }
 
             if (dem[lcmg][scmg1] != -9999)
                 pres12 = 1013.0 * exp (-dem[lcmg][scmg1] * ONE_DIV_8500);
@@ -793,39 +791,183 @@ int compute_sr_refl
             else
             {
                 /* Determine the band ratios */
-                if (ratiob1[lcmg][scmg] == 0)
+                rb1 = ratiob1[lcmg][scmg] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[lcmg][scmg] * 0.001;  /* vs. / 1000. */
+                if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
+                    (ratiob7[lcmg][scmg] < 1000))
                 {
-                    /* Average the valid ratio around the location */
-                    erelc[DN_BAND1] = 0.4817;
-                    erelc[DN_BAND2] = erelc[DN_BAND1] / 0.844239;
-                    erelc[DN_BAND4] = 1.0;
-                    erelc[DN_BAND7] = 1.79;
+                    slpratiob1[lcmg][scmg] = 0;
+                    slpratiob2[lcmg][scmg] = 0;
+                    slpratiob7[lcmg][scmg] = 0;
+                    intratiob1[lcmg][scmg] = 327;
+                    intratiob2[lcmg][scmg] = 482;
+                    intratiob7[lcmg][scmg] = 2000;
                 }
-                else
+                else if (sndwi[lcmg][scmg] < 200)
                 {
-                    /* Use a version of NDWI to calculate the band ratio */
-                    xndwi = ((double) sband[SR_BAND5][curr_pix] -
-                             (double) (sband[SR_BAND7][curr_pix] * 0.5)) /
-                            ((double) sband[SR_BAND5][curr_pix] +
-                             (double) (sband[SR_BAND7][curr_pix] * 0.5));
-
-                    th1 = (andwi[lcmg][scmg] + 2.0 * sndwi[lcmg][scmg]) *
-                        0.001;
-                    th2 = (andwi[lcmg][scmg] - 2.0 * sndwi[lcmg][scmg]) *
-                        0.001;
-                    if (xndwi > th1)
-                        xndwi = th1;
-                    if (xndwi < th2)
-                        xndwi = th2;
-
-                    erelc[DN_BAND1] = (xndwi * slpratiob1[lcmg][scmg] +
-                        intratiob1[lcmg][scmg]) * 0.001;
-                    erelc[DN_BAND2] = (xndwi * slpratiob2[lcmg][scmg] +
-                        intratiob2[lcmg][scmg]) * 0.001;
-                    erelc[DN_BAND4] = 1.0;
-                    erelc[DN_BAND7] = (xndwi * slpratiob7[lcmg][scmg] +
-                        intratiob7[lcmg][scmg]) * 0.001;
+                    slpratiob1[lcmg][scmg] = 0;
+                    slpratiob2[lcmg][scmg] = 0;
+                    slpratiob7[lcmg][scmg] = 0;
+                    intratiob1[lcmg][scmg] = ratiob1[lcmg][scmg];
+                    intratiob2[lcmg][scmg] = ratiob2[lcmg][scmg];
+                    intratiob7[lcmg][scmg] = ratiob7[lcmg][scmg];
                 }
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG1: rb1, rb2 = %f, %f\n", rb1, rb2);
+    printf ("DEBUG1: slpratiob1, b2, b7 = %d, %d, %d\n", slpratiob1[lcmg][scmg], slpratiob2[lcmg][scmg], slpratiob7[lcmg][scmg]);
+    printf ("DEBUG1: intratiob1, b2, b7 = %d, %d, %d\n", intratiob1[lcmg][scmg], intratiob2[lcmg][scmg], intratiob7[lcmg][scmg]);
+}
+
+                rb1 = ratiob1[lcmg][scmg1] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[lcmg][scmg1] * 0.001;  /* vs. / 1000. */
+                if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
+                    (ratiob7[lcmg][scmg1] < 1000))
+                {
+                    slpratiob1[lcmg][scmg1] = 0;
+                    slpratiob2[lcmg][scmg1] = 0;
+                    slpratiob7[lcmg][scmg1] = 0;
+                    intratiob1[lcmg][scmg1] = 327;
+                    intratiob2[lcmg][scmg1] = 482;
+                    intratiob7[lcmg][scmg1] = 2000;
+                }
+                else if (sndwi[lcmg][scmg1] < 200)
+                {
+                    slpratiob1[lcmg][scmg1] = 0;
+                    slpratiob2[lcmg][scmg1] = 0;
+                    slpratiob7[lcmg][scmg1] = 0;
+                    intratiob1[lcmg][scmg1] = ratiob1[lcmg][scmg1];
+                    intratiob2[lcmg][scmg1] = ratiob2[lcmg][scmg1];
+                    intratiob7[lcmg][scmg1] = ratiob7[lcmg][scmg1];
+                }
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG1: rb1, rb2 = %f, %f\n", rb1, rb2);
+    printf ("DEBUG1: slpratiob1, b2, b7 = %d, %d, %d\n", slpratiob1[lcmg][scmg1], slpratiob2[lcmg][scmg1], slpratiob7[lcmg][scmg1]);
+    printf ("DEBUG1: intratiob1, b2, b7 = %d, %d, %d\n", intratiob1[lcmg][scmg1], intratiob2[lcmg][scmg1], intratiob7[lcmg][scmg1]);
+}
+
+                rb1 = ratiob1[lcmg1][scmg] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[lcmg1][scmg] * 0.001;  /* vs. / 1000. */
+                if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
+                    (ratiob7[lcmg1][scmg] < 1000))
+                {
+                    slpratiob1[lcmg1][scmg] = 0;
+                    slpratiob2[lcmg1][scmg] = 0;
+                    slpratiob7[lcmg1][scmg] = 0;
+                    intratiob1[lcmg1][scmg] = 327;
+                    intratiob2[lcmg1][scmg] = 482;
+                    intratiob7[lcmg1][scmg] = 2000;
+                }
+                else if (sndwi[lcmg1][scmg] < 200)
+                {
+                    slpratiob1[lcmg1][scmg] = 0;
+                    slpratiob2[lcmg1][scmg] = 0;
+                    slpratiob7[lcmg1][scmg] = 0;
+                    intratiob1[lcmg1][scmg] = ratiob1[lcmg1][scmg];
+                    intratiob2[lcmg1][scmg] = ratiob2[lcmg1][scmg];
+                    intratiob7[lcmg1][scmg] = ratiob7[lcmg1][scmg];
+                }
+
+                rb1 = ratiob1[lcmg1][scmg1] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[lcmg1][scmg1] * 0.001;  /* vs. / 1000. */
+                if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
+                    (ratiob7[lcmg1][scmg1] < 1000))
+                {
+                    slpratiob1[lcmg1][scmg1] = 0;
+                    slpratiob2[lcmg1][scmg1] = 0;
+                    slpratiob7[lcmg1][scmg1] = 0;
+                    intratiob1[lcmg1][scmg1] = 327;
+                    intratiob2[lcmg1][scmg1] = 482;
+                    intratiob7[lcmg1][scmg1] = 2000;
+                }
+                else if (sndwi[lcmg1][scmg1] < 200)
+                {
+                    slpratiob1[lcmg1][scmg1] = 0;
+                    slpratiob2[lcmg1][scmg1] = 0;
+                    slpratiob7[lcmg1][scmg1] = 0;
+                    intratiob1[lcmg1][scmg1] = ratiob1[lcmg1][scmg1];
+                    intratiob2[lcmg1][scmg1] = ratiob2[lcmg1][scmg1];
+                    intratiob7[lcmg1][scmg1] = ratiob7[lcmg1][scmg1];
+                }
+
+                slpr11 = slpratiob1[lcmg][scmg] * 0.001;  /* vs / 1000 */
+                intr11 = intratiob1[lcmg][scmg] * 0.001;  /* vs / 1000 */
+                slpr12 = slpratiob1[lcmg][scmg1] * 0.001;  /* vs / 1000 */
+                intr12 = intratiob1[lcmg][scmg1] * 0.001;  /* vs / 1000 */
+                slpr21 = slpratiob1[lcmg1][scmg] * 0.001;  /* vs / 1000 */
+                intr21 = intratiob1[lcmg1][scmg] * 0.001;  /* vs / 1000 */
+                slpr22 = slpratiob1[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                intr22 = intratiob1[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                slprb1 = slpr11 * (1.0 - u) * (1.0 - v) +
+                         slpr12 * (1.0 - u) * v +
+                         slpr21 * u * (1.0 - v) +
+                         slpr22 * u * v;
+                intrb1 = intr11 * (1.0 - u) * (1.0 - v) +
+                         intr12 * (1.0 - u) * v +
+                         intr21 * u * (1.0 - v) +
+                         intr22 * u * v;
+
+                slpr11 = slpratiob2[lcmg][scmg] * 0.001;  /* vs / 1000 */
+                intr11 = intratiob2[lcmg][scmg] * 0.001;  /* vs / 1000 */
+                slpr12 = slpratiob2[lcmg][scmg1] * 0.001;  /* vs / 1000 */
+                intr12 = intratiob2[lcmg][scmg1] * 0.001;  /* vs / 1000 */
+                slpr21 = slpratiob2[lcmg1][scmg] * 0.001;  /* vs / 1000 */
+                intr21 = intratiob2[lcmg1][scmg] * 0.001;  /* vs / 1000 */
+                slpr22 = slpratiob2[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                intr22 = intratiob2[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                slprb2 = slpr11 * (1.0 - u) * (1.0 - v) +
+                         slpr12 * (1.0 - u) * v +
+                         slpr21 * u * (1.0 - v) +
+                         slpr22 * u * v;
+                intrb2 = intr11 * (1.0 - u) * (1.0 - v) +
+                         intr12 * (1.0 - u) * v +
+                         intr21 * u * (1.0 - v) +
+                         intr22 * u * v;
+
+                slpr11 = slpratiob7[lcmg][scmg] * 0.001;  /* vs / 1000 */
+                intr11 = intratiob7[lcmg][scmg] * 0.001;  /* vs / 1000 */
+                slpr12 = slpratiob7[lcmg][scmg1] * 0.001;  /* vs / 1000 */
+                intr12 = intratiob7[lcmg][scmg1] * 0.001;  /* vs / 1000 */
+                slpr21 = slpratiob7[lcmg1][scmg] * 0.001;  /* vs / 1000 */
+                intr21 = intratiob7[lcmg1][scmg] * 0.001;  /* vs / 1000 */
+                slpr22 = slpratiob7[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                intr22 = intratiob7[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                slprb7 = slpr11 * (1.0 - u) * (1.0 - v) +
+                         slpr12 * (1.0 - u) * v +
+                         slpr21 * u * (1.0 - v) +
+                         slpr22 * u * v;
+                intrb7 = intr11 * (1.0 - u) * (1.0 - v) +
+                         intr12 * (1.0 - u) * v +
+                         intr21 * u * (1.0 - v) +
+                         intr22 * u * v;
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG1: slprb1, slprb2, slprb7 = %f, %f, %f\n", slprb1, slprb2, slprb7);
+    printf ("DEBUG1: intrb1, intrb2, intrb7 = %f, %f, %f\n", intrb1, intrb2, intrb7);
+}
+
+                /* Use a version of NDWI to calculate the band ratio */
+                xndwi = ((double) sband[SR_BAND5][curr_pix] -
+                         (double) (sband[SR_BAND7][curr_pix] * 0.5)) /
+                        ((double) sband[SR_BAND5][curr_pix] +
+                         (double) (sband[SR_BAND7][curr_pix] * 0.5));
+
+                th1 = (andwi[lcmg][scmg] + 2.0 * sndwi[lcmg][scmg]) * 0.001;
+                th2 = (andwi[lcmg][scmg] - 2.0 * sndwi[lcmg][scmg]) * 0.001;
+                if (xndwi > th1)
+                    xndwi = th1;
+                if (xndwi < th2)
+                    xndwi = th2;
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG1: xndwi = %f\n", xndwi);
+}
+
+                erelc[DN_BAND1] = (xndwi * slprb1 + intrb1);
+                erelc[DN_BAND2] = (xndwi * slprb2 + intrb2);
+                erelc[DN_BAND4] = 1.0;
+                erelc[DN_BAND7] = (xndwi * slprb7 + intrb7);
 
                 /* Retrieve the TOA reflectance values for the current pixel */
                 troatm[DN_BAND1] = aerob1[curr_pix] * SCALE_FACTOR;
@@ -833,27 +975,6 @@ int compute_sr_refl
                 troatm[DN_BAND4] = aerob4[curr_pix] * SCALE_FACTOR;
                 troatm[DN_BAND7] = aerob7[curr_pix] * SCALE_FACTOR;
 
-                /* If this is water ... */
-                if (btest (cloud[curr_pix], WAT_QA))
-                {
-                    /* Check the NDVI to validate if this is water */
-                    fndvi = ((double) sband[SR_BAND5][curr_pix] -
-                             (double) sband[SR_BAND4][curr_pix]) /
-                            ((double) sband[SR_BAND5][curr_pix] +
-                             (double) sband[SR_BAND4][curr_pix]);
-                    if (fndvi < 0.1)
-                    {  /* skip the rest of the processing */
-                        taero[curr_pix] = 0.0;
-                        tresi[curr_pix] = -0.01;
-                        continue;
-                    }
-                    else
-                    {
-                        /* Remove the preliminary water designation */
-                        cloud[curr_pix] -= 128;
-                    }
-                }
-       
                 /* Retrieve the aerosol information */
                 iband1 = DN_BAND4;
                 iband3 = DN_BAND1;
@@ -874,7 +995,12 @@ int compute_sr_refl
 
                 /* Check the model residual.  Corf represents aerosol impact.
                    Test the quality of the aerosol inversion. */
-                if (residual < (0.015 + 0.005 * corf))
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG2: corf, raot, xmus = %f, %f, %f\n", corf, raot, xmus);
+    printf ("DEBUG2: residual = %f\n", residual);
+}
+                if (residual < (0.010 + 0.005 * corf))
                 {
                     /* Test if band 5 makes sense */
                     iband = DN_BAND5;
@@ -919,6 +1045,10 @@ int compute_sr_refl
                     ros4 = roslamb;
 
                     /* Use the NDVI to validate the reflectance values */
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG3: ros4, ros5 = %f, %f\n", ros4, ros5);
+}
                     if ((ros5 > 0.1) && ((ros5 - ros4) / (ros5 + ros4) > 0))
                     {
                         taero[curr_pix] = raot;
@@ -926,16 +1056,22 @@ int compute_sr_refl
                     }
                     else
                     {
-                        taero[curr_pix] = 0.0;
-                        tresi[curr_pix] = -0.01;
+                        taero[curr_pix] = raot;
+                        tresi[curr_pix] = residual;
+                        ipflag[curr_pix] = IPFLAG_NDVI_FAIL;
                     }
                 }
                 else
                 {
-                    taero[curr_pix] = 0.0;
-                    tresi[curr_pix] = -0.01;
+                    taero[curr_pix] = raot;
+                    tresi[curr_pix] = residual;
+                    ipflag[curr_pix] = IPFLAG_RESIDUAL_FAIL;
                 }
             }  /* end if cirrus */
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG4: ipflag = %d\n", ipflag[curr_pix]);
+}
         }  /* end for j */
     }  /* end for i */
 
@@ -951,7 +1087,6 @@ int compute_sr_refl
     free (aerob4);  aerob4 = NULL;
     free (aerob5);  aerob5 = NULL;
     free (aerob7);  aerob7 = NULL;
-    free (lw_mask); lw_mask = NULL;
 
     /* Done with the DEM array */
     for (i = 0; i < DEM_NBLAT; i++)
@@ -1010,7 +1145,10 @@ int compute_sr_refl
     /* Determine the cloud mask */
     for (i = 0; i < nlines*nsamps; i++)
     {
-        if (tresi[i] < 0.0)
+        /* Test all bad retrievals (except for fill value) */
+        /* TODO -- We should skip fill pixels here so we don't waste time */
+//        if (ipflag[i] > IPFLAG_CLEAR && ipflag[i] != IPFLAG_FILL)
+        if (ipflag[i] > IPFLAG_CLEAR)
         {
             if (((sband[SR_BAND2][i] - sband[SR_BAND4][i] * 0.5) > 500) &&
                 ((sband[SR_BAND10][i] * SCALE_FACTOR_TH) < (mclear - 2.0)))
@@ -1179,105 +1317,189 @@ int compute_sr_refl
         }
     }  /* end for i */
 
-/* GAIL -- This is the potential problem area with the blockiness; consider
-   printing tresi to see where the residual is negative. */
-/*printf ("WRITING intermediate cloud mask\n");
-FILE *tmpfile = NULL;
-tmpfile = fopen ("gail_cloud.img", "w");
-if (fwrite (cloud, sizeof (uint8), nlines*nsamps, tmpfile) != nlines*nsamps)
-    printf ("ERROR: GAIL can't write the cloud array!!!!\n");
-fclose (tmpfile);
-
-printf ("WRITING tresi\n");
-tmpfile = fopen ("gail_tresi.img", "w");
-if (fwrite (tresi, sizeof (float), nlines*nsamps, tmpfile) != nlines*nsamps)
-    printf ("ERROR: GAIL can't write the cloud array!!!!\n");
-fclose (tmpfile);
-*/
-
-    /* Aerosol interpolation. Does not use water, cloud, or cirrus pixels. */
-    printf ("Performing aerosol interpolation ...\n");
-    hole = true;
-    step = 10;
-    while (hole && (step < 1000))
+    /* Detect water */
+    printf ("Detecting water ...\n");
+    for (i = 0; i < nlines*nsamps; i++)
     {
-        hole = false;
-        for (i = 0; i < nlines; i += step)
+        /* If not cloudy */
+        /* TODO -- Skip fill pixels here to save time */
+        if (!btest (cloud[i], CIR_QA) &&
+            !btest (cloud[i], CLD_QA) &&
+            !btest (cloud[i], CLDS_QA) &&
+            !btest (cloud[i], CLDA_QA))
         {
-            for (j = 0; j < nsamps; j += step)
+            /* Compute the NDVI */
+            if (sband[SR_BAND5][i] < 100)
+                fndvi = -0.01;
+            else
+                fndvi = ((double) sband[SR_BAND5][i] -
+                         (double) sband[SR_BAND4][i]) /
+                        ((double) sband[SR_BAND5][i] +
+                         (double) sband[SR_BAND4][i]);
+
+            /* Flag water pixels */
+            if (fndvi < 0.01)
+                ipflag[i] = IPFLAG_WATER;  /* water */
+        }
+    }
+
+/* GAIL HERE */
+    printf ("DEBUG5: ipflag = %d\n", ipflag[90*nsamps + 1815]);
+    printf ("DEBUG5: cloud = %d\n", cloud[90*nsamps + 1815]);
+    /* Aerosol interpolation -- first interpolate across the line in the sample
+       direction. Does not use water, cloud, or cirrus pixels. */
+    printf ("Performing aerosol interpolation across each line ...\n");
+    for (i = 0; i < nlines; i++)
+    {
+        curr_pix = i * nsamps;
+        for (j = 0; j < nsamps; j++, curr_pix++)
+        {
+            /* If the current pixel failed aerosol retrieval and is not cloud,
+               cirrus, or water then interpolate */
+            if ((ipflag[curr_pix] == IPFLAG_NDVI_FAIL ||
+                 ipflag[curr_pix] == IPFLAG_RESIDUAL_FAIL) &&
+                !btest (cloud[curr_pix], CIR_QA) &&
+                !btest (cloud[curr_pix], CLD_QA) &&
+                !btest (cloud[curr_pix], WAT_QA))
             {
-                nbaot = 0;
-                aaot = 0.0;
-                sresi = 0.0;
-
-                /* Check the step x step window around the current pixel */
-                for (k = i - step*0.5; k <= i + step*0.5; k++)
+                /* Look at the samples in the current line and find the inferior
+                   and superior boundaries where aerosol retrieval failed, but
+                   the pixel hasn't yet been interpolated */
+                k = j;
+                win_pix = curr_pix;
+                while (ipflag[win_pix] > IPFLAG_INTERP && k > 0)
                 {
-                    /* Make sure the line is valid */
-                    if (k < 0 || k >= nlines)
-                        continue;
+                    win_pix--;
+                    k--;
+                }
+                inf_index = k;  /* inferior index */
 
-                    win_pix = k * nsamps + j - step*0.5;
-                    for (l = j - step*0.5; l <= j + step*0.5; l++, win_pix++)
+                k = j;
+                win_pix = curr_pix;
+                while (ipflag[win_pix] > IPFLAG_INTERP && k < nsamps-1)
+                {
+                    win_pix++;
+                    k++;
+                }
+                sup_index = k;  /* superior index */
+
+                /* Interpolation starts one pixel after the inferior index and
+                   continues until one pixel before the superior index */
+                int_start = inf_index + 1;
+                int_end = sup_index - 1;
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG5: inf_index = %d\n", inf_index);
+    printf ("DEBUG5: sup_index = %d\n", sup_index);
+}
+
+                /* Make sure IPFLAG values at both of the indices are clear
+                   (aerosol retrieval was successful) and not already
+                   interpolated */
+                inf_pix = i * nsamps + inf_index;
+                sup_pix = i * nsamps + sup_index;
+                if (ipflag[inf_pix] > IPFLAG_INTERP ||
+                    ipflag[sup_pix] > IPFLAG_INTERP)
+                    continue;
+
+                /* Interpolate the aerosols across the line */
+                win_pix = i * nsamps + int_start;
+                for (k = int_start; k <= int_end; k++, win_pix++)
+                {
+                    /* If this pixel is not fill or water and therefore is a
+                       pixel where the aerosol retrieval failed then
+                       interpolate the aerosol value */
+                    if (ipflag[win_pix] != IPFLAG_FILL &&
+                        ipflag[win_pix] != IPFLAG_WATER)
                     {
-                        /* Make sure the sample is valid */
-                        if (l < 0 || l >= nsamps)
-                            continue;
-
-                        /* Check for clear pixels with positive residuals */
-                        if ((tresi[win_pix] > 0) && (cloud[win_pix] == 0))
-                        {
-                            nbaot++;
-                            aaot += taero[win_pix] / tresi[win_pix];
-                            sresi += 1.0 / tresi[win_pix];
-                        }
+                        taero[win_pix] = taero[inf_pix] +
+                            (taero[sup_pix] - taero[inf_pix]) *
+                            (k - inf_index) / (sup_index - inf_index);
+                        ipflag[win_pix] = IPFLAG_INTERP;
                     }
                 }
+            }  /* end if */
+        }  /* end for j < nsamps */
+    }  /* end for i < nlines */
 
-                /* If pixels were found */
-                if (nbaot != 0)
+    /* Aerosol interpolation -- next interpolate down the samples in the line
+       direction. Does not use water, cloud, or cirrus pixels. */
+    printf ("Performing aerosol interpolation down each sample ...\n");
+    for (j = 0; j < nsamps; j++, curr_pix++)
+    {
+        for (i = 0; i < nlines; i++)
+        {
+            curr_pix = i * nsamps + j;
+            /* If the current pixel failed aerosol retrieval and is not cloud,
+               cirrus, or water then interpolate */
+            if ((ipflag[curr_pix] == IPFLAG_NDVI_FAIL ||
+                 ipflag[curr_pix] == IPFLAG_RESIDUAL_FAIL) &&
+                !btest (cloud[curr_pix], CIR_QA) &&
+                !btest (cloud[curr_pix], CLD_QA) &&
+                !btest (cloud[curr_pix], WAT_QA))
+            {
+                /* Look at the line values for the current sample and find the
+                   inferior and superior boundaries where aerosol retrieval
+                   failed, but the pixel hasn't yet been interpolated */
+                l = i;
+                win_pix = curr_pix;
+                while (ipflag[win_pix] > IPFLAG_INTERP && l > 0)
                 {
-                    aaot /= sresi;
+                    l--;
+                    win_pix = l * nsamps + j;
+                }
+                inf_index = l;  /* inferior index */
 
-                    /* Check the step x step window around the current pixel */
-                    for (k = i - step*0.5; k <= i + step*0.5; k++)
+                l = i;
+                win_pix = curr_pix;
+                while (ipflag[win_pix] > IPFLAG_INTERP && l < nlines-1)
+                {
+                    l++;
+                    win_pix = l * nsamps + j;
+                }
+                sup_index = l;  /* superior index */
+
+                /* Interpolation starts one pixel after the inferior index and
+                   continues until one pixel before the superior index */
+                int_start = inf_index + 1;
+                int_end = sup_index - 1;
+if (i == 90 && j == 1815)
+{
+    printf ("DEBUG6: inf_index = %d\n", inf_index);
+    printf ("DEBUG6: sup_index = %d\n", sup_index);
+}
+
+                /* Make sure IPFLAG values at both of the indices are clear
+                   (aerosol retrieval was successful) and not already
+                   interpolated */
+                inf_pix = inf_index * nsamps + j;
+                sup_pix = sup_index * nsamps + j;
+                if (ipflag[inf_pix] > IPFLAG_INTERP ||
+                    ipflag[sup_pix] > IPFLAG_INTERP)
+                    continue;
+
+                /* Interpolate the aerosols down the samples */
+                for (l = int_start; l <= int_end; l++)
+                {
+                    /* If this pixel is not fill or water and therefore is a
+                       pixel where the aerosol retrieval failed then
+                       interpolate the aerosol value */
+                    win_pix = l * nsamps + j;
+                    if (ipflag[win_pix] != IPFLAG_FILL &&
+                        ipflag[win_pix] != IPFLAG_WATER)
                     {
-                        /* Make sure the line is valid */
-                        if (k < 0 || k >= nlines)
-                            continue;
-
-                        win_pix = k * nsamps + j - step*0.5;
-                        for (l = j - step*0.5; l <= j + step*0.5;
-                             l++, win_pix++)
-                        {
-                            /* Make sure the sample is valid */
-                            if (l < 0 || l >= nsamps)
-                                continue;
-
-                            if ((tresi[win_pix] < 0) &&
-                                (!btest (cloud[win_pix], CIR_QA)) &&
-                                (!btest (cloud[win_pix], CLD_QA)) &&
-                                (!btest (cloud[win_pix], WAT_QA)))
-                            {
-                                taero[win_pix] = aaot;
-                                tresi[win_pix] = 1.0;
-                            }
-                        }  /* for l */
-                    }  /* for k */
+                        taero[win_pix] = taero[inf_pix] +
+                            (taero[sup_pix] - taero[inf_pix]) *
+                            (l - inf_index) / (sup_index - inf_index);
+                        ipflag[win_pix] = IPFLAG_INTERP;
+                    }
                 }
-                else
-                {  /* this is a hole */
-                    hole = true;
-                }
-            }  /* end for j */
-        }  /* end for i */
-
-        /* Modify the step value */
-        step *= 2;
-    }  /* end while */
+            }  /* end if */
+        }  /* end for i < nlines */
+    }  /* end for j < nsamps */
 
     /* Perform the second level of atmospheric correction for the aerosols.
-       This is not applied to water, cirrus, or cloud pixels. */
+       This is not applied to cirrus or cloud pixels. */
     printf ("Performing atmospheric correction ...\n");
     /* 0 .. DN_BAND7 is the same as 0 .. SR_BAND7 here, since the pan band
        isn't spanned */
@@ -1285,7 +1507,7 @@ fclose (tmpfile);
     {
         printf ("  Band %d\n", ib+1);
 #ifdef _OPENMP
-        #pragma omp parallel for private (i, rsurf, rotoa, raot550nm, pres, uwv, uoz, retval, roslamb, tgo, roatm, ttatmg, satm, xrorayp, next)
+        #pragma omp parallel for private (i, rsurf, rotoa, raot550nm, pres, uwv, uoz, retval, roslamb, tgo, roatm, ttatmg, satm, xrorayp, next, isuccess, ros2b1)
 #endif
         for (i = 0; i < nlines * nsamps; i++)
         {
@@ -1293,11 +1515,8 @@ fclose (tmpfile);
                fill pixels have already been marked in the TOA process. */
             if (qaband[i] != 1)
             {
-                /* If not water or some other high aerosol pixel (tresi > 0)
-                   and this isn't a cirrus or cloud pixel */
-                if (tresi[i] > 0.0 &&
-                    !btest (cloud[i], CIR_QA) &&
-                    !btest (cloud[i], CLD_QA))
+                /* If this isn't a cirrus or cloud pixel */
+                if (!btest (cloud[i], CIR_QA) && !btest (cloud[i], CLD_QA))
                 {
                     rsurf = sband[ib][i] * SCALE_FACTOR;
                     rotoa = (rsurf * bttatmg[ib] / (1.0 - bsatm[ib] * rsurf)
@@ -1327,10 +1546,74 @@ fclose (tmpfile);
                     if (ib == DN_BAND1)
                     {
                         /* Recompute based on predefined taero value */
-                        if (roslamb < -0.005)
+                        ros2b1 = roslamb;
+                        if (roslamb < 0.01 && raot550nm > 0.06)
                         {
-                            taero[i] = 0.05;
-                            raot550nm = 0.05;
+                            /* This should be refined to get better values */
+                            isuccess = false;
+                            while (roslamb < 0.0)
+                            {
+                                raot550nm = taero[i] - 0.05;
+                                ros2b1 = roslamb;
+                                pres = tp[i];
+                                uwv = twvi[i];
+                                uoz = tozi[i];
+                                retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi,
+                                    cosxfi, raot550nm, ib, pres, tpres,
+                                    aot550nm, rolutt, transt, xtsstep, xtsmin,
+                                    xtvstep, xtvmin, sphalbt, normext, tsmax,
+                                    tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
+                                    uwv, tauray, ogtransa1, ogtransb0,
+                                    ogtransb1, wvtransa, wvtransb, oztransa,
+                                    rotoa, &roslamb, &tgo, &roatm, &ttatmg,
+                                    &satm, &xrorayp, &next);
+                                if (retval != SUCCESS)
+                                {
+                                    sprintf (errmsg, "Performing lambertian "
+                                        "atmospheric correction type 2.");
+                                    error_handler (true, FUNC_NAME, errmsg);
+                                    exit (ERROR);
+                                }
+
+                                /* Save the results and recheck */
+                                taero[i] = raot550nm;
+                                if (roslamb >= 0.0)
+                                    isuccess = true;
+                            }  /* end while roslamb < 0.0 */
+
+                            /* If not successful, run one more time */
+                            if (!isuccess)
+                            {
+                                raot550nm = taero[i] - 0.05;
+                                ros2b1 = roslamb;
+                                pres = tp[i];
+                                uwv = twvi[i];
+                                uoz = tozi[i];
+                                retval = atmcorlamb2 (xts, xtv, xmus, xmuv, xfi,
+                                    cosxfi, raot550nm, ib, pres, tpres,
+                                    aot550nm, rolutt, transt, xtsstep, xtsmin,
+                                    xtvstep, xtvmin, sphalbt, normext, tsmax,
+                                    tsmin, nbfic, nbfi, tts, indts, ttv, uoz,
+                                    uwv, tauray, ogtransa1, ogtransb0,
+                                    ogtransb1, wvtransa, wvtransb, oztransa,
+                                    rotoa, &roslamb, &tgo, &roatm, &ttatmg,
+                                    &satm, &xrorayp, &next);
+                                if (retval != SUCCESS)
+                                {
+                                    sprintf (errmsg, "Performing lambertian "
+                                        "atmospheric correction type 2.");
+                                    error_handler (true, FUNC_NAME, errmsg);
+                                    exit (ERROR);
+                                }
+
+                                /* Save the results */
+                                taero[i] = raot550nm;
+                            }
+
+                            /* Refined optical depth */
+                            raot550nm = taero[i] - (roslamb - 0.01) *
+                                 (-0.05 / (roslamb - ros2b1));
+                            taero[i] = raot550nm;
                             retval = atmcorlamb2 (xts, xtv, xmus, xmuv,
                                 xfi, cosxfi, raot550nm, ib, pres, tpres,
                                 aot550nm, rolutt, transt, xtsstep, xtsmin,
@@ -1347,27 +1630,26 @@ fclose (tmpfile);
                                 error_handler (true, FUNC_NAME, errmsg);
                                 exit (ERROR);
                             }
+                        }  /* if roslamb && raot550nm */
+
+                        /* Set up aerosol QA bits */
+                        if (fabs (rsurf - roslamb) <= 0.015)
+                        {  /* Set the first aerosol bit (low aerosols) */
+                            cloud[i] += 16;
                         }
                         else
-                        {  /* Set up aerosol QA bits */
-                            if (fabs (rsurf - roslamb) <= 0.015)
-                            {  /* Set the first aerosol bit (low aerosols) */
-                                cloud[i] += 16;
+                        {
+                            if (fabs (rsurf - roslamb) < 0.03)
+                            {  /* Set the second aerosol bit (average
+                                  aerosols) */
+                                cloud[i] += 32;
                             }
                             else
-                            {
-                                if (fabs (rsurf - roslamb) < 0.03)
-                                {  /* Set the second aerosol bit (average
-                                      aerosols) */
-                                    cloud[i] += 32;
-                                }
-                                else
-                                {  /* Set both aerosol bits (high aerosols) */
-                                    cloud[i] += 48;
-                                }
+                            {  /* Set both aerosol bits (high aerosols) */
+                                cloud[i] += 48;
                             }
-                        }  /* end if/else roslamb */
-                    }  /* end if ib */
+                        }
+                    }  /* end if this is the coastal aerosol band */
 
                     /* Save the scaled surface reflectance value, but make
                        sure it falls within the defined valid range. */
@@ -1377,9 +1659,12 @@ fclose (tmpfile);
                     else if (roslamb > MAX_VALID)
                         sband[ib][i] = MAX_VALID;
                     else
-                        sband[ib][i] = (int) (round (roslamb));
-                }  /* end if */
-            }  /* end if qaband */
+                          /* TODO FORTRAN code doesn't round here, but it's
+                             probably a good idea */
+//                        sband[ib][i] = (int) (round (roslamb));
+                        sband[ib][i] = (int) (roslamb);
+                }  /* end if not cirrus and not cloud */
+            }  /* end if not fill */
         }  /* end for i */
     }  /* end for ib */
 
@@ -1485,6 +1770,49 @@ fclose (tmpfile);
         xml_infile) != SUCCESS)
     {
         sprintf (errmsg, "Appending cloud mask band to XML file.");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Write the ipflag mask band */
+    printf ("  Band %d: %s\n", SR_IPFLAG+1,
+            sr_output->metadata.band[SR_IPFLAG].file_name);
+    if (put_output_lines (sr_output, ipflag, SR_IPFLAG, 0, nlines,
+        sizeof (uint8)) != SUCCESS)
+    {
+        sprintf (errmsg, "Writing ipflag mask output data");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Free memory for ipflag data */
+    free (ipflag);
+
+    /* Create the ENVI header for the ipflag mask band */
+    if (create_envi_struct (&sr_output->metadata.band[SR_IPFLAG],
+        &xml_metadata->global, &envi_hdr) != SUCCESS)
+    {
+        sprintf (errmsg, "Creating ENVI header structure.");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Write the ENVI header */
+    strcpy (envi_file, sr_output->metadata.band[SR_IPFLAG].file_name);
+    cptr = strchr (envi_file, '.');
+    strcpy (cptr, ".hdr");
+    if (write_envi_hdr (envi_file, &envi_hdr) != SUCCESS)
+    {
+        sprintf (errmsg, "Writing ENVI header file.");
+        error_handler (true, FUNC_NAME, errmsg);
+        exit (ERROR);
+    }
+
+    /* Append the ipflag mask band to the XML file */
+    if (append_metadata (1, &sr_output->metadata.band[SR_IPFLAG],
+        xml_infile) != SUCCESS)
+    {
+        sprintf (errmsg, "Appending ipflag mask band to XML file.");
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -1706,8 +2034,9 @@ int init_sr_refl
 
     /* Use scene center (and center of the pixel) to compute atmospheric
        parameters */
-    img.l = (int) (nlines * 0.5) - 0.5;
-    img.s = (int) (nsamps * 0.5) + 0.5;
+    /* TODO -- FORTRAN code adds one to the calculation.  Is this correct?? */
+    img.l = (int) (1 + nlines * 0.5) - 0.5;
+    img.s = (int) (1 + nsamps * 0.5) + 0.5;
     img.is_fill = false;
     if (!from_space (space, &img, &geo))
     {
@@ -1726,6 +2055,8 @@ int init_sr_refl
     xcmg = (179.975 + center_lon) * 20.0;   /* vs / 0.05 */
     lcmg = (int) (ycmg + 0.5);
     scmg = (int) (xcmg + 0.5);
+    printf ("DEBUG: ycmg, xcmg: %f, %f\n", ycmg, xcmg);
+    printf ("DEBUG: lcmg, scmg: %d, %d\n", lcmg, scmg);
     if ((lcmg < 0 || lcmg >= CMG_NBLAT) || (scmg < 0 || scmg >= CMG_NBLON))
     {
         sprintf (errmsg, "Invalid line/sample combination for the "

@@ -210,12 +210,6 @@ int main (int argc, char *argv[])
         printf ("  Pixsize: %f,%f\n\n", input->size_qa.pixsize[0],
             input->size_qa.pixsize[1]);
 
-        printf ("  Nband land/water: %d\n", input->nband_lw);
-        printf ("  Number of land/water mask lines/samples: %d/%d\n",
-            input->size_lw.nlines, input->size_lw.nsamps);
-        printf ("  Pixsize: %f,%f\n\n", input->size_lw.pixsize[0],
-            input->size_lw.pixsize[1]);
-
         printf ("  Fill value: %d\n", input->meta.fill);
         printf ("  Solar zenith: %f\n", xml_metadata.global.solar_zenith);
         printf ("  Solar azimuth: %f\n", xml_metadata.global.solar_azimuth);
