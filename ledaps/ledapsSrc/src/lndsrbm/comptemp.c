@@ -43,12 +43,14 @@ int main(int argc, char **argv)
     float sc_time;    /* scene center time (in decimal hours) */
     float slp;        /* slope of the temps */
     FILE *fp=NULL;    /* file pointer for airtemp file */
+    FILE *scene_center_fp=NULL; /* file pointer for scene center temp file */
 
     /* Check the arguments */
-    if (argc < 3)
+    if (argc < 3 || argc > 5)
     {
         sprintf (errmsg, "usage: %s <scene center time (decimal hours (24 hr)> "
-            "<input airtemp file (0 hr, 6 hr, 12 hr, 18 hr)>\n", argv[0]);
+            "<input airtemp file (0 hr, 6 hr, 12 hr, 18 hr)> "
+            "[<optional scene center temperature output file>]\n", argv[0]);
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
     }
@@ -60,9 +62,21 @@ int main(int argc, char **argv)
     fp = fopen (argv[2], "r");
     if (fp == NULL)
     {
-        sprintf (errmsg, "Error opening air temp file: %s", argv[1]);
+        sprintf (errmsg, "Error opening air temp file: %s", argv[2]);
         error_handler (true, FUNC_NAME, errmsg);
         exit (ERROR);
+    }
+
+    /* Open the scene center temperature file for writing if requested to */
+    if (argc == 4)
+    {
+        scene_center_fp = fopen (argv[3], "w");
+        if (scene_center_fp == NULL)
+        {
+            sprintf (errmsg, "Error opening : %s", argv[3]);
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
     }
 
     /* Read the 4 temperature values from the airtemp file */
@@ -90,6 +104,13 @@ int main(int argc, char **argv)
     sc_temp = temp[i-1] + slp * (sc_time - time[i-1]);
 
     printf ("%f\n", sc_temp);
+
+    /* If requested, write the result to a file. */
+    if (argc == 4)
+    {
+        fprintf (scene_center_fp, "%f\n", sc_temp);
+        fclose (scene_center_fp);
+    }
 
     exit (SUCCESS);
 }

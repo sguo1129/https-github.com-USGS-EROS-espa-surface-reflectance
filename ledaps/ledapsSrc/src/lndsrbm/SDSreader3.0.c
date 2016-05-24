@@ -44,6 +44,7 @@ short COLUMNS = 0;
 short samples = 0;
 char outfile[MAXLENGTH];
 char HDFoutfile[MAXLENGTH];
+char airtempfile[MAXLENGTH];
 char binfile[MAXLENGTH];
 int ref_SDS;
 char ref_string[MAXLENGTH];
@@ -54,6 +55,7 @@ float NR[MAXSITES], NC[MAXSITES];
 int main(int argc, char **argv)
 {
 FILE *fd=NULL, *fdout=NULL;
+FILE *fd_air_temp = NULL; /* File descriptor for air temperature file */
 FILE *fdExtsrc[MAXCRITERIA];
 FILE *fddebug=NULL;
 short ret, i;
@@ -65,6 +67,7 @@ int32 filter_type=-1;
 int32 SDS_type[MAXBANDS];
 int32 SDS_filtertype[MAXCRITERIA];
 long n_rows=0, n_cols=0, save_bin, save_out, save_HDFout;
+long save_air_temp = 0; /* Flag for saving air temperature to file */
 char name[MAXLENGTH];
 char SDSinfile[MAXBANDS][MAXLENGTH];
 char sds_table[MAXLENGTH*MAXBANDS];
@@ -208,7 +211,7 @@ ret = process_arg(argc, argv, paramfileline);
 /*printf("RET=%d\n", ret);*/
 if (ret<1) {
      if (ret == 0) printf("\nProgram used to read values from SDSs\n");
-     printf("Usage: %s -f <HDF file> -l <SDS namelist> -x -w <criteria> -v -c -o <file> -s -b <prefix> -p <file>\n", argv[0]);
+     printf("Usage: %s -f <HDF file> -l <SDS namelist> -x -w <criteria> -v -c -o <file> -t <file> -s -b <prefix> -p <file>\n", argv[0]);
      printf("where -l <SDS namelist> is a file with names of SDSs, or a list of SDSs in HDFfile;\n");
      printf("                        default is to use all SDSs in HDFfile.  Max number: %d\n", MAXBANDS);
      printf("      -x                use all SDSs in file EXCEPT those specifed in <SDS namelist>;\n");
@@ -217,6 +220,7 @@ if (ret<1) {
      printf("      -c                results are written in columns instead of extcal-like lines (default)\n");
      printf("      -s                samples are written to stdio\n");
      printf("      -o <file>         output is printed to <file>\n");
+     printf("      -t <file>         air temperature is printed to <file>\n");
      printf("      -h <file>         samples are written to <HDF file>\n");
      printf("      -b <prefix>       samples are written as flat binaries with following \n");
      printf("                          naming convention: <prefix>_<SDS name>_sample_<nn>, \n");
@@ -320,6 +324,16 @@ if (strcmp(outfile,"")) {
      exit(-7);
                                                      } 
                          }
+
+if (strcmp(airtempfile, "")) 
+{
+   save_air_temp = 1;
+   if ((fd_air_temp = (fopen(airtempfile, "wb"))) == NULL)
+   {
+     printf("Error: cannot open '%s'\n", airtempfile);
+     exit(-7);
+   } 
+}
 			 
 /* new, 31-OCT-02: set up HDF outputs if necessary */
 if (strcmp(HDFoutfile,"")) {
@@ -1285,10 +1299,24 @@ for (ii=0;ii<n_sites;ii++) {
 	    sprintf(sds_table+strlen(sds_table),"       SDS %02d, '%s' level %d: ", j, SDSnames[j], SDS_offset[j]);
          for (i=0;i<longest-strlen(SDSnames[j]);i++) sprintf(sds_table+strlen(sds_table)," ");
 	 sprintf(sds_table+strlen(sds_table),"\tAVG = %f, \tSD = %f\n", SDS_avg[j], SDS_SD[j]);
-	     }
+
+      }
+
       sprintf(sds_table+strlen(sds_table),"\n");
                 }
 
+   /* Write the air temperature value to file if requested */
+   if (save_air_temp)
+   {
+      for (j = 0; j < n_SDSs; j++)
+      {
+         /* Look for SDS names that start with "air_" */
+         if (strncmp(SDSnames[j], "air_", 4) == 0)
+         {
+             fprintf(fd_air_temp, "%f\n", SDS_avg[j]);
+         }
+      }
+   }
 		
    if (COLUMNS) {
        sprintf(resultstring,"Site %d: ",ii);
@@ -1410,6 +1438,13 @@ for (ii=0;ii<n_sites;ii++) {
 
                         } /* NEW, 17-NOV-98: for (ii=0;ii<n_sites;ii++) */
 if (save_out) fclose(fdout);
+
+/* Close air temperature file. */
+if (save_air_temp)
+{
+    fclose(fd_air_temp);
+}
+
 for (j=0;j<n_criteria;j++) {
    if (fdExtsrc[j] != 0) fclose(fdExtsrc[j]);   
    if (crit_file_id[j] != file_id) SDend(crit_file_id[j]);
@@ -1796,6 +1831,11 @@ for (i=0;i<argc;i++) {
            case 'o':
                in_list = in_crit = 0;
 	       if ((i+1) < argc) strcpy(outfile, argv[i+1]);
+	       i++;
+	       break;
+           case 't':
+               in_list = in_crit = 0;
+	       if ((i+1) < argc) strcpy(airtempfile, argv[i+1]);
 	       i++;
 	       break;
            case 'h':

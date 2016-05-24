@@ -270,7 +270,7 @@ class Ledaps():
                 os.chdir(mydir)
                 return ERROR
 
-            cmdstr = "lndsrbm.ksh lndsr.%s.txt" % xml
+            cmdstr = "lndsrbm.py -f lndsr.%s.txt" % xml
             # logger.debug('lndsrbm command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
             logger.info(output)
