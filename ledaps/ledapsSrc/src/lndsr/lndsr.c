@@ -48,6 +48,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <math.h>
+#include <time.h> // RRRR TMP for test
 
 #include "lndsr.h"
 #include "keyvalue.h"
@@ -172,7 +173,7 @@ int main (int argc, const char **argv) {
                                   flipped */
   
     int nbpts;
-    int inter_aot[3];
+    int inter_aot;
     float scene_gmt;
 
     Geoloc_t *space = NULL;
@@ -210,6 +211,9 @@ int main (int argc, const char **argv) {
     int no_ozone_file;
     short jday;
 
+    time_t raw_time; // RRRR TMP
+    struct tm * timeinfo; // RRRR TMP
+
     Espa_internal_meta_t xml_metadata;  /* XML metadata structure */
     Espa_global_meta_t *gmeta = NULL;   /* pointer to global meta */
     Envi_header_t envi_hdr;             /* output ENVI header information */
@@ -221,6 +225,10 @@ int main (int argc, const char **argv) {
     printf ("\nRunning lndsr ....\n");
     debug_flag= DEBUG_FLAG;
     no_ozone_file=0;
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("start time:%s", asctime(timeinfo)); // RRRR TMP
   
     set_sixs_path_from(argv[0]);
 
@@ -729,6 +737,9 @@ int main (int argc, const char **argv) {
 
     printf("True North adjustment = %f\n",adjust_north);
 
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("read inputs/initialization time:%s", asctime(timeinfo)); // RRRR TMP
 
 #ifdef SAVE_6S_RESULTS
     if (read_6S_results_from_file(SIXS_RESULTS_FILENAME,&sixs_tables)) {
@@ -788,6 +799,10 @@ int main (int argc, const char **argv) {
     write_6S_results_to_file(SIXS_RESULTS_FILENAME,&sixs_tables);
     }
 #endif
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("sixs done time:%s", asctime(timeinfo)); // RRRR TMP
 
 /***
     interpolate ancillary data for AR grid cells
@@ -871,6 +886,10 @@ int main (int argc, const char **argv) {
         }  /* for is_ar */
     }  /* for il_ar */
 
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("interpolate ancillary done time:%s", asctime(timeinfo)); // RRRR TMP
+
     if (dem_available) {
         for (il_ar = 0; il_ar < lut->ar_size.l;il_ar++) 
             for (is_ar=0;is_ar < lut->ar_size.s; is_ar++) 
@@ -930,6 +949,9 @@ int main (int argc, const char **argv) {
 
         img.is_fill = false;
         img.l = il;
+#ifdef _OPENMP
+        #pragma omp parallel for private (is, geo, flat, flon, tmpflt_arr) firstprivate (img, atemp_line)
+#endif
         for (is = 0; is < input->size.s; is++) {
             /* Get the geolocation info for this pixel */
             img.s = is;
@@ -954,6 +976,10 @@ int main (int argc, const char **argv) {
                 EXIT_ERROR("running cloud detection pass 1", "main");
     } /* end for il */
     printf ("\n");
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("cloud pass 1 done time:%s", asctime(timeinfo)); // RRRR TMP
 
     if (param->thermal_band) {
         for (il = 0; il < cld_diags.nbrows; il++) {
@@ -1029,6 +1055,10 @@ int main (int argc, const char **argv) {
     }  /* end if thermal band */
     printf ("\n");
 
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("between cloud 1 and 2 done time:%s", asctime(timeinfo)); // RRRR TMP
+
 /***
     Create dark target temporary file
 ***/
@@ -1061,8 +1091,8 @@ int main (int argc, const char **argv) {
             il_end = input->size.l - 1;
 
         /* Read each input band for each line in region */
-        for (il = il_start, il_region = 0; il < (il_end + 1);
-            il++, il_region++) {
+        for (il = il_start; il < (il_end + 1); il++) {
+            il_region = il - il_start;
             for (ib = 0; ib < input->nband; ib++) {
                 if (!GetInputLine(input, ib, il, line_in[il_region][ib]))
                     EXIT_ERROR("reading input data for a line (a)", "main");
@@ -1118,6 +1148,10 @@ int main (int argc, const char **argv) {
         for (i=0;i<lut->ar_region_size.l;i++)
             memset(&ptr_rot_cld[2][i][0],0,input->size.s);
     }  /* end for il_start */
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("cloud pass 2 done time:%s", asctime(timeinfo)); // RRRR TMP
 
     /** Last Block **/
     dilate_shadow_mask(lut, input->size.s, ptr_rot_cld, 5);
@@ -1187,6 +1221,11 @@ int main (int argc, const char **argv) {
 
     printf("\n");
     fclose(fdtmp);
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("Ar done time:%s", asctime(timeinfo)); // RRRR TMP
+
 #ifdef DEBUG_AR
     fclose(fd_ar_diags);
 #endif
@@ -1196,6 +1235,10 @@ int main (int argc, const char **argv) {
     and 3(2)
     ***/
     Fill_Ar_Gaps(lut, line_ar, 0);
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("Fill Ar Gaps done time:%s", asctime(timeinfo)); // RRRR TMP
 
     /* Compute atmospheric coeffs for the whole scene using retrieved aot */
     nbpts=lut->ar_size.l*lut->ar_size.s;
@@ -1208,6 +1251,10 @@ int main (int argc, const char **argv) {
     update_atmos_coefs(&atmos_coef,&ar_gridcell, &sixs_tables,line_ar, lut,
         input->nband, 0); /*Eric COMMENTED TO PERFORM NO CORRECTION*/
 #endif
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("update_atmos_coefs done time:%s", asctime(timeinfo)); // RRRR TMP
 
     /* Re-read input and compute surface reflectance */
     /***
@@ -1244,6 +1291,8 @@ int main (int argc, const char **argv) {
 
         loc.l=il;
         i_aot=il/lut->ar_region_size.l;
+        t6s_seuil=280.+(1000.*0.01);
+
         for (is=0;is<input->size.s;is++) {
             loc.s=is;
             j_aot=is/lut->ar_region_size.s;
@@ -1268,8 +1317,8 @@ int main (int argc, const char **argv) {
 
             /* Process QA for each pixel */
             if (!refl_is_fill) {  /* AOT / opacity */
-                ArInterp(lut, &loc, line_ar, inter_aot); 
-                line_out[lut->nband][is] = inter_aot[0];
+                ArInterp(lut, &loc, line_ar, &inter_aot); 
+                line_out[lut->nband][is] = inter_aot;
 
                 /**
                 Set bits for internal cloud mask
@@ -1300,10 +1349,9 @@ int main (int argc, const char **argv) {
                    again in lndsrbm */
                 line_out[lut->nband+CLOUD_SHADOW][is] = QA_OFF;
                 line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
-                
+
                 anom=line_out[0][is]-line_out[2][is]/2.;
                 t6=b6_line[0][is]*0.1;
-                t6s_seuil=280.+(1000.*0.01);
                 if (((anom > 300) && (line_out[4][is] > 300) &&
                      (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
                      (t6 < t6s_seuil)))   /* internal cloud mask bit */
@@ -1343,6 +1391,10 @@ int main (int argc, const char **argv) {
     printf("\n");
     fclose(fdtmp);
     unlink(tmpfilename); 
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("Sr done time:%s", asctime(timeinfo)); // RRRR TMP
     
     /* Print the statistics, skip bands that don't exist */
     printf(" total pixels %ld\n", ((long)input->size.l * (long)input->size.s));
@@ -1442,6 +1494,11 @@ int main (int argc, const char **argv) {
 
     /* All done */
     printf ("lndsr complete.\n");
+
+    time(&raw_time); // RRRR TMP
+    timeinfo = localtime(&raw_time); // RRRR TMP
+    printf("lndsr done time:%s", asctime(timeinfo)); // RRRR TMP
+
     return (EXIT_SUCCESS);
 }
 
