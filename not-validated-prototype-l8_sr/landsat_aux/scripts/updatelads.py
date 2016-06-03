@@ -29,14 +29,15 @@ START_YEAR = 2013      # quarterly processing will reprocess back to the
 # DatasourceResolver class
 ############################################################################
 class DatasourceResolver:
-    # Specify the base location for the EP/TOMS data as well as the
+    # Specify the base location for the LAADS data as well as the
     # correct subdirectories for each of the instrument-specific ozone
     # products
+    # These are version 006 products
     SERVER_URL = 'ladssci.nascom.nasa.gov'
-    TERRA_CMA = '/allData/24/MOD09CMA/'
-    TERRA_CMG = '/allData/24/MOD09CMG/'
-    AQUA_CMA = '/allData/22/MYD09CMA/'
-    AQUA_CMG = '/allData/22/MYD09CMG/'
+    TERRA_CMA = '/allData/6/MOD09CMA/'
+    TERRA_CMG = '/allData/6/MOD09CMG/'
+    AQUA_CMA = '/allData/6/MYD09CMA/'
+    AQUA_CMG = '/allData/6/MYD09CMG/'
 
     user = None
     password = None
