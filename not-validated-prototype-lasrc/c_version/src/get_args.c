@@ -1,5 +1,5 @@
 #include <getopt.h>
-#include "l8_sr.h"
+#include "lasrc.h"
 
 /******************************************************************************
 MODULE:  get_args

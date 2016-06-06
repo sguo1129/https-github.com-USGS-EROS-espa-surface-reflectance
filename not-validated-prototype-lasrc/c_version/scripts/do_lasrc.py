@@ -29,7 +29,7 @@ SUCCESS = 0
 #   Updated on 1/13/2016 by Gail Schmidt, USGS/EROS
 #   Modified to support the new collection filenaming convention
 #
-# Usage: do_l8_sr.py --help prints the help message
+# Usage: do_lasrc.py --help prints the help message
 ############################################################################
 class SurfaceReflectance():
 
@@ -167,15 +167,15 @@ class SurfaceReflectance():
         if write_toa:
             write_toa_opt_str = "--write_toa "
 
-        cmdstr = "l8_sr --xml=%s --aux=%s %s%s--verbose" % \
+        cmdstr = "lasrc --xml=%s --aux=%s %s%s--verbose" % \
             (xml_infile, aux_file, process_sr_opt_str, write_toa_opt_str)
-        msg = 'Executing l8_sr command: %s' % cmdstr
+        msg = 'Executing lasrc command: %s' % cmdstr
         logger.info (msg)
         (status, output) = commands.getstatusoutput (cmdstr)
         logger.info (output)
         exit_code = status >> 8
         if exit_code != 0:
-            msg = 'Error running l8_sr.  Processing will terminate.'
+            msg = 'Error running lasrc.  Processing will terminate.'
             logger.error (msg)
             os.chdir (mydir)
             return ERROR

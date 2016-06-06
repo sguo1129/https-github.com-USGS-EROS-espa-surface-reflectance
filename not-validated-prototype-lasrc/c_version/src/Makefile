@@ -1,5 +1,5 @@
 #-----------------------------------------------------------------------------
-# Makefile for L8 SR code
+# Makefile for LaSRC code
 #-----------------------------------------------------------------------------
 .PHONY: all install clean
 
@@ -14,7 +14,7 @@ RM    = rm
 EXTRA = -Wall $(EXTRA_OPTIONS)
 
 # Define the include files
-INC = common.h date.h input.h output.h lut_subr.h l8_sr.h
+INC = common.h date.h input.h output.h lut_subr.h lasrc.h
 
 # Define the source code and object files
 SRC = compute_refl.c      \
@@ -24,7 +24,7 @@ SRC = compute_refl.c      \
       lut_subr.c          \
       output.c            \
       subaeroret.c        \
-      l8_sr.c
+      lasrc.c
 OBJ = $(SRC:.c=.o)
 
 # Define include paths
@@ -46,7 +46,7 @@ MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
 # Define C executables
-EXE = l8_sr
+EXE = lasrc
 
 #-----------------------------------------------------------------------------
 all: $(EXE)
@@ -57,9 +57,9 @@ $(EXE): $(OBJ) $(INC)
 #-----------------------------------------------------------------------------
 install:
 	install -d $(link_path)
-	install -d $(l8_bin_install_path)
-	install -m 755 $(EXE) $(l8_bin_install_path)
-	ln -sf $(l8_link_source_path)/$(EXE) $(link_path)/$(EXE)
+	install -d $(lasrc_bin_install_path)
+	install -m 755 $(EXE) $(lasrc_bin_install_path)
+	ln -sf $(lasrc_link_source_path)/$(EXE) $(link_path)/$(EXE)
 
 #-----------------------------------------------------------------------------
 clean:

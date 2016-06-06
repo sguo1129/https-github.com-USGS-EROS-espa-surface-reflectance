@@ -1,5 +1,5 @@
-#ifndef _L8_SR_H_
-#define _L8_SR_H_
+#ifndef _LASRC_H_
+#define _LASRC_H_
 
 #include <stdio.h>
 #include <stdlib.h>

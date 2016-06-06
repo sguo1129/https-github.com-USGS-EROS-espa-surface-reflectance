@@ -1,4 +1,4 @@
-#include "l8_sr.h"
+#include "lasrc.h"
 #include "time.h"
 
 /******************************************************************************
@@ -120,15 +120,11 @@ int compute_toa_refl
                     else
                         /* TODO FORTRAN code doesn't round here, but it's
                            probably a good idea */
-//                        sband[sband_ib][i] = (int) (round (rotoa));
+//                        sband[sband_ib][i] = (int) (roundf (rotoa));
                         sband[sband_ib][i] = (int) rotoa;
                 }
                 else
                     sband[sband_ib][i] = FILL_VALUE;
-if (ib == DN_BAND9 && i == 90 * nsamps + 1815)
-{
-    printf ("DEBUG2: sband[%d][90][1815] = %d\n", sband_ib, sband[sband_ib][i]);
-}
             }
         }  /* end if band <= band 9 */
 
@@ -176,7 +172,7 @@ if (ib == DN_BAND9 && i == 90 * nsamps + 1815)
                     else
                         /* TODO FORTRAN code doesn't round here, but it's
                            probably a good idea */
-//                        sband[SR_BAND10][i] = (int) (round (tmpf));
+//                        sband[SR_BAND10][i] = (int) (roundf (tmpf));
                         sband[SR_BAND10][i] = (int) (tmpf);
                 }
                 else
@@ -226,7 +222,7 @@ if (ib == DN_BAND9 && i == 90 * nsamps + 1815)
                     else
                         /* TODO FORTRAN code doesn't round here, but it's
                            probably a good idea */
-//                        sband[SR_BAND11][i] = (int) (round (tmpf));
+//                        sband[SR_BAND11][i] = (int) (roundf (tmpf));
                         sband[SR_BAND11][i] = (int) (tmpf);
                 }
                 else
@@ -266,7 +262,6 @@ NOTES:
    now hardcoded to save time from reading the file each time.  This file was
    generated (like many of the other auxiliary input tables) by running 6S and
    storing the coefficients.
-3. Aerosol retrieval is not done for pixels over water or cloudy/cirrus pixels.
 ******************************************************************************/
 int compute_sr_refl
 (
@@ -302,6 +297,7 @@ int compute_sr_refl
     int inf_pix;         /* location of inferior pixel in line,sample window */
     int sup_pix;         /* location of superior pixel in line,sample window */
     bool isuccess;       /* was the refined corrected value successful? */
+    float tmpf;          /* temporary floating point value */
     float rotoa;         /* top of atmosphere reflectance */
     float roslamb;       /* lambertian surface reflectance */
     float ros2b1;        /* temp storage of the roslamb value for band 1 */
@@ -607,10 +603,6 @@ int compute_sr_refl
                 roslamb = roslamb / ttatmg;
                 roslamb = roslamb / (1.0 + satm * roslamb);
                 sband[ib][i] = (int) (roslamb * MULT_FACTOR);
-if (i == 90 * nsamps + 1815)
-{
-    printf ("DEBUG0: sband[%d][90][1815] = %d\n", ib, sband[ib][i]);
-}
             }
         }  /* end for i */
     }  /* for ib */
@@ -657,8 +649,12 @@ if (i == 90 * nsamps + 1815)
 
             /* Get the lat/long for the current pixel, for the center of
                the pixel */
-            img.l = (i+1) - 0.5;
-            img.s = (j+1) + 0.5;
+            /* TODO the line/sample conversion should use the center of the
+               pixel, however that's not being done in the FORTRAN code */
+/*            img.l = (i+1) - 0.5;
+            img.s = (j+1) + 0.5; */
+            img.l = i - 0.5;
+            img.s = j + 0.5;
             img.is_fill = false;
             if (!from_space (space, &img, &geo))
             {
@@ -685,8 +681,8 @@ if (i == 90 * nsamps + 1815)
                To be consistent, we will leave it out for now. */
             ycmg = (89.975 - lat) * 20.0;   /* vs / 0.05 */
             xcmg = (179.975 + lon) * 20.0;  /* vs / 0.05 */
-            lcmg = (int) (ycmg);
-            scmg = (int) (xcmg);
+            lcmg = (int) roundf (ycmg);
+            scmg = (int) roundf (xcmg);
             if ((lcmg < 0 || lcmg >= CMG_NBLAT) ||
                 (scmg < 0 || scmg >= CMG_NBLON))
             {
@@ -812,12 +808,6 @@ if (i == 90 * nsamps + 1815)
                     intratiob2[lcmg][scmg] = ratiob2[lcmg][scmg];
                     intratiob7[lcmg][scmg] = ratiob7[lcmg][scmg];
                 }
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG1: rb1, rb2 = %f, %f\n", rb1, rb2);
-    printf ("DEBUG1: slpratiob1, b2, b7 = %d, %d, %d\n", slpratiob1[lcmg][scmg], slpratiob2[lcmg][scmg], slpratiob7[lcmg][scmg]);
-    printf ("DEBUG1: intratiob1, b2, b7 = %d, %d, %d\n", intratiob1[lcmg][scmg], intratiob2[lcmg][scmg], intratiob7[lcmg][scmg]);
-}
 
                 rb1 = ratiob1[lcmg][scmg1] * 0.001;  /* vs. / 1000. */
                 rb2 = ratiob2[lcmg][scmg1] * 0.001;  /* vs. / 1000. */
@@ -840,12 +830,6 @@ if (i == 90 && j == 1815)
                     intratiob2[lcmg][scmg1] = ratiob2[lcmg][scmg1];
                     intratiob7[lcmg][scmg1] = ratiob7[lcmg][scmg1];
                 }
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG1: rb1, rb2 = %f, %f\n", rb1, rb2);
-    printf ("DEBUG1: slpratiob1, b2, b7 = %d, %d, %d\n", slpratiob1[lcmg][scmg1], slpratiob2[lcmg][scmg1], slpratiob7[lcmg][scmg1]);
-    printf ("DEBUG1: intratiob1, b2, b7 = %d, %d, %d\n", intratiob1[lcmg][scmg1], intratiob2[lcmg][scmg1], intratiob7[lcmg][scmg1]);
-}
 
                 rb1 = ratiob1[lcmg1][scmg] * 0.001;  /* vs. / 1000. */
                 rb2 = ratiob2[lcmg1][scmg] * 0.001;  /* vs. / 1000. */
@@ -941,11 +925,6 @@ if (i == 90 && j == 1815)
                          intr12 * (1.0 - u) * v +
                          intr21 * u * (1.0 - v) +
                          intr22 * u * v;
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG1: slprb1, slprb2, slprb7 = %f, %f, %f\n", slprb1, slprb2, slprb7);
-    printf ("DEBUG1: intrb1, intrb2, intrb7 = %f, %f, %f\n", intrb1, intrb2, intrb7);
-}
 
                 /* Use a version of NDWI to calculate the band ratio */
                 xndwi = ((double) sband[SR_BAND5][curr_pix] -
@@ -959,10 +938,6 @@ if (i == 90 && j == 1815)
                     xndwi = th1;
                 if (xndwi < th2)
                     xndwi = th2;
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG1: xndwi = %f\n", xndwi);
-}
 
                 erelc[DN_BAND1] = (xndwi * slprb1 + intrb1);
                 erelc[DN_BAND2] = (xndwi * slprb2 + intrb2);
@@ -995,11 +970,6 @@ if (i == 90 && j == 1815)
 
                 /* Check the model residual.  Corf represents aerosol impact.
                    Test the quality of the aerosol inversion. */
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG2: corf, raot, xmus = %f, %f, %f\n", corf, raot, xmus);
-    printf ("DEBUG2: residual = %f\n", residual);
-}
                 if (residual < (0.010 + 0.005 * corf))
                 {
                     /* Test if band 5 makes sense */
@@ -1045,10 +1015,6 @@ if (i == 90 && j == 1815)
                     ros4 = roslamb;
 
                     /* Use the NDVI to validate the reflectance values */
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG3: ros4, ros5 = %f, %f\n", ros4, ros5);
-}
                     if ((ros5 > 0.1) && ((ros5 - ros4) / (ros5 + ros4) > 0))
                     {
                         taero[curr_pix] = raot;
@@ -1068,10 +1034,6 @@ if (i == 90 && j == 1815)
                     ipflag[curr_pix] = IPFLAG_RESIDUAL_FAIL;
                 }
             }  /* end if cirrus */
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG4: ipflag = %d\n", ipflag[curr_pix]);
-}
         }  /* end for j */
     }  /* end for i */
 
@@ -1146,13 +1108,12 @@ if (i == 90 && j == 1815)
     for (i = 0; i < nlines*nsamps; i++)
     {
         /* Test all bad retrievals (except for fill value) */
-        /* TODO -- We should skip fill pixels here so we don't waste time */
-//        if (ipflag[i] > IPFLAG_CLEAR && ipflag[i] != IPFLAG_FILL)
-        if (ipflag[i] > IPFLAG_CLEAR)
+        /* TODO -- FORTRAN code does not skip fill here */
+        if (ipflag[i] > IPFLAG_CLEAR && ipflag[i] != IPFLAG_FILL)
         {
             if (((sband[SR_BAND2][i] - sband[SR_BAND4][i] * 0.5) > 500) &&
                 ((sband[SR_BAND10][i] * SCALE_FACTOR_TH) < (mclear - 2.0)))
-            {  /* Snow or cloud for now */
+            {  /* Snow or cloud */
                 cloud[i] += 2;
             }
         }
@@ -1165,10 +1126,12 @@ if (i == 90 && j == 1815)
         curr_pix = i * nsamps;
         for (j = 0; j < nsamps; j++, curr_pix++)
         {
+            /* If this pixel is cloud or cirrus, then look at the 11x11
+               surrounding window as set adjacent to cloud pixels */
             if (btest (cloud[curr_pix], CLD_QA) ||
                 btest (cloud[curr_pix], CIR_QA))
             {
-                /* Check the 5x5 window around the current pixel */
+                /* Check the 11x11 window around the current pixel */
                 for (k = i-5; k <= i+5; k++)
                 {
                     /* Make sure the line is valid */
@@ -1182,9 +1145,13 @@ if (i == 90 && j == 1815)
                         if (l < 0 || l >= nsamps)
                             continue;
 
+                        /* If it's not already set as cloud or cirrus and it's
+                           not fill, then set as adjacent cloud */
+                        /* TODO FORTRAN code does not skip fill pixels */
                         if (!btest (cloud[win_pix], CLD_QA) &&
                             !btest (cloud[win_pix], CIR_QA) &&
-                            !btest (cloud[win_pix], CLDA_QA))
+                            !btest (cloud[win_pix], CLDA_QA) &&
+                            qaband[win_pix] != 1)
                         {  /* Set the adjacent cloud bit */
                             cloud[win_pix] += 4;
                         }
@@ -1194,7 +1161,8 @@ if (i == 90 && j == 1815)
         }  /* for j */
     }  /* for i */
 
-    /* Compute the cloud shadow */
+    /* Compute the cloud shadow using the temperature to determine the height
+       of the cloud */
     printf ("Determining cloud shadow ...\n");
     facl = cosf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* lines */
     fack = sinf(xfs * DEG2RAD) * tanf(xts * DEG2RAD) / pixsize;  /* samps */
@@ -1226,14 +1194,18 @@ if (i == 90 && j == 1815)
                     if (k < 0 || k >= nlines || l < 0 || l >= nsamps)
                         continue;
 
+                    /* Test the pixel for cloud shadow */
                     win_pix = k * nsamps + l;
                     if ((sband[SR_BAND6][win_pix] < 800) &&
                         ((sband[SR_BAND3][win_pix] -
                           sband[SR_BAND4][win_pix]) < 100))
                     {
+                        /* If it's cloud, cirrus, shadow, or fill then skip */
+                        /* TODO FORTRAN code does not skip fill pixels */
                         if (btest (cloud[win_pix], CLD_QA) ||
                             btest (cloud[win_pix], CIR_QA) ||
-                            btest (cloud[win_pix], CLDS_QA))
+                            btest (cloud[win_pix], CLDS_QA) ||
+                            qaband[win_pix] == 1)
                         {
                             continue;
                         }
@@ -1259,9 +1231,6 @@ if (i == 90 && j == 1815)
 
     /* Expand the cloud shadow using the residual */
     printf ("Expanding cloud shadow ...\n");
-#ifdef _OPENMP
-    #pragma omp parallel for private (i, j, curr_pix, k, l, win_pix)
-#endif
     for (i = 0; i < nlines; i++)
     {
         curr_pix = i * nsamps;
@@ -1270,7 +1239,7 @@ if (i == 90 && j == 1815)
             /* If this is a cloud shadow pixel */
             if (btest (cloud[curr_pix], CLDS_QA))
             {
-                /* Check the 6x6 window around the current pixel */
+                /* Check the 13x13 window around the current pixel */
                 for (k = i-6; k <= i+6; k++)
                 {
                     /* Make sure the line is valid */
@@ -1284,8 +1253,12 @@ if (i == 90 && j == 1815)
                         if (l < 0 || l >= nsamps)
                             continue;
 
+                        /* If this is already cloud, cloud shadow, or fill then
+                           skip */
+                        /* TODO FORTRAN code does not skip fill pixels */
                         if (btest (cloud[win_pix], CLD_QA) ||
-                            btest (cloud[win_pix], CLDS_QA))
+                            btest (cloud[win_pix], CLDS_QA) ||
+                            qaband[win_pix] == 1)
                             continue;
                         else
                         {
@@ -1318,15 +1291,18 @@ if (i == 90 && j == 1815)
     }  /* end for i */
 
     /* Detect water */
+    /* TODO -- Check to see if multi-threading is of value */
     printf ("Detecting water ...\n");
     for (i = 0; i < nlines*nsamps; i++)
     {
-        /* If not cloudy */
-        /* TODO -- Skip fill pixels here to save time */
+        /* If not cloudy, cirrus, shadow, adjacent cloud, or fill then look
+           for water */
+        /* TODO FORTRAN code does not skip fill pixels */
         if (!btest (cloud[i], CIR_QA) &&
             !btest (cloud[i], CLD_QA) &&
             !btest (cloud[i], CLDS_QA) &&
-            !btest (cloud[i], CLDA_QA))
+            !btest (cloud[i], CLDA_QA) &&
+            qaband[i] != 1)
         {
             /* Compute the NDVI */
             if (sband[SR_BAND5][i] < 100)
@@ -1343,9 +1319,6 @@ if (i == 90 && j == 1815)
         }
     }
 
-/* GAIL HERE */
-    printf ("DEBUG5: ipflag = %d\n", ipflag[90*nsamps + 1815]);
-    printf ("DEBUG5: cloud = %d\n", cloud[90*nsamps + 1815]);
     /* Aerosol interpolation -- first interpolate across the line in the sample
        direction. Does not use water, cloud, or cirrus pixels. */
     printf ("Performing aerosol interpolation across each line ...\n");
@@ -1387,11 +1360,6 @@ if (i == 90 && j == 1815)
                    continues until one pixel before the superior index */
                 int_start = inf_index + 1;
                 int_end = sup_index - 1;
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG5: inf_index = %d\n", inf_index);
-    printf ("DEBUG5: sup_index = %d\n", sup_index);
-}
 
                 /* Make sure IPFLAG values at both of the indices are clear
                    (aerosol retrieval was successful) and not already
@@ -1463,11 +1431,6 @@ if (i == 90 && j == 1815)
                    continues until one pixel before the superior index */
                 int_start = inf_index + 1;
                 int_end = sup_index - 1;
-if (i == 90 && j == 1815)
-{
-    printf ("DEBUG6: inf_index = %d\n", inf_index);
-    printf ("DEBUG6: sup_index = %d\n", sup_index);
-}
 
                 /* Make sure IPFLAG values at both of the indices are clear
                    (aerosol retrieval was successful) and not already
@@ -1633,13 +1596,14 @@ if (i == 90 && j == 1815)
                         }  /* if roslamb && raot550nm */
 
                         /* Set up aerosol QA bits */
-                        if (fabs (rsurf - roslamb) <= 0.015)
+                        tmpf = fabs (rsurf - roslamb);
+                        if (tmpf <= 0.015)
                         {  /* Set the first aerosol bit (low aerosols) */
                             cloud[i] += 16;
                         }
                         else
                         {
-                            if (fabs (rsurf - roslamb) < 0.03)
+                            if (tmpf < 0.03)
                             {  /* Set the second aerosol bit (average
                                   aerosols) */
                                 cloud[i] += 32;
@@ -1661,7 +1625,7 @@ if (i == 90 && j == 1815)
                     else
                           /* TODO FORTRAN code doesn't round here, but it's
                              probably a good idea */
-//                        sband[ib][i] = (int) (round (roslamb));
+//                        sband[ib][i] = (int) (roundf (roslamb));
                         sband[ib][i] = (int) (roslamb);
                 }  /* end if not cirrus and not cloud */
             }  /* end if not fill */
@@ -2053,10 +2017,8 @@ int init_sr_refl
        CMG-related lookup tables, using the center of the UL pixel */
     ycmg = (89.975 - center_lat) * 20.0;    /* vs / 0.05 */
     xcmg = (179.975 + center_lon) * 20.0;   /* vs / 0.05 */
-    lcmg = (int) (ycmg + 0.5);
-    scmg = (int) (xcmg + 0.5);
-    printf ("DEBUG: ycmg, xcmg: %f, %f\n", ycmg, xcmg);
-    printf ("DEBUG: lcmg, scmg: %d, %d\n", lcmg, scmg);
+    lcmg = (int) roundf (ycmg);
+    scmg = (int) roundf (xcmg);
     if ((lcmg < 0 || lcmg >= CMG_NBLAT) || (scmg < 0 || scmg >= CMG_NBLON))
     {
         sprintf (errmsg, "Invalid line/sample combination for the "

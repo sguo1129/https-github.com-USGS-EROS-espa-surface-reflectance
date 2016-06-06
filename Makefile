@@ -3,19 +3,19 @@
 #
 # Project Name: surface reflectance
 #-----------------------------------------------------------------------------
-.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-l8-sr install-l8-sr clean-l8-sr all-l8-sr-aux install-l8-sr-aux clean-l8-sr-aux all-aux install-aux
+.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-lasrc install-lasrc clean-lasrc all-lasrc-aux install-lasrc-aux clean-lasrc-aux all-aux install-aux
 
 include make.config
 
 DIR_LEDAPS = ledaps
-DIR_L8 = not-validated-prototype-l8_sr
+DIR_LaSRC = not-validated-prototype-lasrc
 
 #-----------------------------------------------------------------------------
-all: all-script all-ledaps all-l8-sr
+all: all-script all-ledaps all-lasrc
 
-install: check-environment install-script install-ledaps install-l8-sr
+install: check-environment install-script install-ledaps install-lasrc
 
-clean: clean-script clean-ledaps clean-l8-sr clean-l8-sr-aux clean-ledaps-aux
+clean: clean-script clean-ledaps clean-lasrc clean-lasrc-aux clean-ledaps-aux
 
 #-----------------------------------------------------------------------------
 all-script:
@@ -31,30 +31,30 @@ clean-script:
         (cd scripts; $(MAKE) clean);
 
 #-----------------------------------------------------------------------------
-all-l8-sr:
-	echo "make all in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) all-l8-sr);
+all-lasrc:
+	echo "make all in $(DIR_LaSRC)"; \
+        (cd $(DIR_LaSRC); $(MAKE) all-lasrc);
 
-install-l8-sr:
-	echo "make install in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) install-l8-sr);
+install-lasrc:
+	echo "make install in $(DIR_LaSRC)"; \
+        (cd $(DIR_LaSRC); $(MAKE) install-lasrc);
 
-clean-l8-sr:
-	echo "make clean in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) clean-l8-sr);
+clean-lasrc:
+	echo "make clean in $(DIR_LaSRC)"; \
+        (cd $(DIR_LaSRC); $(MAKE) clean-lasrc);
 
 #-----------------------------------------------------------------------------
-all-l8-sr-aux:
-	echo "make all in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) all-l8-sr-aux);
+all-lasrc-aux:
+	echo "make all in $(DIR_LaSRC)"; \
+        (cd $(DIR_LaSRC); $(MAKE) all-lasrc-aux);
 
-install-l8-sr-aux:
-	echo "make install in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) install-l8-sr-aux);
+install-lasrc-aux:
+	echo "make install in $(DIR_LaSRC)"; \
+        (cd $(DIR_LaSRC); $(MAKE) install-lasrc-aux);
 
-clean-l8-sr-aux:
-	echo "make clean in $(DIR_L8)"; \
-        (cd $(DIR_L8); $(MAKE) clean-l8-sr-aux);
+clean-lasrc-aux:
+	echo "make clean in $(DIR_LaSRC)"; \
+        (cd $(DIR_LaSRC); $(MAKE) clean-lasrc-aux);
 
 #-----------------------------------------------------------------------------
 all-ledaps:
@@ -83,9 +83,9 @@ clean-ledaps-aux:
         (cd $(DIR_LEDAPS); $(MAKE) clean-ledaps-aux);
 
 #------------------------------------------------------------------------------
-all-aux: all-ledaps-aux all-l8-sr-aux
+all-aux: all-ledaps-aux all-lasrc-aux
 
-install-aux: install-ledaps-aux install-l8-sr-aux
+install-aux: install-ledaps-aux install-lasrc-aux
 
 #-----------------------------------------------------------------------------
 check-environment:

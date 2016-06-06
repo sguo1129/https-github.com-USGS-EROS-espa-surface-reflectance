@@ -16,6 +16,6 @@ ledaps/ledapsSrc/src/lndsrbm/lndsrbm
 ledaps/ledapsSrc/src/lndsrbm/xy2geo
 ledaps/ledapsAncSrc/convert_ozone
 ledaps/ledapsAncSrc/ncep_repackage
-not-validated-prototype-l8_sr/c_version/src/l8_sr
-not-validated-prototype-l8_sr/landsat_aux/src/combine_l8_aux_data
+not-validated-prototype-lasrc/c_version/src/lasrc
+not-validated-prototype-lasrc/landsat_aux/src/combine_l8_aux_data
 

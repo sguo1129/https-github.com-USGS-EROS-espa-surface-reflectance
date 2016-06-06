@@ -164,7 +164,7 @@ Output_t *open_output
         bmeta[ib].pixel_size[0] = input->size.pixsize[0];
         bmeta[ib].pixel_size[1] = input->size.pixsize[1];
         strcpy (bmeta[ib].pixel_units, "meters");
-        sprintf (bmeta[ib].app_version, "l8_surface_reflectance_%s",
+        sprintf (bmeta[ib].app_version, "LaSRC_%s",
             SR_VERSION);
         strcpy (bmeta[ib].production_date, production_date);
 
