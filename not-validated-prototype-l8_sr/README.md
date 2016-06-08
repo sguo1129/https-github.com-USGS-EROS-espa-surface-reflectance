@@ -66,7 +66,7 @@ The baseline auxiliary files provided don't include the daily climate data.  In 
 
 The updatelads script requires a username/password to access the ladssci.nascom.nasa.gov FTP site.  The user will need to contact USGS EROS Customer Services to obtain a username/password for the LAADS FTP site.  In your email explain that you will be using this ftp access to obtain LAADS data for processing Landsat 8 products using the L8SR application provided by the USGS EROS.  For questions regarding this information, please contact the Landsat Contact Us page and specify USGS CDR/ECV in the "Regarding" section. https://landsat.usgs.gov/contactus.php
 
-The provided username and password should be used in the --username and --password command-line arguments for the updatelads.py script.  If not specified the source code will try to use the XMLRPC to automatically determine the username/password, which is only available to the USGS LSRD systems.
+The provided username and password should be used in the --username and --password command-line arguments for the updatelads.py script.  If not specified the source code will try to use the ESPA_LAADS_CONFIG http service to automatically determine the username/password, which is only available to the USGS LSRD systems.
 
 ### Data Preprocessing
 This version of the L8SR application requires the input Landsat products to be in the ESPA internal file format.  After compiling the product formatter raw\_binary libraries and tools, the convert\_lpgs\_to\_espa command-line tool can be used to create the ESPA internal file format for input to the L8SR application.
@@ -81,7 +81,7 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Modified the updatelads.py script to use the new location of the LAADS
-     data on the ladssci.nascom.nasa.gov wesite. Previously the data were
-     stored in the allData/22 and allData/24 directories, however they have
-     been moved to the allData/6 directory.
+  1. Modified the updatelads.py script to use Python requests service to get
+     the LAADS username/password for ESPA instead of the XMLRPC, which no
+     longer exists.  External users will still need to use --username and
+     --password to run the update scripts.
