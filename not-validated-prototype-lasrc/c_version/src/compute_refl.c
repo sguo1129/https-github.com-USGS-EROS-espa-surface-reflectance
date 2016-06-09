@@ -588,38 +588,42 @@ int compute_sr_refl
 
         /* Perform atmospheric corrections for bands 1-7 */
 #ifdef _OPENMP
-        #pragma omp parallel for private (i, rotoa, roslamb)
+        #pragma omp parallel for private (i, j, curr_pix, rotoa, roslamb)
 #endif
-        for (i = 0; i < nlines*nsamps; i++)
+        for (i = 0; i < nlines; i++)
         {
-            /* If this pixel is not fill.  Otherwise fill pixels have
-               already been marked in the TOA calculations. */
-            if (qaband[i] != 1)
+            curr_pix = i * nsamps;
+            for (j = 0; j < nsamps; j++, curr_pix++)
             {
-                /* Store the TOA scaled TOA reflectance values for later use
-                   before completing atmospheric corrections */
-                if (ib == DN_BAND1)
-                    aerob1[i] = sband[ib][i];
-                else if (ib == DN_BAND2)
-                    aerob2[i] = sband[ib][i];
-                else if (ib == DN_BAND4)
-                    aerob4[i] = sband[ib][i];
-                else if (ib == DN_BAND5)
-                    aerob5[i] = sband[ib][i];
-                else if (ib == DN_BAND7)
-                    aerob7[i] = sband[ib][i];
-
-                /* Apply the atmospheric corrections (ignoring the Rayleigh
-                   scattering component and water vapor), and store the scaled
-                   value for further corrections.  (NOTE: the full computations
-                   are in atmcorlamb2) */
-                rotoa = sband[ib][i] * SCALE_FACTOR;
-                roslamb = rotoa / tgo;
-                roslamb = roslamb - roatm;
-                roslamb = roslamb / ttatmg;
-                roslamb = roslamb / (1.0 + satm * roslamb);
-                sband[ib][i] = (int) (roslamb * MULT_FACTOR);
-            }
+                /* If this pixel is not fill.  Otherwise fill pixels have
+                   already been marked in the TOA calculations. */
+                if (qaband[curr_pix] != 1)
+                {
+                    /* Store the TOA scaled TOA reflectance values for later
+                       use before completing atmospheric corrections */
+                    if (ib == DN_BAND1)
+                        aerob1[curr_pix] = sband[ib][curr_pix];
+                    else if (ib == DN_BAND2)
+                        aerob2[curr_pix] = sband[ib][curr_pix];
+                    else if (ib == DN_BAND4)
+                        aerob4[curr_pix] = sband[ib][curr_pix];
+                    else if (ib == DN_BAND5)
+                        aerob5[curr_pix] = sband[ib][curr_pix];
+                    else if (ib == DN_BAND7)
+                        aerob7[curr_pix] = sband[ib][curr_pix];
+    
+                    /* Apply the atmospheric corrections (ignoring the Rayleigh
+                       scattering component and water vapor), and store the
+                       scaled value for further corrections.  (NOTE: the full
+                       computations are in atmcorlamb2) */
+                    rotoa = sband[ib][curr_pix] * SCALE_FACTOR;
+                    roslamb = rotoa / tgo;
+                    roslamb = roslamb - roatm;
+                    roslamb = roslamb / ttatmg;
+                    roslamb = roslamb / (1.0 + satm * roslamb);
+                    sband[ib][curr_pix] = (int) (roslamb * MULT_FACTOR);
+                }
+            }  /* end for j */
         }  /* end for i */
     }  /* for ib */
     printf ("\n");
@@ -667,8 +671,6 @@ int compute_sr_refl
                the pixel */
             /* TODO the line/sample conversion should use the center of the
                pixel, however that's not being done in the FORTRAN code */
-/*            img.l = (i+1) - 0.5;
-            img.s = (j+1) + 0.5; */
             img.l = i - 0.5;
             img.s = j + 0.5;
             img.is_fill = false;
@@ -1089,10 +1091,11 @@ int compute_sr_refl
             mall += sband[SR_BAND10][i] * SCALE_FACTOR_TH;
 
             /* Check for clear pixels */
-            if ((!btest (cloud[i], CIR_QA)) && (sband[SR_BAND5][i] > 300))
+            if ((!btest (cloud[i], CIR_QA)) &&
+                (sband[SR_BAND5][i] > 300))
             {
                 /* Check to see if this is a clear pixel */
-                anom = sband[SR_BAND2][i] - sband[SR_BAND4][i] * 0.5;
+                anom = sband[SR_BAND2][i] - (sband[SR_BAND4][i] * 0.5);
                 if (anom < 300)
                 {
                     /* Keep track of the number of clear pixels in addition to
@@ -1306,7 +1309,6 @@ int compute_sr_refl
     }  /* end for i */
 
     /* Detect water */
-    /* TODO -- Check to see if multi-threading is of value */
     printf ("Detecting water ...\n");
     for (i = 0; i < nlines*nsamps; i++)
     {
@@ -1332,7 +1334,7 @@ int compute_sr_refl
             if (fndvi < 0.01)
                 ipflag[i] = IPFLAG_WATER;  /* water */
         }
-    }
+    }  /* for i */
 
     /* Aerosol interpolation -- first interpolate across the line in the sample
        direction. Does not use water, cloud, or cirrus pixels. */
@@ -1408,7 +1410,7 @@ int compute_sr_refl
     /* Aerosol interpolation -- next interpolate down the samples in the line
        direction. Does not use water, cloud, or cirrus pixels. */
     printf ("Performing aerosol interpolation down each sample ...\n");
-    for (j = 0; j < nsamps; j++, curr_pix++)
+    for (j = 0; j < nsamps; j++)
     {
         for (i = 0; i < nlines; i++)
         {
@@ -1487,7 +1489,7 @@ int compute_sr_refl
 #ifdef _OPENMP
         #pragma omp parallel for private (i, rsurf, rotoa, raot550nm, pres, uwv, uoz, retval, roslamb, tgo, roatm, ttatmg, satm, xrorayp, next, isuccess, ros2b1)
 #endif
-        for (i = 0; i < nlines * nsamps; i++)
+        for (i = 0; i < nlines*nsamps; i++)
         {
             /* If this pixel is fill, then don't process. Otherwise the
                fill pixels have already been marked in the TOA process. */

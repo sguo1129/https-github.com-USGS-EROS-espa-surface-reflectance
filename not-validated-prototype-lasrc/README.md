@@ -29,12 +29,12 @@ See git tag [lasrc-version_0.7.0]
 
   * Download (from Github USGS-EROS surface-reflectance project) and install source files. The following build will create a list of executable files under $PREFIX/bin (tested in Linux with the gcc compiler). It will also copy various scripts from the scripts directory up the the $PREFIX/bin directory.
 ```
-    cd l8_sr\c_version\src
+    cd lasrc\c_version\src
     make
     make install
     make clean
 
-    cd l8_sr\landsat_aux\src
+    cd lasrc\landsat_aux\src
     make
     make install
     make clean
@@ -43,7 +43,6 @@ See git tag [lasrc-version_0.7.0]
   * Test - Download Landsat Level 1 files.  Run the do\_lasrc Python script in the PREFIX bin directory to run the applications.  Use do\_lasrc.py --help for the usage information.  This script requires that your LaSRC binaries are in your $PATH or that you have a $BIN environment variable set up to point to the PREFIX bin directory.
 ```
     convert_lpgs_to_espa --mtl <Landsat_MTL_file> --xml <Landsat_ESPA_XML_file>
-    create_land_water_mask --xml <Landsat_ESPA_XML_file>
     do_lasrc.py --xml <Landsat_ESPA_XML_file>
 ```
 
@@ -64,46 +63,9 @@ See git tag [lasrc-version_0.7.0]
 ### Auxiliary Data Updates
 The baseline auxiliary files provided don't include the daily climate data.  In order to generate or update the auxiliary files to the most recent day of year (actually the most current auxiliary files available will be 2-3 days prior to the current day of year do to the latency of the underlying LAADS products) the user will want to run the updatelads.py script available in $PREFIX/bin.  This script can be run with the "--help" argument to print the usage information.  In general the --quarterly argument will reprocess/update all the LAADS data back to 2013.  This is good to do every once in a while to make sure any updates to the LAADS data products are captured.  The --today command-line argument will process the LAADS data for the most recent year.  In general, it is suggested to run the script with --quarterly once a quarter.  Then run the script with --today on a nightly basis.  This should provide an up-to-date version of the auxiliary input data for LaSRC.  The easiest way to accomplish this is to set up a nightly and quarterly cron job.
 
-The updatelads script requires a username/password to access the ladssci.nascom.nasa.gov FTP site.  The user will need to contact NASA Contractor/Scientist Sadashiva Devadiga <sadashiva.devadiga-1@nasa.gov> to obtain a username/password for the LAADS FTP site.  In your email explain that you will be using this ftp access to obtain LAADS data for processing Landsat 8 products using the LaSRC application provided by the USGS EROS.
+The updatelads script requires a username/password to access the ladssci.nascom.nasa.gov FTP site.  The user will need to contact USGS EROS Customer Services to obtain a username/password for the LAADS FTP site.  In your email explain that you will be using this ftp access to obtain LAADS data for processing Landsat 8 products using the LaSRC application provided by the USGS EROS.  For questions regarding this information, please contact the Landsat Contact Us page and specify USGS CDR/ECV in the "Regarding" section. https://landsat.usgs.gov/contactus.php
 
-updatelads is currently set up to access ESPA_XMLRPC to obtain the ESPA LAADS username/password.  That access will need to be commented out by the user and the user's specific username/password needs to be specified in the script for the username/password.
-
-The following code snippet is how best to handle the updatelads modification.  The __init__ method in updatelads.py should look like the following, and then you will need to put your own LAADS username and password in where it says {put your username/password here}.
-
-```
-    def __init__(self):
-        # determine the auxiliary directory to store the data
-##        xmlrpc = os.environ.get('ESPA_XMLRPC')
-##        if xmlrpc is None:
-##            msg = "ESPA_XMLRPC environment variable not set... exiting"
-##            logger.error(msg)
-##            return ERROR
-##
-##        # get the LAADS username and password
-##        try:
-##            server = xmlrpclib.ServerProxy(xmlrpc)
-##            self.user = server.get_configuration('ladsftp.username')
-##            self.password = server.get_configuration('ladsftp.password')
-##        except xmlrpclib.ProtocolError, e:
-##            msg = "Error connecting to XMLRPC service to fetch credentials: " 
-\               
-##                "%s" % e
-##            logger.error(msg)
-##            return ERROR
-        self.user = {put your username here}
-        self.password = {put your password here}
-        print "LAADS FTP username: " + self.user
-        print "LAADS FTP password: " + self.password
-
-        # verify that the XMLRPC service returned valid information and
-        # the username and password were set in the configuration
-##        if len(self.user) <= 0 or len(self.password) <= 0:
-##            msg = "Received invalid sized credentials for LAADS FTP from " \
-##                "XMLRPC service. Make sure ladsftp.username and " \
-##                "ladsftp.password are set in the ESPA_XMLRPC."
-##            logger.error(msg)
-##            return ERROR
-```
+The provided username and password should be used in the --username and --password command-line arguments for the updatelads.py script.  If not specified the source code will try to use the ESPA_LAADS_CONFIG http service to automatically determine the username/password, which is only available to the USGS LSRD systems.
 
 ### Data Preprocessing
 This version of the LaSRC application requires the input Landsat products to be in the ESPA internal file format.  After compiling the product formatter raw\_binary libraries and tools, the convert\_lpgs\_to\_espa command-line tool can be used to create the ESPA internal file format for input to the LaSRC application.
@@ -118,11 +80,7 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Updated the do_lasrc python script to support the new-style collection
-     naming convention.
-  2. Updated the FORTRAN code to be the latest version (v1.3) of software
-     received for LaSRC instead of the first version received (v1.1) at the
-     very start of the project.
-  3. Investigated some aerosol interpolation and aerosol improvements overall,
-     but these are not released at this time and will remain on the
-     l8sr_aerosol_improvements branch.
+  1. Updated the FORTRAN code to be the latest version (v3.0) of software
+     received for LaSRC.
+  2. Updated the C version of the LaSRC code to include the modifications
+     delivered as part of v3.0 of the FORTRAN source code.
