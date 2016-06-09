@@ -262,6 +262,22 @@ NOTES:
    now hardcoded to save time from reading the file each time.  This file was
    generated (like many of the other auxiliary input tables) by running 6S and
    storing the coefficients.
+3. Snow pixels are commonly flagged as cloud in this algorithm.
+4. Aerosols are not retrieved for cirrus pixels.  They are retrieved for all
+   other non-fill pixels, including water.  If the model residual using the
+   retrieved aerosols is too high, then that pixel is flagged for potential
+   aerosol interpolation.  The pixel is also flagged for potential aerosol
+   interpolation if the NDVI test fails.  However, the aerosols and residuals
+   are retained for those pixels, even though they were flagged.
+   After flagging clouds, shadows, adjacent cloud, a water test is done.  If
+   the current pixel is not cirrus, cloud, shadow, or adjacent cloud, then it's
+   flagged as water if the NDVI < 0.01.
+   Next we loop through all the pixels and do the aerosol interpolation.
+   Aerosol interpolation is attempted on pixels that were flagged due to the
+   residual or NDVI.  Pixels that are cirrus, cloud, or water are not used for
+   the interpolation.
+   The last step is to perform the atmospheric correction based on the
+   aerosols.  This level of correction is not applied to cirrus or cloud pixels.
 ******************************************************************************/
 int compute_sr_refl
 (
@@ -777,8 +793,7 @@ int compute_sr_refl
                            pres21 * u * (1.0 - v) +
                            pres22 * u * v;
 
-            /* Inverting aerosols */
-            /* Filter cirrus pixels */
+            /* Inverting aerosols -- not retrieved for cirrus pixels */
             if (sband[SR_BAND9][curr_pix] >
                 (100.0 / (tp[curr_pix] * ONE_DIV_1013)))
             {  /* Set cirrus bit */
