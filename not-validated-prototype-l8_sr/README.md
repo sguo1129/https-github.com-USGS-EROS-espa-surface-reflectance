@@ -1,4 +1,4 @@
-## L8SR Version 0.6.1 Release Notes
+## L8SR Version 0.6.2 Release Notes
 Release Date: June 2016
 
 ### Downloads
@@ -10,7 +10,7 @@ L8SR auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [l8_sr-version_0.6.1]
+See git tag [l8_sr-version_0.6.2]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
