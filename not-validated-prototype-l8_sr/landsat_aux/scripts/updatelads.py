@@ -291,7 +291,7 @@ def getLadsData (auxdir, year, today):
 
     # determine the directory for the output auxiliary data files to be
     # processed.  create the directory if it doesn't exist.
-    outputDir = "%s/LAADS/%d" % (auxdir, year)
+    outputDir = "%s/LADS/%d" % (auxdir, year)
     if not os.path.exists(outputDir):
         msg = "%s does not exist... creating" % outputDir
         logger.info(msg)
