@@ -81,6 +81,21 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 
 ## Release Notes
   1. Updated the FORTRAN code to be the latest version (v3.0) of software
-     received for LaSRC.
+     received from NASA GSFC for LaSRC.
+     a. Band ratios are interpolated at the pixel level versus the CMG level,
+        which helps solve the blockiness results from the previous algorithm.
+     b. Aerosols are not retrieved over cirrus pixels, however they are
+        retrieved for all other non-fill pixels (including water).  The results
+        of the aerosol retrieval are tested and flagged if the retrieval does
+        not meet residual and NDVI criteria.  These flagged pixels are
+        attempted to be interpolated via aerosol interpolation.  Cirrus, cloud,
+        and water pixels are not used as part of the interpolation.  The
+        aerosol interpolation process has changed and allows the results of the
+        interpolation to be at the pixel level versus a block level.  The final
+        step is to perform the atmospheric correction based on the calculated or
+        interpolated aerosols.  This level of correction is not applied to
+        cirrus or cloud pixels.
   2. Updated the C version of the LaSRC code to include the modifications
      delivered as part of v3.0 of the FORTRAN source code.
+  3. Merged in changes from version 0.6.1 and 0.6.2 for the updatelads.py
+     script.

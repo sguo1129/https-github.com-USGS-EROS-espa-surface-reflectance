@@ -431,26 +431,26 @@ int compute_sr_refl
     int32 indts[22];
 
     /* Auxiliary file variables */
-    int16 **dem = NULL;       /* CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 **andwi = NULL;     /* avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **sndwi = NULL;     /* standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob1 = NULL;   /* mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob2 = NULL;   /* mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob7 = NULL;   /* mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1 = NULL;   /* intercept band1 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2 = NULL;   /* intercept band2 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7 = NULL;   /* intercept band7 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob1 = NULL;   /* slope band1 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob2 = NULL;   /* slope band2 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob7 = NULL;   /* slope band7 ratio
-                                    [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 **wv = NULL;       /* water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 **oz = NULL;        /* ozone values [CMG_NBLAT][CMG_NBLON] */
+    int16 *dem = NULL;        /* CMG DEM data array [DEM_NBLAT x DEM_NBLON] */
+    int16 *andwi = NULL;      /* avg NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *sndwi = NULL;      /* standard NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob1 = NULL;    /* mean band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob2 = NULL;    /* mean band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob7 = NULL;    /* mean band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob1 = NULL;   /* intercept band1 ratio,
+                                   RATIO_NBLAT x RATIO_NBLON */
+    int16 *intratiob2 = NULL;   /* intercept band2 ratio
+                                   RATIO_NBLAT x RATIO_NBLON */
+    int16 *intratiob7 = NULL;   /* intercept band7 ratio
+                                   RATIO_NBLAT x RATIO_NBLON */
+    int16 *slpratiob1 = NULL;   /* slope band1 ratio
+                                   RATIO_NBLAT x RATIO_NBLON */
+    int16 *slpratiob2 = NULL;   /* slope band2 ratio
+                                   RATIO_NBLAT x RATIO_NBLON */
+    int16 *slpratiob7 = NULL;   /* slope band7 ratio
+                                   RATIO_NBLAT x RATIO_NBLON */
+    uint16 *wv = NULL;       /* water vapor values [CMG_NBLAT x CMG_NBLON] */
+    uint8 *oz = NULL;        /* ozone values [CMG_NBLAT x CMG_NBLON] */
     float raot550nm;    /* nearest input value of AOT */
     float uoz;          /* total column ozone */
     float uwv;          /* total column water vapor (precipital water vapor) */
@@ -465,6 +465,14 @@ int compute_sr_refl
                                       band ratios 1, 2, 7 */
     float intrb1, intrb2, intrb7;  /* interpolated band ratio intercept values
                                       for band ratios 1, 2, 7 */
+    int ratio_pix11;  /* pixel location for ratio products [lcmg][scmg] */
+    int ratio_pix12;  /* pixel location for ratio products [lcmg][scmg+1] */
+    int ratio_pix21;  /* pixel location for ratio products [lcmg+1][scmg] */
+    int ratio_pix22;  /* pixel location for ratio products [lcmg+1][scmg+1] */
+    int cmg_pix11;    /* pixel location for CMG/DEM products [lcmg][scmg] */
+    int cmg_pix12;    /* pixel location for CMG/DEM products [lcmg][scmg+1] */
+    int cmg_pix21;    /* pixel location for CMG/DEM products [lcmg+1][scmg] */
+    int cmg_pix22;    /* pixel location for CMG/DEM products [lcmg+1][scmg+1] */
 
     /* Output file info */
     Output_t *sr_output = NULL;  /* output structure and metadata for the SR
@@ -504,6 +512,9 @@ int compute_sr_refl
     double ogtransb1[NSR_BANDS] =  /* other gases transmission coeff */
         {9.57011e-16, 9.57011e-16, 9.57011e-16, -0.348785, 0.275239, 0.0117192,
          0.0616101, 0.04728};
+
+    time_t rawtime;
+    struct tm *timeinfo;
 
     /* Allocate memory for the many arrays needed to do the surface reflectance
        computations */
@@ -637,9 +648,12 @@ int compute_sr_refl
 
     /* Interpolate the auxiliary data for each pixel location */
     printf ("Interpolating the auxiliary data ...\n");
+    time (&rawtime);
+    timeinfo = localtime (&rawtime);
+    printf ("DEBUG: Start of aux interpolation: %s", asctime (timeinfo));
     tmp_percent = 0;
 #ifdef _OPENMP
-    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, rb1, rb2, slpr11, slpr12, slpr21, slpr22, intr11, intr12, intr21, intr22, slprb1, slprb2, slprb7, intrb1, intrb2, intrb7, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
+    #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, cmg_pix11, cmg_pix12, cmg_pix21, cmg_pix22, ratio_pix11, ratio_pix12, ratio_pix21, ratio_pix22, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, rb1, rb2, slpr11, slpr12, slpr21, slpr22, intr11, intr12, intr21, intr22, slprb1, slprb2, slprb7, intrb1, intrb2, intrb7, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
 #endif
     for (i = 0; i < nlines; i++)
     {
@@ -729,30 +743,34 @@ int compute_sr_refl
                and floating point pixel location */
             u = (ycmg - lcmg);
             v = (xcmg - scmg);
+            cmg_pix11 = lcmg * CMG_NBLON + scmg;
+            cmg_pix12 = lcmg * CMG_NBLON + scmg1;
+            cmg_pix21 = lcmg1 * CMG_NBLON + scmg;
+            cmg_pix22 = lcmg1 * CMG_NBLON + scmg1;
 
             /* Interpolate water vapor.  If the water vapor value is fill (=0),
                then use it as-is. */
-            twvi[curr_pix] = wv[lcmg][scmg] * (1.0 - u) * (1.0 - v) +
-                             wv[lcmg][scmg1] * (1.0 - u) * v +
-                             wv[lcmg1][scmg] * u * (1.0 - v) +
-                             wv[lcmg1][scmg1] * u * v;
+            twvi[curr_pix] = wv[cmg_pix11] * (1.0 - u) * (1.0 - v) +
+                             wv[cmg_pix12] * (1.0 - u) * v +
+                             wv[cmg_pix21] * u * (1.0 - v) +
+                             wv[cmg_pix22] * u * v;
             twvi[curr_pix] = twvi[curr_pix] * 0.01;   /* vs / 100 */
 
             /* Interpolate ozone.  If the ozone value is fill (=0), then use a
                default value of 120. */
-            uoz11 = oz[lcmg][scmg];
+            uoz11 = oz[cmg_pix11];
             if (uoz11 == 0)
                 uoz11 = 120;
 
-            uoz12 = oz[lcmg][scmg1];
+            uoz12 = oz[cmg_pix12];
             if (uoz12 == 0)
                 uoz12 = 120;
 
-            uoz21 = oz[lcmg1][scmg];
+            uoz21 = oz[cmg_pix21];
             if (uoz21 == 0)
                 uoz21 = 120;
 
-            uoz22 = oz[lcmg1][scmg1];
+            uoz22 = oz[cmg_pix22];
             if (uoz22 == 0)
                 uoz22 = 120;
 
@@ -764,29 +782,29 @@ int compute_sr_refl
 
             /* Get the surface pressure from the global DEM.  Set to 1013.0
                (sea level) if the DEM is fill (= -9999), which is likely
-               ocean. Also flag the deep water pixels. */
-            /* TODO -- Switch back to using the land/water mask for finer
-               and more accurate identification of deep coastal waters */
-            if (dem[lcmg][scmg] != -9999)
-                pres11 = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
+               ocean. Also flag the deep water pixels.  The dimensions on the
+               DEM array is the same as that of the CMG arrays. Use the current
+               pixel locations already calculated. */
+            if (dem[cmg_pix11] != -9999)
+                pres11 = 1013.0 * exp (-dem[cmg_pix11] * ONE_DIV_8500);
             else
             {
                 pres11 = 1013.0;
                 cloud[curr_pix] = -128; /* set the water bit in the cloud QA */
             }
 
-            if (dem[lcmg][scmg1] != -9999)
-                pres12 = 1013.0 * exp (-dem[lcmg][scmg1] * ONE_DIV_8500);
+            if (dem[cmg_pix12] != -9999)
+                pres12 = 1013.0 * exp (-dem[cmg_pix12] * ONE_DIV_8500);
             else
                 pres12 = 1013.0;
 
-            if (dem[lcmg1][scmg] != -9999)
-                pres21 = 1013.0 * exp (-dem[lcmg1][scmg] * ONE_DIV_8500);
+            if (dem[cmg_pix21] != -9999)
+                pres21 = 1013.0 * exp (-dem[cmg_pix21] * ONE_DIV_8500);
             else
                 pres21 = 1013.0;
 
-            if (dem[lcmg1][scmg1] != -9999)
-                pres22 = 1013.0 * exp (-dem[lcmg1][scmg1] * ONE_DIV_8500);
+            if (dem[cmg_pix22] != -9999)
+                pres22 = 1013.0 * exp (-dem[cmg_pix22] * ONE_DIV_8500);
             else
                 pres22 = 1013.0;
 
@@ -804,102 +822,107 @@ int compute_sr_refl
             else
             {
                 /* Determine the band ratios */
-                rb1 = ratiob1[lcmg][scmg] * 0.001;  /* vs. / 1000. */
-                rb2 = ratiob2[lcmg][scmg] * 0.001;  /* vs. / 1000. */
+                ratio_pix11 = lcmg * RATIO_NBLON + scmg;
+                ratio_pix12 = ratio_pix11 + 1;
+                ratio_pix21 = lcmg1 * RATIO_NBLON + scmg;
+                ratio_pix22 = ratio_pix21 + 1;
+
+                rb1 = ratiob1[ratio_pix11] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[ratio_pix11] * 0.001;  /* vs. / 1000. */
                 if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
-                    (ratiob7[lcmg][scmg] < 1000))
+                    (ratiob7[ratio_pix11] < 1000))
                 {
-                    slpratiob1[lcmg][scmg] = 0;
-                    slpratiob2[lcmg][scmg] = 0;
-                    slpratiob7[lcmg][scmg] = 0;
-                    intratiob1[lcmg][scmg] = 327;
-                    intratiob2[lcmg][scmg] = 482;
-                    intratiob7[lcmg][scmg] = 2000;
+                    slpratiob1[ratio_pix11] = 0;
+                    slpratiob2[ratio_pix11] = 0;
+                    slpratiob7[ratio_pix11] = 0;
+                    intratiob1[ratio_pix11] = 327;
+                    intratiob2[ratio_pix11] = 482;
+                    intratiob7[ratio_pix11] = 2000;
                 }
-                else if (sndwi[lcmg][scmg] < 200)
+                else if (sndwi[ratio_pix11] < 200)
                 {
-                    slpratiob1[lcmg][scmg] = 0;
-                    slpratiob2[lcmg][scmg] = 0;
-                    slpratiob7[lcmg][scmg] = 0;
-                    intratiob1[lcmg][scmg] = ratiob1[lcmg][scmg];
-                    intratiob2[lcmg][scmg] = ratiob2[lcmg][scmg];
-                    intratiob7[lcmg][scmg] = ratiob7[lcmg][scmg];
+                    slpratiob1[ratio_pix11] = 0;
+                    slpratiob2[ratio_pix11] = 0;
+                    slpratiob7[ratio_pix11] = 0;
+                    intratiob1[ratio_pix11] = ratiob1[ratio_pix11];
+                    intratiob2[ratio_pix11] = ratiob2[ratio_pix11];
+                    intratiob7[ratio_pix11] = ratiob7[ratio_pix11];
                 }
 
-                rb1 = ratiob1[lcmg][scmg1] * 0.001;  /* vs. / 1000. */
-                rb2 = ratiob2[lcmg][scmg1] * 0.001;  /* vs. / 1000. */
+                rb1 = ratiob1[ratio_pix12] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[ratio_pix12] * 0.001;  /* vs. / 1000. */
                 if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
-                    (ratiob7[lcmg][scmg1] < 1000))
+                    (ratiob7[ratio_pix12] < 1000))
                 {
-                    slpratiob1[lcmg][scmg1] = 0;
-                    slpratiob2[lcmg][scmg1] = 0;
-                    slpratiob7[lcmg][scmg1] = 0;
-                    intratiob1[lcmg][scmg1] = 327;
-                    intratiob2[lcmg][scmg1] = 482;
-                    intratiob7[lcmg][scmg1] = 2000;
+                    slpratiob1[ratio_pix12] = 0;
+                    slpratiob2[ratio_pix12] = 0;
+                    slpratiob7[ratio_pix12] = 0;
+                    intratiob1[ratio_pix12] = 327;
+                    intratiob2[ratio_pix12] = 482;
+                    intratiob7[ratio_pix12] = 2000;
                 }
-                else if (sndwi[lcmg][scmg1] < 200)
+                else if (sndwi[ratio_pix12] < 200)
                 {
-                    slpratiob1[lcmg][scmg1] = 0;
-                    slpratiob2[lcmg][scmg1] = 0;
-                    slpratiob7[lcmg][scmg1] = 0;
-                    intratiob1[lcmg][scmg1] = ratiob1[lcmg][scmg1];
-                    intratiob2[lcmg][scmg1] = ratiob2[lcmg][scmg1];
-                    intratiob7[lcmg][scmg1] = ratiob7[lcmg][scmg1];
+                    slpratiob1[ratio_pix12] = 0;
+                    slpratiob2[ratio_pix12] = 0;
+                    slpratiob7[ratio_pix12] = 0;
+                    intratiob1[ratio_pix12] = ratiob1[ratio_pix12];
+                    intratiob2[ratio_pix12] = ratiob2[ratio_pix12];
+                    intratiob7[ratio_pix12] = ratiob7[ratio_pix12];
                 }
 
-                rb1 = ratiob1[lcmg1][scmg] * 0.001;  /* vs. / 1000. */
-                rb2 = ratiob2[lcmg1][scmg] * 0.001;  /* vs. / 1000. */
+                rb1 = ratiob1[ratio_pix21] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[ratio_pix21] * 0.001;  /* vs. / 1000. */
                 if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
-                    (ratiob7[lcmg1][scmg] < 1000))
+                    (ratiob7[ratio_pix21] < 1000))
                 {
-                    slpratiob1[lcmg1][scmg] = 0;
-                    slpratiob2[lcmg1][scmg] = 0;
-                    slpratiob7[lcmg1][scmg] = 0;
-                    intratiob1[lcmg1][scmg] = 327;
-                    intratiob2[lcmg1][scmg] = 482;
-                    intratiob7[lcmg1][scmg] = 2000;
+                    slpratiob1[ratio_pix21] = 0;
+                    slpratiob2[ratio_pix21] = 0;
+                    slpratiob7[ratio_pix21] = 0;
+                    intratiob1[ratio_pix21] = 327;
+                    intratiob2[ratio_pix21] = 482;
+                    intratiob7[ratio_pix21] = 2000;
                 }
-                else if (sndwi[lcmg1][scmg] < 200)
+                else if (sndwi[ratio_pix21] < 200)
                 {
-                    slpratiob1[lcmg1][scmg] = 0;
-                    slpratiob2[lcmg1][scmg] = 0;
-                    slpratiob7[lcmg1][scmg] = 0;
-                    intratiob1[lcmg1][scmg] = ratiob1[lcmg1][scmg];
-                    intratiob2[lcmg1][scmg] = ratiob2[lcmg1][scmg];
-                    intratiob7[lcmg1][scmg] = ratiob7[lcmg1][scmg];
+                    slpratiob1[ratio_pix21] = 0;
+                    slpratiob2[ratio_pix21] = 0;
+                    slpratiob7[ratio_pix21] = 0;
+                    intratiob1[ratio_pix21] = ratiob1[ratio_pix21];
+                    intratiob2[ratio_pix21] = ratiob2[ratio_pix21];
+                    intratiob7[ratio_pix21] = ratiob7[ratio_pix21];
                 }
 
-                rb1 = ratiob1[lcmg1][scmg1] * 0.001;  /* vs. / 1000. */
-                rb2 = ratiob2[lcmg1][scmg1] * 0.001;  /* vs. / 1000. */
+                rb1 = ratiob1[ratio_pix22] * 0.001;  /* vs. / 1000. */
+                rb2 = ratiob2[ratio_pix22] * 0.001;  /* vs. / 1000. */
                 if ((fabs((rb1 - 0.454878*rb2*rb2 - 0.459559*rb2)) > 0.15) ||
-                    (ratiob7[lcmg1][scmg1] < 1000))
+                    (ratiob7[ratio_pix22] < 1000))
                 {
-                    slpratiob1[lcmg1][scmg1] = 0;
-                    slpratiob2[lcmg1][scmg1] = 0;
-                    slpratiob7[lcmg1][scmg1] = 0;
-                    intratiob1[lcmg1][scmg1] = 327;
-                    intratiob2[lcmg1][scmg1] = 482;
-                    intratiob7[lcmg1][scmg1] = 2000;
+                    slpratiob1[ratio_pix22] = 0;
+                    slpratiob2[ratio_pix22] = 0;
+                    slpratiob7[ratio_pix22] = 0;
+                    intratiob1[ratio_pix22] = 327;
+                    intratiob2[ratio_pix22] = 482;
+                    intratiob7[ratio_pix22] = 2000;
                 }
-                else if (sndwi[lcmg1][scmg1] < 200)
+                else if (sndwi[ratio_pix22] < 200)
                 {
-                    slpratiob1[lcmg1][scmg1] = 0;
-                    slpratiob2[lcmg1][scmg1] = 0;
-                    slpratiob7[lcmg1][scmg1] = 0;
-                    intratiob1[lcmg1][scmg1] = ratiob1[lcmg1][scmg1];
-                    intratiob2[lcmg1][scmg1] = ratiob2[lcmg1][scmg1];
-                    intratiob7[lcmg1][scmg1] = ratiob7[lcmg1][scmg1];
+                    slpratiob1[ratio_pix22] = 0;
+                    slpratiob2[ratio_pix22] = 0;
+                    slpratiob7[ratio_pix22] = 0;
+                    intratiob1[ratio_pix22] = ratiob1[ratio_pix22];
+                    intratiob2[ratio_pix22] = ratiob2[ratio_pix22];
+                    intratiob7[ratio_pix22] = ratiob7[ratio_pix22];
                 }
 
-                slpr11 = slpratiob1[lcmg][scmg] * 0.001;  /* vs / 1000 */
-                intr11 = intratiob1[lcmg][scmg] * 0.001;  /* vs / 1000 */
-                slpr12 = slpratiob1[lcmg][scmg1] * 0.001;  /* vs / 1000 */
-                intr12 = intratiob1[lcmg][scmg1] * 0.001;  /* vs / 1000 */
-                slpr21 = slpratiob1[lcmg1][scmg] * 0.001;  /* vs / 1000 */
-                intr21 = intratiob1[lcmg1][scmg] * 0.001;  /* vs / 1000 */
-                slpr22 = slpratiob1[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
-                intr22 = intratiob1[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                slpr11 = slpratiob1[ratio_pix11] * 0.001;  /* vs / 1000 */
+                intr11 = intratiob1[ratio_pix11] * 0.001;  /* vs / 1000 */
+                slpr12 = slpratiob1[ratio_pix12] * 0.001;  /* vs / 1000 */
+                intr12 = intratiob1[ratio_pix12] * 0.001;  /* vs / 1000 */
+                slpr21 = slpratiob1[ratio_pix21] * 0.001;  /* vs / 1000 */
+                intr21 = intratiob1[ratio_pix21] * 0.001;  /* vs / 1000 */
+                slpr22 = slpratiob1[ratio_pix22] * 0.001;  /* vs / 1000 */
+                intr22 = intratiob1[ratio_pix22] * 0.001;  /* vs / 1000 */
                 slprb1 = slpr11 * (1.0 - u) * (1.0 - v) +
                          slpr12 * (1.0 - u) * v +
                          slpr21 * u * (1.0 - v) +
@@ -909,14 +932,14 @@ int compute_sr_refl
                          intr21 * u * (1.0 - v) +
                          intr22 * u * v;
 
-                slpr11 = slpratiob2[lcmg][scmg] * 0.001;  /* vs / 1000 */
-                intr11 = intratiob2[lcmg][scmg] * 0.001;  /* vs / 1000 */
-                slpr12 = slpratiob2[lcmg][scmg1] * 0.001;  /* vs / 1000 */
-                intr12 = intratiob2[lcmg][scmg1] * 0.001;  /* vs / 1000 */
-                slpr21 = slpratiob2[lcmg1][scmg] * 0.001;  /* vs / 1000 */
-                intr21 = intratiob2[lcmg1][scmg] * 0.001;  /* vs / 1000 */
-                slpr22 = slpratiob2[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
-                intr22 = intratiob2[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                slpr11 = slpratiob2[ratio_pix11] * 0.001;  /* vs / 1000 */
+                intr11 = intratiob2[ratio_pix11] * 0.001;  /* vs / 1000 */
+                slpr12 = slpratiob2[ratio_pix12] * 0.001;  /* vs / 1000 */
+                intr12 = intratiob2[ratio_pix12] * 0.001;  /* vs / 1000 */
+                slpr21 = slpratiob2[ratio_pix21] * 0.001;  /* vs / 1000 */
+                intr21 = intratiob2[ratio_pix21] * 0.001;  /* vs / 1000 */
+                slpr22 = slpratiob2[ratio_pix22] * 0.001;  /* vs / 1000 */
+                intr22 = intratiob2[ratio_pix22] * 0.001;  /* vs / 1000 */
                 slprb2 = slpr11 * (1.0 - u) * (1.0 - v) +
                          slpr12 * (1.0 - u) * v +
                          slpr21 * u * (1.0 - v) +
@@ -926,14 +949,14 @@ int compute_sr_refl
                          intr21 * u * (1.0 - v) +
                          intr22 * u * v;
 
-                slpr11 = slpratiob7[lcmg][scmg] * 0.001;  /* vs / 1000 */
-                intr11 = intratiob7[lcmg][scmg] * 0.001;  /* vs / 1000 */
-                slpr12 = slpratiob7[lcmg][scmg1] * 0.001;  /* vs / 1000 */
-                intr12 = intratiob7[lcmg][scmg1] * 0.001;  /* vs / 1000 */
-                slpr21 = slpratiob7[lcmg1][scmg] * 0.001;  /* vs / 1000 */
-                intr21 = intratiob7[lcmg1][scmg] * 0.001;  /* vs / 1000 */
-                slpr22 = slpratiob7[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
-                intr22 = intratiob7[lcmg1][scmg1] * 0.001;  /* vs / 1000 */
+                slpr11 = slpratiob7[ratio_pix11] * 0.001;  /* vs / 1000 */
+                intr11 = intratiob7[ratio_pix11] * 0.001;  /* vs / 1000 */
+                slpr12 = slpratiob7[ratio_pix12] * 0.001;  /* vs / 1000 */
+                intr12 = intratiob7[ratio_pix12] * 0.001;  /* vs / 1000 */
+                slpr21 = slpratiob7[ratio_pix21] * 0.001;  /* vs / 1000 */
+                intr21 = intratiob7[ratio_pix21] * 0.001;  /* vs / 1000 */
+                slpr22 = slpratiob7[ratio_pix22] * 0.001;  /* vs / 1000 */
+                intr22 = intratiob7[ratio_pix22] * 0.001;  /* vs / 1000 */
                 slprb7 = slpr11 * (1.0 - u) * (1.0 - v) +
                          slpr12 * (1.0 - u) * v +
                          slpr21 * u * (1.0 - v) +
@@ -949,8 +972,8 @@ int compute_sr_refl
                         ((double) sband[SR_BAND5][curr_pix] +
                          (double) (sband[SR_BAND7][curr_pix] * 0.5));
 
-                th1 = (andwi[lcmg][scmg] + 2.0 * sndwi[lcmg][scmg]) * 0.001;
-                th2 = (andwi[lcmg][scmg] - 2.0 * sndwi[lcmg][scmg]) * 0.001;
+                th1 = (andwi[ratio_pix11] + 2.0 * sndwi[ratio_pix11]) * 0.001;
+                th2 = (andwi[ratio_pix11] - 2.0 * sndwi[ratio_pix11]) * 0.001;
                 if (xndwi > th1)
                     xndwi = th1;
                 if (xndwi < th2)
@@ -1060,17 +1083,33 @@ int compute_sr_refl
     fflush (stdout);
 #endif
 
-    /* Done with the aerob* arrays and land/water mask */
+    /* Done with the aerob* arrays */
     free (aerob1);  aerob1 = NULL;
     free (aerob2);  aerob2 = NULL;
     free (aerob4);  aerob4 = NULL;
     free (aerob5);  aerob5 = NULL;
     free (aerob7);  aerob7 = NULL;
 
-    /* Done with the DEM array */
-    for (i = 0; i < DEM_NBLAT; i++)
-        free (dem[i]);
+    /* Done with the ratiob* arrays */
+    free (andwi);  andwi = NULL;
+    free (sndwi);  sndwi = NULL;
+    free (ratiob1);  ratiob1 = NULL;
+    free (ratiob2);  ratiob2 = NULL;
+    free (ratiob7);  ratiob7 = NULL;
+    free (intratiob1);  intratiob1 = NULL;
+    free (intratiob2);  intratiob2 = NULL;
+    free (intratiob7);  intratiob7 = NULL;
+    free (slpratiob1);  slpratiob1 = NULL;
+    free (slpratiob2);  slpratiob2 = NULL;
+    free (slpratiob7);  slpratiob7 = NULL;
+
+    /* Done with the DEM, water vapor, and ozone arrays */
     free (dem);  dem = NULL;
+    free (wv);  wv = NULL;
+    free (oz);  oz = NULL;
+    time (&rawtime);
+    timeinfo = localtime (&rawtime);
+    printf ("DEBUG: End of aux interpolation: %s", asctime (timeinfo));
 
     /* Refine the cloud mask */
     /* Compute the average temperature of the clear, non-water, non-filled
@@ -1805,42 +1844,7 @@ int compute_sr_refl
     /* Free the spatial mapping pointer */
     free (space);
 
-    /* Done with the ratiob* arrays */
-    for (i = 0; i < RATIO_NBLAT; i++)
-    {
-        free (andwi[i]);
-        free (sndwi[i]);
-        free (ratiob1[i]);
-        free (ratiob2[i]);
-        free (ratiob7[i]);
-        free (intratiob1[i]);
-        free (intratiob2[i]);
-        free (intratiob7[i]);
-        free (slpratiob1[i]);
-        free (slpratiob2[i]);
-        free (slpratiob7[i]);
-    }
-    free (andwi);  andwi = NULL;
-    free (sndwi);  sndwi = NULL;
-    free (ratiob1);  ratiob1 = NULL;
-    free (ratiob2);  ratiob2 = NULL;
-    free (ratiob7);  ratiob7 = NULL;
-    free (intratiob1);  intratiob1 = NULL;
-    free (intratiob2);  intratiob2 = NULL;
-    free (intratiob7);  intratiob7 = NULL;
-    free (slpratiob1);  slpratiob1 = NULL;
-    free (slpratiob2);  slpratiob2 = NULL;
-    free (slpratiob7);  slpratiob7 = NULL;
-
     /* Free the data arrays */
-    for (i = 0; i < CMG_NBLAT; i++)
-    {
-        free (wv[i]);
-        free (oz[i]);
-    }
-    free (wv);
-    free (oz);
-
     for (i = 0; i < NSR_BANDS; i++)
     {
         for (j = 0; j < 7; j++)
@@ -1945,26 +1949,28 @@ int init_sr_refl
                               [NSR_BANDS][7][22] */
     float **nbfic,      /* O: communitive number of azimuth angles [20][22] */
     float **nbfi,       /* O: number of azimuth angles [20][22] */
-    int16 **dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 **andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1, /* O: integer band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2, /* O: integer band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7, /* O: integer band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 **wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 **oz          /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+    int16 *dem,         /* O: CMG DEM data array [DEM_NBLAT x DEM_NBLON] */
+    int16 *andwi,       /* O: avg NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *sndwi,       /* O: standard NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob1,     /* O: mean band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob2,     /* O: mean band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob7,     /* O: mean band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob1,  /* O: integer band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob2,  /* O: integer band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob7,  /* O: integer band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob1,  /* O: slope band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob2,  /* O: slope band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob7,  /* O: slope band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    uint16 *wv,         /* O: water vapor values [CMG_NBLAT x CMG_NBLON] */
+    uint8 *oz           /* O: ozone values [CMG_NBLAT x CMG_NBLON] */
 )
 {
     char errmsg[STR_SIZE];                   /* error message */
     char FUNC_NAME[] = "init_sr_refl";       /* function name */
     int retval;          /* return status */
     int lcmg, scmg;      /* line/sample index for the CMG */
+    int cmg_pix;         /* pixel location in the CMG array for [lcmg][scmg] */
+    int dem_pix;         /* pixel location in the DEM array for [lcmg][scmg] */
     float xcmg, ycmg;    /* x/y location for CMG */
 
     /* Vars for forward/inverse mapping space */
@@ -2046,18 +2052,20 @@ int init_sr_refl
         exit (ERROR);
     }
 
-    if (wv[lcmg][scmg] != 0)
-        *uwv = wv[lcmg][scmg] / 200.0;
+    cmg_pix = lcmg * CMG_NBLON + scmg;
+    if (wv[cmg_pix] != 0)
+        *uwv = wv[cmg_pix] / 200.0;
     else
         *uwv = 0.5;
 
-    if (oz[lcmg][scmg] != 0)
-        *uoz = oz[lcmg][scmg] / 400.0;
+    if (oz[cmg_pix] != 0)
+        *uoz = oz[cmg_pix] / 400.0;
     else
         *uoz = 0.3;
 
-    if (dem[lcmg][scmg] != -9999)
-        *pres = 1013.0 * exp (-dem[lcmg][scmg] * ONE_DIV_8500);
+    dem_pix = lcmg * DEM_NBLON + scmg;
+    if (dem[dem_pix] != -9999)
+        *pres = 1013.0 * exp (-dem[dem_pix] * ONE_DIV_8500);
     else
         *pres = 1013.0;
     *raot550nm = 0.05;

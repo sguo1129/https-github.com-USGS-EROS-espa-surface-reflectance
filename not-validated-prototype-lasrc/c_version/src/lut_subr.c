@@ -1854,20 +1854,20 @@ int memory_allocation_sr
     float **tp,          /* O: interpolated pressure value, nlines x nsamps */
     float **tresi,       /* O: residuals for each pixel, nlines x nsamps */
     float **taero,       /* O: aerosol values for each pixel, nlines x nsamps */
-    int16 ***dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 ***andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***intratiob1, /* O: band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***intratiob2, /* O: band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***intratiob7, /* O: band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 ***slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 ***wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 ***oz,         /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+    int16 **dem,         /* O: CMG DEM data array [DEM_NBLAT x DEM_NBLON] */
+    int16 **andwi,       /* O: avg NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **sndwi,       /* O: standard NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **ratiob1,     /* O: mean band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **ratiob2,     /* O: mean band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **ratiob7,     /* O: mean band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **intratiob1,  /* O: band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **intratiob2,  /* O: band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **intratiob7,  /* O: band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **slpratiob1,  /* O: slope band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **slpratiob2,  /* O: slope band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 **slpratiob7,  /* O: slope band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    uint16 **wv,         /* O: water vapor values [CMG_NBLAT x CMG_NBLON] */
+    uint8 **oz,          /* O: ozone values [CMG_NBLAT x CMG_NBLON] */
     float *****rolutt,   /* O: intrinsic reflectance table
                                [NSR_BANDS][7][22][8000] */
     float *****transt,   /* O: transmission table
@@ -1984,25 +1984,15 @@ int memory_allocation_sr
     }
 
     /* Allocate memory for all the climate modeling grid files */
-    *dem = calloc (DEM_NBLAT, sizeof (int16*));
+    *dem = calloc (DEM_NBLAT * DEM_NBLON, sizeof (int16*));
     if (*dem == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the DEM");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
-    for (i = 0; i < DEM_NBLAT; i++)
-    {
-        (*dem)[i] = calloc (DEM_NBLON, sizeof (int16));
-        if ((*dem)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the DEM");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
 
-    *andwi = calloc (RATIO_NBLAT, sizeof (int16*));
+    *andwi = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*andwi == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the andwi");
@@ -2010,7 +2000,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *sndwi = calloc (RATIO_NBLAT, sizeof (int16*));
+    *sndwi = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*sndwi == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the sndwi");
@@ -2018,7 +2008,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *ratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *ratiob1 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*ratiob1 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the ratiob1");
@@ -2026,7 +2016,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *ratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *ratiob2 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*ratiob2 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the ratiob2");
@@ -2034,7 +2024,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *ratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *ratiob7 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*ratiob7 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the ratiob7");
@@ -2042,7 +2032,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *intratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *intratiob1 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*intratiob1 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the intratiob1");
@@ -2050,7 +2040,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *intratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *intratiob2 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*intratiob2 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the intratiob2");
@@ -2058,7 +2048,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *intratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *intratiob7 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*intratiob7 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the intratiob7");
@@ -2066,7 +2056,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *slpratiob1 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *slpratiob1 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*slpratiob1 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the slpratiob1");
@@ -2074,7 +2064,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *slpratiob2 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *slpratiob2 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*slpratiob2 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the slpratiob2");
@@ -2082,7 +2072,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *slpratiob7 = calloc (RATIO_NBLAT, sizeof (int16*));
+    *slpratiob7 = calloc (RATIO_NBLAT * RATIO_NBLON, sizeof (int16));
     if (*slpratiob7 == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the slpratiob7");
@@ -2090,98 +2080,7 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    for (i = 0; i < RATIO_NBLAT; i++)
-    {
-        (*andwi)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*andwi)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the andwi");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*sndwi)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*sndwi)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the sndwi");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*ratiob1)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*ratiob1)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the ratiob1");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*ratiob2)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*ratiob2)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the ratiob2");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*ratiob7)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*ratiob7)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the ratiob7");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*intratiob1)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*intratiob1)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the intratiob1");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*intratiob2)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*intratiob2)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the intratiob2");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*intratiob7)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*intratiob7)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the intratiob7");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*slpratiob1)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*slpratiob1)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the slpratiob1");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*slpratiob2)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*slpratiob2)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the slpratiob2");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*slpratiob7)[i] = calloc (RATIO_NBLON, sizeof (int16));
-        if ((*slpratiob7)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the slpratiob7");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-    }
-
-    *wv = calloc (CMG_NBLAT, sizeof (int16*));
+    *wv = calloc (CMG_NBLAT * CMG_NBLON, sizeof (int16*));
     if (*wv == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the wv");
@@ -2189,31 +2088,12 @@ int memory_allocation_sr
         return (ERROR);
     }
 
-    *oz = calloc (CMG_NBLAT, sizeof (uint8*));
+    *oz = calloc (CMG_NBLAT * CMG_NBLON, sizeof (uint8*));
     if (*oz == NULL)
     {
         sprintf (errmsg, "Error allocating memory for the oz");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
-    }
-
-    for (i = 0; i < CMG_NBLAT; i++)
-    {
-        (*wv)[i] = calloc (CMG_NBLON, sizeof (int16));
-        if ((*wv)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the wv");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
-
-        (*oz)[i] = calloc (CMG_NBLON, sizeof (uint8));
-        if ((*oz)[i] == NULL)
-        {
-            sprintf (errmsg, "Error allocating memory for the oz");
-            error_handler (true, FUNC_NAME, errmsg);
-            return (ERROR);
-        }
     }
 
     /* rolutt[NSR_BANDS][7][22][8000] and transt[NSR_BANDS][7][22][22] and
@@ -2454,20 +2334,20 @@ int read_auxiliary_files
     char *cmgdemnm,     /* I: climate modeling grid DEM filename */
     char *rationm,      /* I: ratio averages filename */
     char *auxnm,        /* I: auxiliary filename for ozone and water vapor */
-    int16 **dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 **andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1, /* O: band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2, /* O: band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7, /* O: band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 **wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 **oz          /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+    int16 *dem,         /* O: CMG DEM data array [DEM_NBLAT x DEM_NBLON] */
+    int16 *andwi,       /* O: avg NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *sndwi,       /* O: standard NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob1,     /* O: mean band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob2,     /* O: mean band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob7,     /* O: mean band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob1,  /* O: band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob2,  /* O: band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob7,  /* O: band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob1,  /* O: slope band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob2,  /* O: slope band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob7,  /* O: slope band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    uint16 *wv,         /* O: water vapor values [CMG_NBLAT x CMG_NBLON] */
+    uint8 *oz           /* O: ozone values [CMG_NBLAT x CMG_NBLON] */
 )
 {
     char FUNC_NAME[] = "read_auxiliary_files"; /* function name */
@@ -2519,7 +2399,7 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = DEM_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, dem[i]);
+        status = SDreaddata (sds_id, start, NULL, edges, &dem[i * DEM_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2581,7 +2461,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, andwi[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &andwi[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2625,7 +2506,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, ratiob2[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &ratiob2[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2669,7 +2551,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, ratiob1[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &ratiob1[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2713,7 +2596,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, ratiob7[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &ratiob7[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2757,7 +2641,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, sndwi[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &sndwi[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2801,7 +2686,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, slpratiob1[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &slpratiob1[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2845,7 +2731,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, intratiob1[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &intratiob1[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2889,7 +2776,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, slpratiob2[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &slpratiob2[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2933,7 +2821,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, intratiob2[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &intratiob2[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -2977,7 +2866,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, slpratiob7[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &slpratiob7[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -3021,7 +2911,8 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = RATIO_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, intratiob7[i]);
+        status = SDreaddata (sds_id, start, NULL, edges,
+            &intratiob7[i * RATIO_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -3084,7 +2975,7 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = CMG_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, oz[i]);
+        status = SDreaddata (sds_id, start, NULL, edges, &oz[i * CMG_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
@@ -3128,7 +3019,7 @@ int read_auxiliary_files
         start[1] = 0;  /* sample */
         edges[0] = 1;
         edges[1] = CMG_NBLON;
-        status = SDreaddata (sds_id, start, NULL, edges, wv[i]);
+        status = SDreaddata (sds_id, start, NULL, edges, &wv[i * CMG_NBLON]);
         if (status == -1)
         {
             sprintf (errmsg, "Reading data from the SDS: %s", sds_name);
