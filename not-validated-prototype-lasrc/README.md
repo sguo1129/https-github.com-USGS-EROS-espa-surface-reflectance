@@ -1,5 +1,5 @@
-## LaSRC Version 0.7.0 Release Notes
-Release Date: July 2016
+## LaSRC Version 0.8.0 Release Notes
+Release Date: August 2016
 
 ### Downloads
 LaSRC (Landsat Surface Reflectance Code) source code
@@ -10,7 +10,7 @@ LaSRC auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [lasrc-version_0.7.0]
+See git tag [lasrc-version_0.8.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -80,22 +80,7 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Updated the FORTRAN code to be the latest version (v3.0) of software
-     received from NASA GSFC for LaSRC.
-     a. Band ratios are interpolated at the pixel level versus the CMG level,
-        which helps solve the blockiness results from the previous algorithm.
-     b. Aerosols are not retrieved over cirrus pixels, however they are
-        retrieved for all other non-fill pixels (including water).  The results
-        of the aerosol retrieval are tested and flagged if the retrieval does
-        not meet residual and NDVI criteria.  These flagged pixels are
-        attempted to be interpolated via aerosol interpolation.  Cirrus, cloud,
-        and water pixels are not used as part of the interpolation.  The
-        aerosol interpolation process has changed and allows the results of the
-        interpolation to be at the pixel level versus a block level.  The final
-        step is to perform the atmospheric correction based on the calculated or
-        interpolated aerosols.  This level of correction is not applied to
-        cirrus or cloud pixels.
-  2. Updated the C version of the LaSRC code to include the modifications
-     delivered as part of v3.0 of the FORTRAN source code.
-  3. Merged in changes from version 0.6.1 and 0.6.2 for the updatelads.py
-     script.
+  1. Updated the valid_range to be a floating point versus long to match the
+     new data type in the XML schema.
+  2. Change scene_id to product_id in the output XML to match the new schema.
+  3. Verified the code supports Albers for CONUS, Hawaii, and Alaska.
