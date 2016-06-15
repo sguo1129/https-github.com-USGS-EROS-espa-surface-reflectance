@@ -122,23 +122,8 @@ Input_t *open_input
         this->open_qa[ib] = true;
     }
 
-    if (this->nband_lw != 0)
-    {  /* NOTE: nband_lw will be 0 for OLI-only scenes or if we are only doing
-          TOA corrections */
-        this->fp_bin_lw = open_raw_binary (this->file_name_lw, "rb");
-        if (this->fp_bin_lw == NULL)
-        {
-            sprintf (errmsg, "Opening land/water mask raw binary file: %s",
-                this->file_name_lw);
-            error_handler (true, FUNC_NAME, errmsg);
-            free_input (this);
-            return (NULL);
-        }
-        this->open_lw = true;
-    }
-
-    /* Do a cursory check to make sure the QA band and land/water mask 
-       exist and have been opened */
+    /* Do a cursory check to make sure the bands and QA band exist and have
+       been opened */
     if (!this->open[0])
     {
         sprintf (errmsg, "Reflectance band 1 is not open.");
@@ -158,14 +143,6 @@ Input_t *open_input
     if (!this->open_qa[0])
     {
         sprintf (errmsg, "QA band is not open.");
-        error_handler (true, FUNC_NAME, errmsg);
-        free_input (this);
-        return (NULL);
-    }
-
-    if (this->nband_lw != 0 && !this->open_lw)
-    {
-        sprintf (errmsg, "Land/water mask is not open.");
         error_handler (true, FUNC_NAME, errmsg);
         free_input (this);
         return (NULL);
@@ -231,13 +208,6 @@ void close_input
             this->open_qa[ib] = false;
         }
     }
-
-    /* Close the land/water mask file */
-    if (this->open_lw)
-    {
-        close_raw_binary (this->fp_bin_lw);
-        this->open_lw = false;
-    }
 }
 
 
@@ -279,7 +249,6 @@ void free_input
             free (this->file_name_pan[ib]);
         for (ib = 0; ib < this->nband_qa; ib++)
             free (this->file_name_qa[ib]);
-        free (this->file_name_lw);
 
         /* Free the data structure */
         free (this);
@@ -599,77 +568,6 @@ int get_input_qa_lines
 }
 
 
-/******************************************************************************
-MODULE:  get_input_lw_lines
-
-PURPOSE:  Reads the land/water mask for the current lines, and populates
-the output buffer.
-
-RETURN VALUE:
-Type = int
-Value      Description
------      -----------
-ERROR      Error occurred reading data for this land/water band
-SUCCESS    Successful completion
-
-NOTES:
-  1. The Input_t data structure needs to be populated and memory allocated
-     before calling this routine.  Use open_input to do that.
-******************************************************************************/
-int get_input_lw_lines
-(
-    Input_t *this,   /* I: pointer to input data structure */
-    int iline,       /* I: current line to read (0-based) */
-    int nlines,      /* I: number of lines to read */
-    uint8 *out_arr   /* O: output array to populate */
-)
-{
-    char FUNC_NAME[] = "get_input_lw_lines";   /* function name */
-    char errmsg[STR_SIZE];    /* error message */
-    long loc;                 /* current location in the input file */
-  
-    /* Check the parameters */
-    if (this == NULL) 
-    {
-        strcpy (errmsg, "Input structure has not been opened/initialized");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-    if (!this->open_lw)
-    {
-        strcpy (errmsg, "Land/water mask band has not been opened");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-    if (iline < 0 || iline >= this->size_lw.nlines)
-    {
-        strcpy (errmsg, "Invalid line number for land/water mask band");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-  
-    /* Read the data, but first seek to the correct line */
-    loc = (long) iline * this->size_lw.nsamps * sizeof (uint8);
-    if (fseek (this->fp_bin_lw, loc, SEEK_SET))
-    {
-        strcpy (errmsg, "Seeking to the current line in the input file");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    if (read_raw_binary (this->fp_bin_lw, nlines, this->size_lw.nsamps,
-        sizeof (uint8), out_arr) != SUCCESS)
-    {
-        sprintf (errmsg, "Reading %d lines from land/water mask starting at "
-            "line %d", nlines, iline);
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-  
-    return (SUCCESS);
-}
-
-
 #define DATE_STRING_LEN (50)
 #define TIME_STRING_LEN (50)
 
@@ -706,7 +604,6 @@ int get_xml_input
     int th_indx=-9;      /* band index in XML file for the thermal band */
     int pan_indx=-9;     /* band index in XML file for the pan band */
     int qa_indx=-9;      /* band index in XML file for the QA band */
-    int lw_indx=-9;      /* band index in XML file for the land/water band */
     Espa_global_meta_t *gmeta = &metadata->global; /* pointer to global meta */
 
     /* Initialize the input fields */
@@ -765,12 +662,6 @@ int get_xml_input
         this->open_qa[ib] = false;
         this->fp_bin_qa[ib] = NULL;
     }
-
-    this->nband_lw = 0;
-    this->meta.iband_lw = -1;
-    this->file_name_lw = NULL;
-    this->open_lw = false;
-    this->fp_bin_lw = NULL;
 
     /* Pull the appropriate data from the XML file */
     acq_date[0] = acq_time[0] = '\0';
@@ -852,14 +743,6 @@ int get_xml_input
 
         this->nband_qa = 1;     /* number of QA bands */
         this->meta.iband_qa[0] = 12;
-
-        /* land/water mask is a single band, but only needed if processing
-           surface reflectance corrections */
-        if (process_sr)
-        {
-            this->nband_lw = 1;     /* number of land/water bands */
-            this->meta.iband_lw = 13;
-        }
     }
     else if (this->meta.inst == INST_OLI)
     {
@@ -989,15 +872,6 @@ int get_xml_input
             /* get the QA band info */
             this->file_name_qa[0] = strdup (metadata->band[i].file_name);
         }
-
-        else if (!strcmp (metadata->band[i].name, "land_water_mask"))
-        {
-            /* this is the index we'll use for land/water mask band info */
-            lw_indx = i;
-
-            /* get the land/water mask band info */
-            this->file_name_lw = strdup (metadata->band[i].file_name);
-        }
     }  /* for i */
 
     /* Make sure the bands were found in the XML file */
@@ -1025,15 +899,6 @@ int get_xml_input
     if (qa_indx == -9)
     {
         sprintf (errmsg, "QA band (qa) was not found in the XML file");
-        error_handler (true, FUNC_NAME, errmsg);
-        return (ERROR);
-    }
-
-    /* land/water mask only used for OLI/TIRS products */
-    if (this->meta.inst == INST_OLI_TIRS && process_sr && lw_indx == -9)
-    {
-        sprintf (errmsg, "Land/water mask band (land_water_mask) was not "
-            "found in the XML file");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
@@ -1073,21 +938,6 @@ int get_xml_input
     this->size_qa.nlines = metadata->band[qa_indx].nlines;
     this->size_qa.pixsize[0] = metadata->band[qa_indx].pixel_size[0];
     this->size_qa.pixsize[1] = metadata->band[qa_indx].pixel_size[1];
-
-    if (this->meta.inst == INST_OLI_TIRS && process_sr)
-    {  /* skip for OLI or for TOA-only */
-        this->size_lw.nsamps = metadata->band[lw_indx].nsamps;
-        this->size_lw.nlines = metadata->band[lw_indx].nlines;
-        this->size_lw.pixsize[0] = metadata->band[lw_indx].pixel_size[0];
-        this->size_lw.pixsize[1] = metadata->band[lw_indx].pixel_size[1];
-    }
-    else
-    {  /* set to 0s */
-        this->size_lw.nsamps = 0;
-        this->size_lw.nlines = 0;
-        this->size_lw.pixsize[0] = 0;
-        this->size_lw.pixsize[1] = 0;
-    }
 
     /* Check WRS path/rows */
     if (this->meta.wrs_sys == WRS_1)

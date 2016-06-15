@@ -1,9 +1,9 @@
 #include <sys/stat.h>
 #include <unistd.h>
-#include "l8_sr.h"
+#include "lasrc.h"
 
 /******************************************************************************
-MODULE:  l8_sr
+MODULE:  lasrc (Landsat Surface Reflectance Code - LaSRC)
 
 PURPOSE:  Computes the surface reflectance values for the Landsat 8 products.
 
@@ -209,12 +209,6 @@ int main (int argc, char *argv[])
             input->size_qa.nlines, input->size_qa.nsamps);
         printf ("  Pixsize: %f,%f\n\n", input->size_qa.pixsize[0],
             input->size_qa.pixsize[1]);
-
-        printf ("  Nband land/water: %d\n", input->nband_lw);
-        printf ("  Number of land/water mask lines/samples: %d/%d\n",
-            input->size_lw.nlines, input->size_lw.nsamps);
-        printf ("  Pixsize: %f,%f\n\n", input->size_lw.pixsize[0],
-            input->size_lw.pixsize[1]);
 
         printf ("  Fill value: %d\n", input->meta.fill);
         printf ("  Solar zenith: %f\n", xml_metadata.global.solar_zenith);
@@ -552,15 +546,15 @@ NOTES:
 ******************************************************************************/
 void usage ()
 {
-    printf ("l8_sr computes the surface reflectance values for the input "
-            "Landsat 8 DN products.  Surface reflectance correction and/or "
-            "top of atmosphere correction is applied and written for bands "
-            "1-7.  Top of atmosphere and at-sensor corrections are applied "
-            "and written for bands 9 (cirrus), 10 (thermal), and 11 "
-            "(thermal).  Surface reflectance corrections are available for "
-            "OLI_TIRS products.  OLI-only scenes are corrected up through TOA "
-            "and not surface reflectance.\n\n");
-    printf ("usage: l8_sr "
+    printf ("LaSRC (Landsat Surface Reflectance Code) computes the surface "
+            "reflectance values for the input Landsat 8 DN products.  Surface "
+            "reflectance correction and/or top of atmosphere correction is "
+            "applied and written for bands 1-7.  Top of atmosphere and "
+            "at-sensor corrections are applied and written for bands 9 "
+            "(cirrus), 10 (thermal), and 11 (thermal).  Surface reflectance "
+            "corrections are available for OLI_TIRS products.  OLI-only scenes "
+            "are corrected up through TOA and not surface reflectance.\n\n");
+    printf ("usage: lasrc "
             "--xml=input_xml_filename "
             "--aux=input_auxiliary_filename "
             "--process_sr=true:false --write_toa [--verbose]\n");
@@ -582,18 +576,18 @@ void usage ()
     printf ("    -verbose: should intermediate messages be printed? (default "
             "is false)\n");
 
-    printf ("\nl8_sr --help will print the usage statement\n");
-    printf ("\nExample: l8_sr --xml=LC80410272013181LGN00.xml "
+    printf ("\nlasrc --help will print the usage statement\n");
+    printf ("\nExample: lasrc --xml=LC80410272013181LGN00.xml "
             "--aux=L8ANC2013181.hdf_fused --verbose\n");
     printf ("   ==> Writes bands 9-11 as TOA reflectance and brightness "
             "temperature.  Writes bands 1-7 as surface reflectance.\n\n");
 
-    printf ("\nExample: l8_sr --xml=LC80410272013181LGN00.xml "
+    printf ("\nExample: lasrc --xml=LC80410272013181LGN00.xml "
             "--aux=L8ANC2013181.hdf_fused --write_toa --verbose\n");
     printf ("   ==> Writes bands 1-11 as TOA reflectance and brightness "
             "temperature.  Writes bands 1-7 as surface reflectance.\n");
 
-    printf ("\nExample: l8_sr --xml=LC80410272013181LGN00.xml "
+    printf ("\nExample: lasrc --xml=LC80410272013181LGN00.xml "
             "--aux=L8ANC2013181.hdf_fused --process_sr=false --verbose\n");
     printf ("   ==> Writes bands 1-11 as TOA reflectance and brightness "
             "temperature.  Surface reflectance corrections are not applied.\n");

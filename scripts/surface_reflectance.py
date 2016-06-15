@@ -103,11 +103,11 @@ def get_science_application_name(satellite_sensor_code):
     other_prefixes_collection = ['LT04', 'LT05', 'LE07']
 
     if satellite_sensor_code[0:3] in l8_prefixes_old:
-        return 'do_l8_sr.py'
+        return 'do_lasrc.py'
     elif satellite_sensor_code[0:3] in other_prefixes_old:
         return 'do_ledaps.py'
     elif satellite_sensor_code in l8_prefixes_collection:
-        return 'do_l8_sr.py'
+        return 'do_lasrc.py'
     elif satellite_sensor_code in other_prefixes_collection:
         return 'do_ledaps.py'
     else:

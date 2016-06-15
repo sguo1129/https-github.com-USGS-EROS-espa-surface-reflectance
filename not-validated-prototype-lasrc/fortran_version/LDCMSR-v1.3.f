@@ -56,7 +56,8 @@
 	integer*8 padding
 	integer sdsind(12)
 	data sdsind /0,1,2,3,4,5,6,-1,7,8,9,10/
-	data suffix /"01","02","03","04","05","06","07","08","09","10","11","QA"/
+	data suffix /"01","02","03","04","05","06",
+     &      "07","08","09","10","11","QA"/
 	integer ii,nr,nc,ib,als,i,j,nrp,ncp,ierr
 	integer nrcmg,nccmg,icmg,jcmg
 	real u,v
@@ -132,8 +133,8 @@ C The following arguments are all names of the LUTs to look up.
 !	integer ib
         integer retval
 	real roslamb
-       data (sbandname(i),i=1,8)/"ldcmb1","ldcmb2","ldcmb3","ldcmb4","ldcmb5","ldcmb6",
-     s  "ldcmb7","ldcmb8"/
+       data (sbandname(i),i=1,8)/"ldcmb1","ldcmb2","ldcmb3","ldcmb4",
+     &"ldcmb5","ldcmb6","ldcmb7","ldcmb8"/
         real tgo,roatm,ttatmg,satm,xrorayp,next
 c       integer ldcmind(9)
 c       data ldcmind /9,10,4,1,2,6,7,4,6/ 

@@ -6,7 +6,7 @@
 
 # ----------------------------------------------------------------------------
 Name:		espa-surface-reflectance
-Version:	201605
+Version:	201607
 Release:	1%{?dist}
 Summary:	ESPA Surface Reflectance Software
 
@@ -29,7 +29,7 @@ Provides science application executables for generating surface reflectance prod
 
 # ----------------------------------------------------------------------------
 # Specify the repository tag/branch to clone and build from
-%define tagname dev_may2016
+%define tagname dev_l8sr_v3.0
 # Specify the name of the directory to clone into
 %define clonedname %{name}-%{tagname}
 
@@ -76,9 +76,11 @@ rm -rf %{buildroot}
 
 # ----------------------------------------------------------------------------
 %changelog
+* Wed Jun 15 2016 Ronald D Dilley <rdilley@usgs.gov>
+- Updated for July 2016 release
+
 * Wed Apr 13 2016 Ronald D Dilley <rdilley@usgs.gov>
 - Updated for May 2016 release
-
 * Mon Mar 07 2016 Ronald D Dilley <rdilley@usgs.gov>
 - Updated release number for a recompile against a support library
 * Thu Mar 03 2016 Ronald D Dilley <rdilley@usgs.gov>

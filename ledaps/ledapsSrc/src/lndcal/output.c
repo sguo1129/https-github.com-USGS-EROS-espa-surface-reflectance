@@ -180,8 +180,8 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
         sprintf (bmeta[ib].long_name, "band %d TOA reflectance",
           input->meta.iband[ib]);
         strcpy (bmeta[ib].data_units, lut->units_ref);
-        bmeta[ib].valid_range[0] = lut->valid_range_ref[0];
-        bmeta[ib].valid_range[1] = lut->valid_range_ref[1];
+        bmeta[ib].valid_range[0] = (float) lut->valid_range_ref[0];
+        bmeta[ib].valid_range[1] = (float) lut->valid_range_ref[1];
       }
       else
       {
@@ -192,8 +192,8 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
         sprintf (bmeta[ib].long_name, "band %d brightness temperature",
           input->meta.iband_th);
         strcpy (bmeta[ib].data_units, lut->units_th);
-        bmeta[ib].valid_range[0] = lut->valid_range_th[0];
-        bmeta[ib].valid_range[1] = lut->valid_range_th[1];
+        bmeta[ib].valid_range[0] = (float) lut->valid_range_th[0];
+        bmeta[ib].valid_range[1] = (float) lut->valid_range_th[1];
       }
     }
     else  /* QA band */
@@ -249,8 +249,8 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
       strcpy (bmeta[ib].long_name, "QA band");
       strcpy (bmeta[ib].data_units, "bitmap");
       strcpy (bmeta[ib].category, "qa");
-      bmeta[ib].valid_range[0] = 0;
-      bmeta[ib].valid_range[1] = 255;
+      bmeta[ib].valid_range[0] = 0.0;
+      bmeta[ib].valid_range[1] = 255.0;
     }
 
     /* Set up the filename with the scene name and band name and open the

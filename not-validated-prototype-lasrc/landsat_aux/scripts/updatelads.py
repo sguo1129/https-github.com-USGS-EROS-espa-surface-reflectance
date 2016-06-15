@@ -15,7 +15,7 @@ import re
 import time
 import subprocess
 from optparse import OptionParser
-import xmlrpclib
+import requests
 import logging
 
 # Global static variables
@@ -29,21 +29,22 @@ START_YEAR = 2013      # quarterly processing will reprocess back to the
 # DatasourceResolver class
 ############################################################################
 class DatasourceResolver:
-    # Specify the base location for the EP/TOMS data as well as the
+    # Specify the base location for the LAADS data as well as the
     # correct subdirectories for each of the instrument-specific ozone
     # products
+    # These are version 006 products
     SERVER_URL = 'ladssci.nascom.nasa.gov'
-    TERRA_CMA = '/allData/24/MOD09CMA/'
-    TERRA_CMG = '/allData/24/MOD09CMG/'
-    AQUA_CMA = '/allData/22/MYD09CMA/'
-    AQUA_CMG = '/allData/22/MYD09CMG/'
+    TERRA_CMA = '/allData/6/MOD09CMA/'
+    TERRA_CMG = '/allData/6/MOD09CMG/'
+    AQUA_CMA = '/allData/6/MYD09CMA/'
+    AQUA_CMG = '/allData/6/MYD09CMG/'
 
     user = None
     password = None
 
     def __init__(self):
         if(self.user is None or self.password is None):
-            (self.user, self.password) = get_credentials_from_xmlrpc()
+            (self.user, self.password) = get_credentials_from_production()
 
         logger = logging.getLogger(__name__)  # Obtain logger for this module.
         logger.info('LADSFTP username: {0}'.format(self.user))
@@ -102,12 +103,12 @@ class DatasourceResolver:
 
 #######################################################################
 # Description: Obtains ftp credentials (username and password) from
-# XMLRPC service.
+# production service.
 #
 # Precondition:
-#   Requires environmental variable, ESPA_XMLRPC, to be set equal to the
-#       address of the service.
-#   Assumes XMLRPC service is accessable from local system.
+#   Requires environmental variable, ESPA_LAADS_CONFIG, to be set equal to the
+#       http address of the service.
+#   Assumes ESPA_LAADS_CONFIG http link is accessable from local system.
 #
 # Postcondition:
 #   Returns tuple containing (username, password)
@@ -116,34 +117,44 @@ class DatasourceResolver:
 #       Occurs if empty credentials were recieved from the service
 #
 #######################################################################
-def get_credentials_from_xmlrpc():
+def get_credentials_from_production():
     # get the logger
     logger = logging.getLogger(__name__)
 
     # determine the auxiliary directory to store the data
-    xmlrpc = os.environ.get('ESPA_XMLRPC')
-    if xmlrpc is None:
-        msg = "ESPA_XMLRPC environment variable not set... exiting"
+    laads_config = os.environ.get('ESPA_LAADS_CONFIG')
+    if laads_config is None:
+        msg = "ESPA_LAADS_CONFIG environment variable not set... exiting"
         logger.error(msg)
         return None
 
     # get the LAADS username and password
-    try:
-        server = xmlrpclib.ServerProxy(xmlrpc)
-        user = server.get_configuration('ladsftp.username')
-        password = server.get_configuration('ladsftp.password')
-    except xmlrpclib.ProtocolError, e:
-        msg = "Error connecting to XMLRPC service to fetch credentials: " \
-            "%s" % e
+    # username
+    username_url = '{0}/ladsftp.username'.format(laads_config)
+    response = requests.get(username_url)
+    if not response.ok:
+        msg = 'Error fetching LAADS credentials'
         logger.error(msg)
         return None
+    user = response.json()['ladsftp.username']
+    logger.debug('username: {0}'.format(user))
 
-    # verify that the XMLRPC service returned valid information and
+    # password
+    pwd_url = '{0}/ladsftp.password'.format(laads_config)
+    response = requests.get(pwd_url)
+    if not response.ok:
+        msg = 'Error fetching LAADS credentials'
+        logger.error(msg)
+        return None
+    password = response.json()['ladsftp.password']
+    logger.debug('password: {0}'.format(password))
+
+    # verify that the ESPA_LAADS_CONFIG service returned valid information and
     # the username and password were set in the configuration
     if len(user) <= 0 or len(password) <= 0:
         msg = "Received invalid sized credentials for LAADS FTP from " \
-            "XMLRPC service. Make sure ladsftp.username and " \
-            "ladsftp.password are set in the ESPA_XMLRPC."
+            "ESPA_LAADS_CONFIG service. Make sure ladsftp.username and " \
+            "ladsftp.password are set in the ESPA_LAADS_CONFIG."
         logger.error(msg)
         return None
 
@@ -280,17 +291,22 @@ def getLadsData (auxdir, year, today):
 
     # determine the directory for the output auxiliary data files to be
     # processed.  create the directory if it doesn't exist.
-    outputDir = "%s/LAADS/%d" % (auxdir, year)
+    outputDir = "%s/LADS/%d" % (auxdir, year)
     if not os.path.exists(outputDir):
         msg = "%s does not exist... creating" % outputDir
         logger.info(msg)
         os.makedirs(outputDir, 0777)
 
     # if the specified year is the current year, only process up through
-    # today otherwise process through all the days in the year
+    # today (actually 2 days earlier due to the LAADS data lag) otherwise
+    # process through all the days in the year
     now = datetime.datetime.now()
     if year == now.year:
-        day_of_year = now.timetuple().tm_yday
+        # start processing LAADS data with a 2-day time lag. if the 2-day lag
+        # puts us into last year, then we are done with the current year.
+        day_of_year = now.timetuple().tm_yday - 2
+        if day_of_year <= 0:
+            return SUCCESS
     else:
         if isLeapYear (year) == True:
             day_of_year = 366   
@@ -514,7 +530,8 @@ def main ():
     quarterly = options.quarterly   # process today back to START_YEAR
 
     if((options.username is None) and (options.password is None)):
-        logger.info('Credentials obtained from XMLRPC service will be used')
+        logger.info('Credentials obtained from ESPA_LAADS_CONFIG service will '
+                    'be used')
     elif((options.username is not None) and (options.password is not None)):
         DatasourceResolver.user = options.username
         DatasourceResolver.password = options.password
@@ -546,13 +563,14 @@ def main ():
         now = datetime.datetime.now()
         day_of_year = now.timetuple().tm_yday
         eyear = now.year
-        syear = START_YEAR
+        if day_of_year <= 31:
+            syear = eyear - 1
+        else:
+            syear = eyear
 
     elif quarterly:
         msg = "Processing LAADS data back to %d" % START_YEAR
         logger.info(msg)
-        now = datetime.datetime.now()
-        day_of_year = now.timetuple().tm_yday
         eyear = now.year
         syear = START_YEAR
 

@@ -1,5 +1,5 @@
-#ifndef _L8_SR_H_
-#define _L8_SR_H_
+#ifndef _LASRC_H_
+#define _LASRC_H_
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -116,20 +116,20 @@ int init_sr_refl
                               [NSR_BANDS][7][22] */
     float **nbfic,      /* O: communitive number of azimuth angles [20][22] */
     float **nbfi,       /* O: number of azimuth angles [20][22] */
-    int16 **dem,        /* O: CMG DEM data array [DEM_NBLAT][DEM_NBLON] */
-    int16 **andwi,      /* O: avg NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **sndwi,      /* O: standard NDWI [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob1,    /* O: mean band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob2,    /* O: mean band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **ratiob7,    /* O: mean band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob1, /* O: integer band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob2, /* O: integer band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **intratiob7, /* O: integer band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob1, /* O: slope band1 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob2, /* O: slope band2 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    int16 **slpratiob7, /* O: slope band7 ratio [RATIO_NBLAT][RATIO_NBLON] */
-    uint16 **wv,        /* O: water vapor values [CMG_NBLAT][CMG_NBLON] */
-    uint8 **oz          /* O: ozone values [CMG_NBLAT][CMG_NBLON] */
+    int16 *dem,         /* O: CMG DEM data array [DEM_NBLAT x DEM_NBLON] */
+    int16 *andwi,       /* O: avg NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *sndwi,       /* O: standard NDWI [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob1,     /* O: mean band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob2,     /* O: mean band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *ratiob7,     /* O: mean band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob1,  /* O: integer band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob2,  /* O: integer band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *intratiob7,  /* O: integer band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob1,  /* O: slope band1 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob2,  /* O: slope band2 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    int16 *slpratiob7,  /* O: slope band7 ratio [RATIO_NBLAT x RATIO_NBLON] */
+    uint16 *wv,         /* O: water vapor values [CMG_NBLAT x CMG_NBLON] */
+    uint8 *oz           /* O: ozone values [CMG_NBLAT x CMG_NBLON] */
 );
 
 #endif
