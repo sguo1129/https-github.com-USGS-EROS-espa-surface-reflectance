@@ -1,5 +1,5 @@
-## Ledaps Version 2.6.0 Release Notes
-Release Date: May 2016
+## Ledaps Version 2.7.0 Release Notes
+Release Date: August 2016
 
 ### Downloads
 Ledaps source code
@@ -10,7 +10,7 @@ Ledaps auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/ledaps_auxiliary/ledaps_aux.1978-2014.tar.gz
 
-See git tag [ledaps-version_2.6.0]
+See git tag [ledaps-version_2.7.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -58,7 +58,7 @@ See git tag [ledaps-version_2.6.0]
 
   * Test - Download Landsat Level 1 files.  Run the do\_ledaps Python script in the LEDAPS bin directory to run the applications.  Use do\_ledaps.py --help for the usage information.  This script requires that your LEDAPS binaries are in your $PATH or that you have a $BIN environment variable set up to point to the LEDAPS bin directory.
 ```
-    convert_lpgs_to_espa --mtl <Landsat_MTL_file> --xml <Landsat_ESPA_XML_file>
+    convert_lpgs_to_espa --mtl <Landsat_MTL_file>
     do_ledaps.py --xml <Landsat_ESPA_XML_file>
 ```
 
@@ -92,19 +92,7 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  * All
-    1. Confirmed the L1T filenames are supported for both the legacy L1T
-       filenames as well as the new Landsat Collection filenames.
-  * lndsr
-    1. The SrInterpAtmCoef function in sr.c spends time computing 13
-       coefficients for the current pixel, however 4 of those coefficients are
-       not used in the application (td_r, tu_r, S_r, rho_r).  Instead the
-       coefficients from the 6S table are used for these variables.  Therefore
-       the interpolation of these variables is commented out to save processing
-       time.
-  * lndcal
-    1. The lndcal application handles "zooming" the thermal bands to the same
-       resolution as the reflectance bands.  This code is obsolete, given that
-       the thermal and reflective bands are all the same resolution.  The code
-       which handles the zooming has been pulled from lndcal for easier
-       maintenance.
+  1. Updated the valid_range to be a floating point versus long to match the
+     new data type in the XML schema.
+  2. Change scene_id to product_id in the output XML to match the new schema.
+  3. Verified the code supports Albers for CONUS, Hawaii, and Alaska.

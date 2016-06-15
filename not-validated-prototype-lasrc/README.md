@@ -42,7 +42,7 @@ See git tag [lasrc-version_0.8.0]
 
   * Test - Download Landsat Level 1 files.  Run the do\_lasrc Python script in the PREFIX bin directory to run the applications.  Use do\_lasrc.py --help for the usage information.  This script requires that your LaSRC binaries are in your $PATH or that you have a $BIN environment variable set up to point to the PREFIX bin directory.
 ```
-    convert_lpgs_to_espa --mtl <Landsat_MTL_file> --xml <Landsat_ESPA_XML_file>
+    convert_lpgs_to_espa --mtl <Landsat_MTL_file>
     do_lasrc.py --xml <Landsat_ESPA_XML_file>
 ```
 
