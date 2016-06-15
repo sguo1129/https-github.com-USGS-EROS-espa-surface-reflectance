@@ -120,8 +120,7 @@ int compute_toa_refl
                     else
                         /* TODO FORTRAN code doesn't round here, but it's
                            probably a good idea */
-//                        sband[sband_ib][i] = (int) (roundf (rotoa));
-                        sband[sband_ib][i] = (int) rotoa;
+                        sband[sband_ib][i] = (int) (roundf (rotoa));
                 }
                 else
                     sband[sband_ib][i] = FILL_VALUE;
@@ -172,8 +171,7 @@ int compute_toa_refl
                     else
                         /* TODO FORTRAN code doesn't round here, but it's
                            probably a good idea */
-//                        sband[SR_BAND10][i] = (int) (roundf (tmpf));
-                        sband[SR_BAND10][i] = (int) (tmpf);
+                        sband[SR_BAND10][i] = (int) (roundf (tmpf));
                 }
                 else
                     sband[SR_BAND10][i] = FILL_VALUE;
@@ -222,8 +220,7 @@ int compute_toa_refl
                     else
                         /* TODO FORTRAN code doesn't round here, but it's
                            probably a good idea */
-//                        sband[SR_BAND11][i] = (int) (roundf (tmpf));
-                        sband[SR_BAND11][i] = (int) (tmpf);
+                        sband[SR_BAND11][i] = (int) (roundf (tmpf));
                 }
                 else
                     sband[SR_BAND11][i] = FILL_VALUE;
@@ -709,8 +706,7 @@ int compute_sr_refl
             /* Each CMG pixel is 0.05 x 0.05 degrees.  Use the center of the
                pixel for each calculation. */
             /* TODO the line/sample calculation from the x/ycmg values should
-               be rounded.  The FORTRAN code does this, then overwrites it.
-               To be consistent, we will leave it out for now. */
+               be rounded.  The FORTRAN code does this, then overwrites it. */
             ycmg = (89.975 - lat) * 20.0;   /* vs / 0.05 */
             xcmg = (179.975 + lon) * 20.0;  /* vs / 0.05 */
             lcmg = (int) roundf (ycmg);
@@ -1681,8 +1677,7 @@ int compute_sr_refl
                     else
                           /* TODO FORTRAN code doesn't round here, but it's
                              probably a good idea */
-//                        sband[ib][i] = (int) (roundf (roslamb));
-                        sband[ib][i] = (int) (roslamb);
+                        sband[ib][i] = (int) (roundf (roslamb));
                 }  /* end if not cirrus and not cloud */
             }  /* end if not fill */
         }  /* end for i */
