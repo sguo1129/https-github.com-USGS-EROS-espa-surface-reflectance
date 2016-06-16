@@ -347,7 +347,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     Espa_global_meta_t *gmeta = &metadata->global; /* pointer to global meta */
 
     /* Initialize the input fields.  Set file type to binary, since that is
-       the ESPA internal format for the input L1G/T products. */
+       the ESPA internal format for the input Level-1 products. */
     this->file_type = INPUT_TYPE_BINARY;
     this->meta.sat = SAT_NULL;
     this->meta.inst = INST_NULL;
@@ -475,7 +475,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     for (i = 0; i < metadata->nbands; i++)
     {
         if (!strcmp (metadata->band[i].name, "band1") &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* this is the index we'll use for reflectance band info */
             refl_indx = i;
@@ -498,7 +498,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             }
         }
         else if (!strcmp (metadata->band[i].name, "band2") &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band2 info */
             this->meta.rad_gain[1] = metadata->band[i].rad_gain;
@@ -512,7 +512,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             }
         }
         else if (!strcmp (metadata->band[i].name, "band3") &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band3 info */
             this->meta.rad_gain[2] = metadata->band[i].rad_gain;
@@ -526,7 +526,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             }
         }
         else if (!strcmp (metadata->band[i].name, "band4") &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band4 info */
             this->meta.rad_gain[3] = metadata->band[i].rad_gain;
@@ -540,7 +540,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             }
         }
         else if (!strcmp (metadata->band[i].name, "band5") &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band5 info */
             this->meta.rad_gain[4] = metadata->band[i].rad_gain;
@@ -554,7 +554,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             }
         }
         else if (!strcmp (metadata->band[i].name, "band7") &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band7 info */
             this->meta.rad_gain[5] = metadata->band[i].rad_gain;
@@ -570,7 +570,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
 
         if (!strcmp (metadata->band[i].name, "band6") &&
             this->meta.inst == INST_TM &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* this is the index we'll use for thermal band info */
             th_indx = i;
@@ -588,7 +588,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
         }
         else if (!strcmp (metadata->band[i].name, "band61") &&
             this->meta.inst == INST_ETM &&
-            !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+            !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* this is the index we'll use for thermal band info */
             th_indx = i;

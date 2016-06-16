@@ -77,11 +77,11 @@ Output_t *open_output
         }
     }
 
-    /* Make sure we found the L1G/T band 1 */
+    /* Make sure we found the Level-1 band 1 */
     if (refl_indx == -1)
     {
-        sprintf (errmsg, "Unable to find the L1G/T band 1 bands in the "
-            "XML file for initializing the output metadata.");
+        sprintf (errmsg, "Unable to find the Level-1 band 1 bands in the XML "
+            "file for initializing the output metadata.");
         error_handler (true, FUNC_NAME, errmsg);
         return (NULL);
     }

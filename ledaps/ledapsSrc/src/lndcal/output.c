@@ -105,7 +105,7 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
   for (ib = 0; ib < in_meta->nbands; ib++)
   {
     if (!strcmp (in_meta->band[ib].name, rep_band) &&
-        !strncmp (in_meta->band[ib].product, "L1", 2))  /* L1G or L1T */
+        !strncmp (in_meta->band[ib].product, "L1", 2))  /* Level-1 */
     {
       /* this is the index we'll use for band info from the XML strcuture */
       rep_indx = ib;

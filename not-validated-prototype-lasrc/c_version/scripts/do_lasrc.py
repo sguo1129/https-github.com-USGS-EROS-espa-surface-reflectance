@@ -133,13 +133,13 @@ class SurfaceReflectance():
         # pull the date from the XML filename to determine which auxiliary
         # file should be used for input.  Example: LC80410272013181LGN00.xml
         # uses L8ANC2013181.hdf_fused.  Similarly, the new collection naming
-        # convention LC08_L1T_041027_20130630_20140312_02.xml also used the
+        # convention LC08_L1TP_041027_20130630_20140312_02.xml also used the
         # 2013181 HDF file.
         l8_prefixes_old = ['LC8', 'LO8']
         l8_prefixes_collection = ['LC08', 'LO08']
         if base_xmlfile[0:3] in l8_prefixes_old:
-            # Old-style L1T naming convention. Just pull the year and DOY from
-            # the XML filename.
+            # Old-style Level-1 naming convention. Just pull the year and DOY
+            # from the XML filename.
             aux_file = 'L8ANC' + base_xmlfile[9:16] + '.hdf_fused'
         elif base_xmlfile[0:4] in l8_prefixes_collection:
             # New-style collection naming convention. Pull the year, month,

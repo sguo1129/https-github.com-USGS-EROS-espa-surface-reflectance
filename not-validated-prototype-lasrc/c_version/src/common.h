@@ -26,7 +26,7 @@ typedef char byte;
    go with that for the array size. */
 #define NSR_BANDS 8
 
-/* L8 L1G/T products have 8 reflectance bands (bands 1-7, and 9),
+/* L8 Level-1 products have 8 reflectance bands (bands 1-7, and 9),
    2 thermal bands (band 10 and 11), 1 pan band (band 8), and 1 QA band
    (band 12) */
 #define NBAND_REFL_MAX 8

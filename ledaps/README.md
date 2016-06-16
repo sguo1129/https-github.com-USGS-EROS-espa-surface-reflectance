@@ -96,3 +96,5 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
      new data type in the XML schema.
   2. Change scene_id to product_id in the output XML to match the new schema.
   3. Verified the code supports Albers for CONUS, Hawaii, and Alaska.
+  4. Verified the code support the new 4-character product type collection
+     filenames.

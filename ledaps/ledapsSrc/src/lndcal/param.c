@@ -317,7 +317,7 @@ conversion exist and were set from the input XML file.
   for (i = 0; i < metadata->nbands; i++)
   {
     if (!strcmp (metadata->band[i].name, "band1") &&
-        !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+        !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
     {
       /* this is the index we'll use for reflectance band info */
       refl_indx = i;
@@ -364,7 +364,7 @@ constants were set as well.
   for (i = 0; i < metadata->nbands; i++)
   {
     if (!strcmp (metadata->band[i].name, "band1") &&
-        !strncmp (metadata->band[i].product, "L1", 2))  /* L1G or L1T */
+        !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
     {
       /* this is the index we'll use for reflectance band info */
       refl_indx = i;
