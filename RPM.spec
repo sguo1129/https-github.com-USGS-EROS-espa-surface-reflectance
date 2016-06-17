@@ -7,7 +7,7 @@
 # ----------------------------------------------------------------------------
 Name:		espa-surface-reflectance
 Version:	201607
-Release:	1%{?dist}
+Release:	2%{?dist}
 Summary:	ESPA Surface Reflectance Software
 
 Group:		ESPA
