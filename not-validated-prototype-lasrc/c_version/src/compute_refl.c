@@ -704,23 +704,26 @@ int compute_sr_refl
                or the poles.  Thus we need to wrap the CMG data around to the
                beginning of the array. */
             /* Each CMG pixel is 0.05 x 0.05 degrees.  Use the center of the
-               pixel for each calculation. */
+               pixel for each calculation.  Negative latitude values should be
+               the largest line values in the CMG grid.  Negative longitude
+               values should be the smallest sample values in the CMG grid. */
             /* TODO the line/sample calculation from the x/ycmg values should
                be rounded.  The FORTRAN code does this, then overwrites it. */
             ycmg = (89.975 - lat) * 20.0;   /* vs / 0.05 */
             xcmg = (179.975 + lon) * 20.0;  /* vs / 0.05 */
             lcmg = (int) roundf (ycmg);
             scmg = (int) roundf (xcmg);
-            if ((lcmg < 0 || lcmg >= CMG_NBLAT) ||
-                (scmg < 0 || scmg >= CMG_NBLON))
-            {
-                sprintf (errmsg, "Invalid line/sample combination for the "
-                    "CMG-related lookup tables - line %d, sample %d "
-                    "(0-based). CMG-based tables are %d lines x %d "
-                    "samples.", lcmg, scmg, CMG_NBLAT, CMG_NBLON);
-                error_handler (true, FUNC_NAME, errmsg);
-                exit (ERROR);
-            }
+
+            /* Handle the edges of the lat/long values in the CMG grid */
+            if (lcmg < 0)
+                lcmg = 0;
+            else if (lcmg >= CMG_NBLAT)
+                lcmg = CMG_NBLAT;
+
+            if (scmg < 0)
+                scmg = 0;
+            else if (scmg >= CMG_NBLON)
+                scmg = CMG_NBLON;
 
             /* If the current CMG pixel is at the edge of the CMG array,
                then allow the next pixel for interpolation to wrap around
@@ -2016,9 +2019,8 @@ int init_sr_refl
 
     /* Use scene center (and center of the pixel) to compute atmospheric
        parameters */
-    /* TODO -- FORTRAN code adds one to the calculation.  Is this correct?? */
-    img.l = (int) (1 + nlines * 0.5) - 0.5;
-    img.s = (int) (1 + nsamps * 0.5) + 0.5;
+    img.l = (int) (nlines * 0.5) - 0.5;
+    img.s = (int) (nsamps * 0.5) + 0.5;
     img.is_fill = false;
     if (!from_space (space, &img, &geo))
     {
@@ -2032,20 +2034,25 @@ int init_sr_refl
     printf ("Scene center lat/long: %f, %f\n", center_lat, center_lon);
 
     /* Use the scene center lat/long to determine the line/sample in the
-       CMG-related lookup tables, using the center of the UL pixel */
+       CMG-related lookup tables, using the center of the UL pixel.
+       Negative latitude values should be the largest line values in the CMG
+       grid.  Negative longitude values should be the smallest sample values
+       in the CMG grid. */
     ycmg = (89.975 - center_lat) * 20.0;    /* vs / 0.05 */
     xcmg = (179.975 + center_lon) * 20.0;   /* vs / 0.05 */
     lcmg = (int) roundf (ycmg);
     scmg = (int) roundf (xcmg);
-    if ((lcmg < 0 || lcmg >= CMG_NBLAT) || (scmg < 0 || scmg >= CMG_NBLON))
-    {
-        sprintf (errmsg, "Invalid line/sample combination for the "
-            "CMG-related lookup tables - line %d, sample %d (0-based).  "
-            "CMG-based tables are %d lines x %d samples.", lcmg, scmg,
-            CMG_NBLAT, CMG_NBLON);
-        error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
+
+    /* Handle the edges of the lat/long values in the CMG grid */
+    if (lcmg < 0)
+        lcmg = 0;
+    else if (lcmg >= CMG_NBLAT)
+        lcmg = CMG_NBLAT;
+
+    if (scmg < 0)
+        scmg = 0;
+    else if (scmg >= CMG_NBLON)
+        scmg = CMG_NBLON;
 
     cmg_pix = lcmg * CMG_NBLON + scmg;
     if (wv[cmg_pix] != 0)
