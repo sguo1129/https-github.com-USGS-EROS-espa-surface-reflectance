@@ -5,10 +5,19 @@
 #     particular release to build an RPM for.
 
 # ----------------------------------------------------------------------------
-Name:		espa-surface-reflectance
-Version:	201607
-Release:	1%{?dist}
-Summary:	ESPA Surface Reflectance Software
+
+%define project espa-surface-reflectance
+%define algorithm lasrc-aux
+%define build_timestamp %(date +"%%Y%%m%%d%%H%%M%%S")
+
+# ----------------------------------------------------------------------------
+# Change the default rpm name format for the rpm built by this spec file
+%define _build_name_fmt %%{NAME}.%%{VERSION}.%%{RELEASE}%{?dist}.%{ARCH}.rpm
+
+Name:		%{project}-%{algorithm}
+Version:	0.6.1
+Release:	1.%{build_timestamp}
+Summary:	ESPA Landsat Surface Reflectance Code Auxiliary Software
 
 Group:		ESPA
 License:	Nasa Open Source Agreement
@@ -18,18 +27,17 @@ BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildArch:	x86_64
 Packager:	USGS EROS LSRD
 
-BuildRequires:	espa-product-formatter
-Requires:	espa-product-formatter >= 201605
-
+#BuildRequires:	espa-product-formatter
+#Requires:	espa-product-formatter >= 1.6.0
 
 # ----------------------------------------------------------------------------
 %description
-Provides science application executables for generating surface reflectance products.  These applications are implementated in C and are statically built.
+Provides application executables for building the LaSRC auxiliary data.  This is a C implementation which is statically built.
 
 
 # ----------------------------------------------------------------------------
 # Specify the repository tag/branch to clone and build from
-%define tagname dev_l8sr_v3.0
+%define tagname dev_hotfix_l8aux
 # Specify the name of the directory to clone into
 %define clonedname %{name}-%{tagname}
 
@@ -47,7 +55,7 @@ rm -rf %{clonedname}
 git clone --depth 1 --branch %{tagname} %{url} %{clonedname}
 # Build the applications
 cd %{clonedname}
-make BUILD_STATIC=yes
+make all-l8-sr-aux BUILD_STATIC=yes
 
 
 # ----------------------------------------------------------------------------
@@ -56,7 +64,7 @@ make BUILD_STATIC=yes
 rm -rf %{buildroot}
 # Install the applications for a specific path
 cd %{clonedname}
-make install PREFIX=%{buildroot}/usr/local
+make install-l8-sr-aux PREFIX=%{buildroot}/usr/local
 
 # ----------------------------------------------------------------------------
 %clean
@@ -71,25 +79,12 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 # All sub-directories are automatically included
 /usr/local/bin/*
-/usr/local/%{name}
+/usr/local/%{project}/l8_sr/bin/combine_l8_aux_data
+/usr/local/%{project}/l8_sr/bin/updatelads.py
 
 
 # ----------------------------------------------------------------------------
 %changelog
-* Wed Jun 15 2016 Ronald D Dilley <rdilley@usgs.gov>
-- Updated for July 2016 release
-
-* Wed Apr 13 2016 Ronald D Dilley <rdilley@usgs.gov>
-- Updated for May 2016 release
-* Mon Mar 07 2016 Ronald D Dilley <rdilley@usgs.gov>
-- Updated release number for a recompile against a support library
-* Thu Mar 03 2016 Ronald D Dilley <rdilley@usgs.gov>
-- Updated release number for a recompile against a support library
-* Fri Feb 12 2016 Ronald D Dilley <rdilley@usgs.gov>
-- Updated release number for a bug fix Mar 2016 release
-* Mon Jan 25 2016 Ronald D Dilley <rdilley@usgs.gov>
-- Updated for Mar 2016 release
-* Wed Dec 02 2015 Ronald D Dilley <rdilley@usgs.gov>
-- Changed release number for a recompile against the product formatter for Dec 2015 release
-* Wed Nov 04 2015 Ronald D Dilley <rdilley@usgs.gov>
-- Updated for Dec 2015 release
+* Tue Jun 07 2016 Ronald D Dilley <rdilley@usgs.gov>
+- Build for 0.6.1 release
+- Initial implementation
