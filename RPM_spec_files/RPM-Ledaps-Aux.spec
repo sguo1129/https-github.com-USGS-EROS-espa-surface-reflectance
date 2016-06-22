@@ -30,9 +30,8 @@ BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildArch:	x86_64
 Packager:	USGS EROS LSRD
 
-BuildRequires:	espa-product-formatter >= 201608
+BuildRequires:	espa-product-formatter >= 1.8.0
 
-# ----------------------------------------------------------------------------
 %description
 Provides executables for retrieveing Ledaps specific auxiliary data.
 

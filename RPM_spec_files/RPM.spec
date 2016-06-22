@@ -29,9 +29,6 @@ BuildRoot:	%(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
 BuildArch:	x86_64
 Packager:	USGS EROS LSRD
 
-#BuildRequires:
-#Requires:
-
 %description
 Provides ESPA scripts generating top-of-atmosphere and surface reflectance products.  These scripts are implementated in Python.
 
