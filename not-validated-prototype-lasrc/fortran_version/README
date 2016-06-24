@@ -1,0 +1,8 @@
+This FORTRAN software is the version 3.0 received from Eric Vermote.
+
+#to compile the code
+make
+
+#run on testdata
+processldcm.ksh INPUT/ LC80410272013181LGN00
+

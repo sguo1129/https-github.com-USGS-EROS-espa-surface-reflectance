@@ -1,5 +1,5 @@
-## Ledaps Version 2.5.0 Release Notes
-Release Date: March 2016
+## Ledaps Version 2.7.0 Release Notes
+Release Date: August 2016
 
 ### Downloads
 Ledaps source code
@@ -10,7 +10,7 @@ Ledaps auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/ledaps_auxiliary/ledaps_aux.1978-2014.tar.gz
 
-See git tag [ledaps-version_2.5.0]
+See git tag [ledaps-version_2.7.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -58,7 +58,7 @@ See git tag [ledaps-version_2.5.0]
 
   * Test - Download Landsat Level 1 files.  Run the do\_ledaps Python script in the LEDAPS bin directory to run the applications.  Use do\_ledaps.py --help for the usage information.  This script requires that your LEDAPS binaries are in your $PATH or that you have a $BIN environment variable set up to point to the LEDAPS bin directory.
 ```
-    convert_lpgs_to_espa --mtl <Landsat_MTL_file> --xml <Landsat_ESPA_XML_file>
+    convert_lpgs_to_espa --mtl <Landsat_MTL_file>
     do_ledaps.py --xml <Landsat_ESPA_XML_file>
 ```
 
@@ -92,10 +92,9 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  * All
-    1. Updated to support Albers products in addition to the current UTM and PS.
-    2. Updated to support the new L1T file naming convention.
-  * lndsr
-    1. Removed calibrated_nt from being written for the band metadata.  It's not used in ESPA processing.
-  * lndsrbm
-    1. Modified lndsrbm to call GCTP forward and inverse functions vs. duplicating the needed functions and defines from GCTP locally.  This makes maintenance easier and addition of new projections cleaner.  (Involves LS_geoloc.c and LS_geoloc_driver.c which generate geo2xy and xy2geo.)
+  1. Updated the valid_range to be a floating point versus long to match the
+     new data type in the XML schema.
+  2. Change scene_id to product_id in the output XML to match the new schema.
+  3. Verified the code supports Albers for CONUS, Hawaii, and Alaska.
+  4. Verified the code support the new 4-character product type collection
+     filenames.

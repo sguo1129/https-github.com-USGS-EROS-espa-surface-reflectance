@@ -98,17 +98,17 @@ def get_science_application_name(satellite_sensor_code):
     '''Returns name of executable that needs to be called'''
 
     l8_prefixes_old = ['LC8', 'LO8', 'LT8']
-    l8_prefixes_new = ['LC08', 'LO08', 'LT08']
+    l8_prefixes_collection = ['LC08', 'LO08', 'LT08']
     other_prefixes_old = ['LT4', 'LT5', 'LE7']
-    other_prefixes_new = ['LT04', 'LT05', 'LE07']
+    other_prefixes_collection = ['LT04', 'LT05', 'LE07']
 
     if satellite_sensor_code[0:3] in l8_prefixes_old:
-        return 'do_l8_sr.py'
+        return 'do_lasrc.py'
     elif satellite_sensor_code[0:3] in other_prefixes_old:
         return 'do_ledaps.py'
-    elif satellite_sensor_code in l8_prefixes_new:
-        return 'do_l8_sr.py'
-    elif satellite_sensor_code in other_prefixes_new:
+    elif satellite_sensor_code in l8_prefixes_collection:
+        return 'do_lasrc.py'
+    elif satellite_sensor_code in other_prefixes_collection:
         return 'do_ledaps.py'
     else:
         raise Exception('Satellite-Sensor code ({0}) not understood'

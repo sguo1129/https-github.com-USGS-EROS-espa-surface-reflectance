@@ -119,7 +119,7 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
   bmeta = this->metadata.band;
 
   /* Grab the scene name */
-  snprintf (scene_name, sizeof (scene_name), "%s", in_meta->global.scene_id);
+  snprintf (scene_name, sizeof (scene_name), "%s", in_meta->global.product_id);
 
   /* Get the current date/time (UTC) for the production date of each band */
   if (time (&tp) == -1)
@@ -164,8 +164,8 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
       sprintf (bmeta[ib].long_name, "band %d surface reflectance",
         input->meta.iband[ib]);
       strcpy (bmeta[ib].data_units, lut->units);
-      bmeta[ib].valid_range[0] = lut->min_valid_sr;
-      bmeta[ib].valid_range[1] = lut->max_valid_sr;
+      bmeta[ib].valid_range[0] = (float) lut->min_valid_sr;
+      bmeta[ib].valid_range[1] = (float) lut->max_valid_sr;
     }
     else if (ib == nband)  /* atmospheric opacity */
     {
@@ -176,8 +176,8 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
       bmeta[ib].scale_factor = lut->atmos_opacity_scale_factor;
       strcpy (bmeta[ib].long_name, band_name_extra[ib-nband]);
       strcpy (bmeta[ib].data_units, lut->units);
-      bmeta[ib].valid_range[0] = lut->min_valid_sr;
-      bmeta[ib].valid_range[1] = lut->max_valid_sr;
+      bmeta[ib].valid_range[0] = (float) lut->min_valid_sr;
+      bmeta[ib].valid_range[1] = (float) lut->max_valid_sr;
     }
     else  /* QA bands */
     {
@@ -186,8 +186,8 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
       sprintf (bmeta[ib].name, "sr_%s", band_name_extra[ib-nband]);
       strcpy (bmeta[ib].long_name, band_name_extra[ib-nband]);
       strcpy (bmeta[ib].data_units, "quality/feature classification");
-      bmeta[ib].valid_range[0] = 0;
-      bmeta[ib].valid_range[1] = 255;
+      bmeta[ib].valid_range[0] = 0.0;
+      bmeta[ib].valid_range[1] = 255.0;
 
       /* Set up QA bitmap information */
       if (allocate_class_metadata (&bmeta[ib], 2) != SUCCESS)

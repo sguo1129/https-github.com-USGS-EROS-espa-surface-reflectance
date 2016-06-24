@@ -34,7 +34,7 @@ NOTES:
 
 /* Defines */
 /* LEDAPS VERSION definitions */
-#define LEDAPS_VERSION "2.5.0"
+#define LEDAPS_VERSION "2.7.0"
 
 /* define useful constants */
 #define MAX_STRING_LENGTH 1000

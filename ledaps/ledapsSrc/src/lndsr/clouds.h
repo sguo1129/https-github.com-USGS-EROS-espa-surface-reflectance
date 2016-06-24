@@ -22,13 +22,13 @@ typedef struct cld_diags_t {
 
 
 int allocate_cld_diags(struct cld_diags_t *cld_diags,int cell_height, int cell_width, int scene_height, int scene_width);
-int free_cld_diags(struct cld_diags_t *cld_diags);
+void free_cld_diags(struct cld_diags_t *cld_diags);
 void fill_cld_diags(cld_diags_t *cld_diags);
-int interpol_clddiags_1pixel(cld_diags_t *cld_diags, int img_line, int img_sample,float *inter_value);
+void interpol_clddiags_1pixel(cld_diags_t *cld_diags, int img_line, int img_sample,float *inter_value);
 
 bool cloud_detection_pass1(Lut_t *lut, int nsamp, int il, int16 **line_in, uint8 *qa_line, int16 *b6_line,float *atemp_line, cld_diags_t *cld_diags);
 bool cloud_detection_pass2(Lut_t *lut, int nsamp, int il, int16 **line_in, uint8 *qa_line, int16 *b6_line, cld_diags_t *cld_diags,char *ddv_line);
-bool cast_cloud_shadow(Lut_t *lut, int nsamp, int il_start, int16 ***line_in, int16 **b6_line, cld_diags_t *cld_diags, char ***cloud_buf, Ar_gridcell_t *ar_gridcell, float pixel_size, float adjust_north);
+void cast_cloud_shadow(Lut_t *lut, int nsamp, int il_start, int16 ***line_in, int16 **b6_line, cld_diags_t *cld_diags, char ***cloud_buf, Ar_gridcell_t *ar_gridcell, float pixel_size, float adjust_north);
 bool dilate_cloud_mask(Lut_t *lut, int nsamp, char ***cloud_buf, int dilate_dist);
 bool dilate_shadow_mask(Lut_t *lut, int nsamp, char ***cloud_buf, int dilate_dist);
 

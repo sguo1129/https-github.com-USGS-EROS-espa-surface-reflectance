@@ -209,8 +209,6 @@ struct ParmTable {
 #define GDS_PV(gds)		((gds[3] == 0) ? -1 : (int) gds[4] - 1)
 #define GDS_PL(gds)		((gds[4] == 255) ? -1 : (int) gds[3] * 4 + (int) gds[4] - 1)
 
-enum Def_NCEP_Table {rean, opn, rean_nowarn, opn_nowarn};
-
 /* version 3.4 of grib headers  w. ebisuzaki */
 /* this version is incomplete */
 
@@ -295,8 +293,16 @@ enum Def_NCEP_Table {rean, opn, rean_nowarn, opn_nowarn};
 #define max(a,b)  ((a) < (b) ? (b) : (a))
 #endif
 
+enum Def_NCEP_Table {rean, opn, rean_nowarn, opn_nowarn};
+
 #ifndef DEF_T62_NCEP_TABLE
 #define DEF_T62_NCEP_TABLE	rean
 #endif
-enum Def_NCEP_Table def_ncep_table = DEF_T62_NCEP_TABLE;
+//enum Def_NCEP_Table def_ncep_table = DEF_T62_NCEP_TABLE;
+
+
+/* Function prototypes */
+int read_grib_array(FILE *input, char *what, char *where, int *nx, int *ny,
+    float **narray);
+int read_grib_date(FILE *input, char *what, char *where, char *date);
 

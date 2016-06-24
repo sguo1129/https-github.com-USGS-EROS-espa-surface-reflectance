@@ -192,3 +192,39 @@ bool FormatDate(Date_t *this, Date_format_t iformat, char *s) {
   
   return true;
 }
+
+short getdoy(short year,short month,short day)
+{
+    int dayatmonth[]=
+        {0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366};
+    int jdate;
+
+    jdate = day + dayatmonth[month];
+    if (!LEAPYR(year) && month >= MARCH)
+        jdate--;
+
+    return(jdate);
+}
+
+int getdaymonth(short year,short doy,short *month,short *day)
+{
+    int i;
+    int daysinmonth[]= {0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    short totaldays=0;
+
+    if (LEAPYR(year))
+        daysinmonth[2]=29;
+
+    for (i=1;(i<=12)&&(totaldays < doy);i++)
+        totaldays += daysinmonth[i];
+
+    if ((totaldays < doy)||(doy<=0))
+        return -1;
+
+    totaldays -= daysinmonth[i-1];
+    *month=(short)i-1;
+    *day=doy-totaldays;
+
+    return(0);
+}
+

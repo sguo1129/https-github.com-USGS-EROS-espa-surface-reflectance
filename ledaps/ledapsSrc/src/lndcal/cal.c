@@ -59,10 +59,9 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
 
   /* Loop through the samples in the line */
   for (is = 0; is < nsamp; is++) {
-    val= getValue((unsigned char *)line_in, is);
+    val = line_in[is];
     if (val == ifill || line_out_qa[is]==lut->qa_fill ) {
       line_out[is] = lut->out_fill;
-      cal_stats->nfill[iband]++;
       continue;
     }
 
@@ -72,7 +71,6 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
       continue;
     }
 
-    cal_stats->nvalid[iband]++;
     fval= (float)val;
 
     /* If the TOA reflectance gain/bias values are available, then use them.
@@ -102,6 +100,7 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
       ref = line_out[is] * 0.0001;
     }
 
+#ifdef DO_STATS
     if (cal_stats->first[iband]) {
       cal_stats->idn_min[iband] = val;
       cal_stats->idn_max[iband] = val;
@@ -133,6 +132,7 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
       if (line_out[is] > cal_stats->iref_max[iband]) 
         cal_stats->iref_max[iband] = line_out[is];
     }
+#endif
   }  /* end for is */
 
   return true;
@@ -153,10 +153,9 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int16 *line_out,
   }
 
   for (is = 0; is < nsamp; is++) {
-    val= getValue((unsigned char *)line_in, is);
+    val = line_in[is];
     if (val == ifill || line_out_qa[is]==lut->qa_fill ) {
       line_out[is] = lut->out_fill;
-      cal_stats->nfill++;
       continue;
     }
 
@@ -166,8 +165,6 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int16 *line_out,
       continue;
     }
 
-    cal_stats->nvalid++;
- 
     /* compute the brightness temperature in Kelvin and apply scaling of
        10.0 (tied to lut->scale_factor_th). valid ranges are set up in lut.c
        as well. */
@@ -187,6 +184,7 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int16 *line_out,
       temp = line_out[is] * 0.1;
     }
 
+#ifdef DO_STATS
     if (cal_stats->first) {
       cal_stats->idn_min = val;
       cal_stats->idn_max = val;
@@ -218,15 +216,8 @@ bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int16 *line_out,
       if (line_out[is] > cal_stats->itemp_max) 
         cal_stats->itemp_max = line_out[is];
     }
+#endif
   }  /* end for is */
 
   return true;
-}
-
-/*************************************************************************
- *** this program returns the correct value (as an int)                ***
- *************************************************************************/
-int getValue(unsigned char* line_in, int ind)
-{
-  return (int) line_in[ind];
 }
