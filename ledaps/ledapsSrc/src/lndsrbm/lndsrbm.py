@@ -498,8 +498,8 @@ class Lndsrbm():
         latc = (lat1 + lat2) / 2
         logger.info('Center long: {0} Center lat: {1}'.format(lonc, latc))
 
-        ygrib = (int(90 - latc) * 73 / 180)
-        xgrib = (int(180 + lonc) * 144 / 360)
+        ygrib = int((90 - latc) * 73 / 180)
+        xgrib = int((180 + lonc) * 144 / 360)
         logger.info('ygrib: {0} xgrib: {1}'.format(ygrib, xgrib))
 
         # Check and update the scene center time
