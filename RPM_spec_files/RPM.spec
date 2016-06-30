@@ -43,7 +43,7 @@ rm -rf %{clonedname}
 git clone --depth 1 --branch %{tagname} %{url} %{clonedname}
 # Build the applications
 cd %{clonedname}
-make all-script BUILD_STATIC=yes
+make all-script
 
 %install
 # Start with a clean installation location
@@ -64,11 +64,11 @@ rm -rf %{buildroot}
 %defattr(-,root,root,-)
 # All sub-directories are automatically included
 /usr/local/bin/*
-%dir /usr/local/%{name}
-/usr/local/%{name}/bin
+%dir /usr/local/%{project}
+/usr/local/%{project}/bin
 
 
 # ----------------------------------------------------------------------------
 %changelog
-* Tue Jun 21 2016 Ronald D Dilley <rdilley@usgs.gov>
+* Thu Jun 23 2016 Ronald D Dilley <rdilley@usgs.gov>
 - Initial Version for August 2016 release
