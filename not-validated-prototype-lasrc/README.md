@@ -86,3 +86,8 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
   3. Verified the code supports Albers for CONUS, Hawaii, and Alaska.
   4. Verified the code support the new 4-character product type collection
      filenames.
+  5. Fixed a bug in the per-pixel interpolation of the auxiliary input data.
+     The pixel location in the CMG-level auxiliary products should not be
+     rounded when going from Landsat pixel to CMG pixel.  The interpolation
+     of the auxiliary values is based on the pixel value being truncated versus
+     rounded.
