@@ -647,7 +647,6 @@ int compute_sr_refl
     printf ("Interpolating the auxiliary data ...\n");
     time (&rawtime);
     timeinfo = localtime (&rawtime);
-    printf ("DEBUG: Start of aux interpolation: %s", asctime (timeinfo));
     tmp_percent = 0;
 #ifdef _OPENMP
     #pragma omp parallel for private (i, j, curr_pix, img, geo, lat, lon, xcmg, ycmg, lcmg, scmg, lcmg1, scmg1, u, v, cmg_pix11, cmg_pix12, cmg_pix21, cmg_pix22, ratio_pix11, ratio_pix12, ratio_pix21, ratio_pix22, uoz11, uoz12, uoz21, uoz22, pres11, pres12, pres21, pres22, rb1, rb2, slpr11, slpr12, slpr21, slpr22, intr11, intr12, intr21, intr22, slprb1, slprb2, slprb7, intrb1, intrb2, intrb7, xndwi, th1, th2, fndvi, iband, iband1, iband3, retval, corf, raot, residual, next, rotoa, raot550nm, roslamb, tgo, roatm, ttatmg, satm, xrorayp, ros5, ros4) firstprivate(erelc, troatm)
@@ -707,12 +706,14 @@ int compute_sr_refl
                pixel for each calculation.  Negative latitude values should be
                the largest line values in the CMG grid.  Negative longitude
                values should be the smallest sample values in the CMG grid. */
-            /* TODO the line/sample calculation from the x/ycmg values should
-               be rounded.  The FORTRAN code does this, then overwrites it. */
+            /* The line/sample calculation from the x/ycmg values are not
+               rounded.  The interpolation of the value using line+1 and
+               sample+1 are based on the truncated numbers, therefore rounding
+               up is not appropriate. */
             ycmg = (89.975 - lat) * 20.0;   /* vs / 0.05 */
             xcmg = (179.975 + lon) * 20.0;  /* vs / 0.05 */
-            lcmg = (int) roundf (ycmg);
-            scmg = (int) roundf (xcmg);
+            lcmg = (int) ycmg;
+            scmg = (int) xcmg;
 
             /* Handle the edges of the lat/long values in the CMG grid */
             if (lcmg < 0)
@@ -1108,7 +1109,6 @@ int compute_sr_refl
     free (oz);  oz = NULL;
     time (&rawtime);
     timeinfo = localtime (&rawtime);
-    printf ("DEBUG: End of aux interpolation: %s", asctime (timeinfo));
 
     /* Refine the cloud mask */
     /* Compute the average temperature of the clear, non-water, non-filled
