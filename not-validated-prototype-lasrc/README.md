@@ -91,3 +91,8 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
      rounded when going from Landsat pixel to CMG pixel.  The interpolation
      of the auxiliary values is based on the pixel value being truncated versus
      rounded.
+  6. Added FORTRAN code and C-code modifications for a new v3.0 delivered by
+     NASA GSFC. Changes include using bands 4 and 2 (versus bands 4 and 1) in
+     the aerosol retrievals; adding a band 4 check (< 1000) to flag for water;
+     adding a check for snow (band 4 > 1000 and NDVI); including band 7 in the
+     overall residual calculation for aerosol retrievals.

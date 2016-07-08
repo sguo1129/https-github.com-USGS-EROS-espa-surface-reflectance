@@ -563,12 +563,10 @@ int subaeroret_residual
     float satm;             /* spherical albedo */
     float xrorayp;          /* molecular reflectance */
 
-    /* Compute the model residual
-       Note - Eric indicated the residual on Band 7 was not to be used, so
-       stop the residual calculations with Band 6. */
+    /* Compute the model residual */
     *residual = fabs (ros3 - ros1 * pratio);
     nb = 1;
-    for (iband = 0; iband <= DN_BAND6; iband++)
+    for (iband = 0; iband <= DN_BAND7; iband++)
     {
         if (erelc[iband] > 0.0)
         {

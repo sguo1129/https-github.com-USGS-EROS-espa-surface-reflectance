@@ -312,7 +312,7 @@ c compute model residual
   91   residual=abs(ros3-ros1*pratio)
         nb=1
 c       write(6,*) "INITIAL RESIDUAL ",residual
-       do iband=1,6
+       do iband=1,7
        if (erelc(iband).gt.0.) then
 	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
      s       aot550nm,rolutt,

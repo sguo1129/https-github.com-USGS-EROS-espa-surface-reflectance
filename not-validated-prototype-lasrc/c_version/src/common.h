@@ -89,8 +89,9 @@ typedef enum {
   IPFLAG_NDVI_FAIL=2,      /* NDVI test failed */
   IPFLAG_RESIDUAL_FAIL=3,  /* residual test failed */
   IPFLAG_FILL=5,           /* fill value */
-  IPFLAG_WATER=6           /* IPFLAG indicates water */
-} Ipflag_t;
+  IPFLAG_WATER=6,          /* IPFLAG indicates water */
+  IPFLAG_SNOW=7            /* IPFLAG indicates snow */
+}Ipflag_t;
 
 /* Satellite type definitions, mainly to allow future satellites to be
    supported if needed */

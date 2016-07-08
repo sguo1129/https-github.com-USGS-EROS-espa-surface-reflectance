@@ -216,7 +216,7 @@ Output_t *open_output
             bmeta[ib].valid_range[1] = 6.0;
 
             /* Set up ipflag class information */
-            if (allocate_class_metadata (&bmeta[ib], 7) != SUCCESS)
+            if (allocate_class_metadata (&bmeta[ib], 8) != SUCCESS)
             {
                 sprintf (errmsg, "Allocating ipflag classes.");
                 error_handler (true, FUNC_NAME, errmsg);
@@ -231,6 +231,7 @@ Output_t *open_output
             bmeta[ib].class_values[4].class = 4;
             bmeta[ib].class_values[5].class = 5;
             bmeta[ib].class_values[6].class = 6;
+            bmeta[ib].class_values[7].class = 7;
             strcpy (bmeta[ib].class_values[0].description,
                 "aerosol retrieval successful");
             strcpy (bmeta[ib].class_values[1].description,
@@ -242,6 +243,7 @@ Output_t *open_output
             strcpy (bmeta[ib].class_values[4].description, "not used");
             strcpy (bmeta[ib].class_values[5].description, "fill pixel");
             strcpy (bmeta[ib].class_values[6].description, "water pixel");
+            strcpy (bmeta[ib].class_values[7].description, "snow pixel");
         }
         else
         {

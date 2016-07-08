@@ -992,7 +992,7 @@ int compute_sr_refl
 
                 /* Retrieve the aerosol information */
                 iband1 = DN_BAND4;
-                iband3 = DN_BAND1;
+                iband3 = DN_BAND2;
                 retval = subaeroret (iband1, iband3, xts, xtv, xmus, xmuv,
                     xfi, cosxfi, pres, uoz, uwv, erelc, troatm, tpres,
                     aot550nm, rolutt, transt, xtsstep, xtsmin, xtvstep,
@@ -1357,6 +1357,7 @@ int compute_sr_refl
             !btest (cloud[i], CLD_QA) &&
             !btest (cloud[i], CLDS_QA) &&
             !btest (cloud[i], CLDA_QA) &&
+            sband[SR_BAND4][i] < 1000 &&
             qaband[i] != 1)
         {
             /* Compute the NDVI */
@@ -1371,6 +1372,21 @@ int compute_sr_refl
             /* Flag water pixels */
             if (fndvi < 0.01)
                 ipflag[i] = IPFLAG_WATER;  /* water */
+        }
+
+        /* Detect snow -- confusion with high aerosol for now (flag as cloud) */
+        if (sband[SR_BAND4][i] > 1000)
+        {
+            fndvi = ((double) sband[SR_BAND4][i] -
+                     (double) sband[SR_BAND7][i] * 0.5) /
+                    ((double) sband[SR_BAND4][i] +
+                     (double) sband[SR_BAND7][i] * 0.5);
+            if (fndvi > 0.5)
+            {
+                taero[i] = 0.05;
+                ipflag[i] = IPFLAG_SNOW;  /* snow */
+                cloud[i] += 2;
+            }
         }
     }  /* for i */
 
@@ -1429,11 +1445,12 @@ int compute_sr_refl
                 win_pix = i * nsamps + int_start;
                 for (k = int_start; k <= int_end; k++, win_pix++)
                 {
-                    /* If this pixel is not fill or water and therefore is a
-                       pixel where the aerosol retrieval failed then
+                    /* If this pixel is not fill, water, or snow and therefore
+                       is a pixel where the aerosol retrieval failed then
                        interpolate the aerosol value */
                     if (ipflag[win_pix] != IPFLAG_FILL &&
-                        ipflag[win_pix] != IPFLAG_WATER)
+                        ipflag[win_pix] != IPFLAG_WATER &&
+                        ipflag[win_pix] != IPFLAG_SNOW)
                     {
                         taero[win_pix] = taero[inf_pix] +
                             (taero[sup_pix] - taero[inf_pix]) *
@@ -1499,12 +1516,13 @@ int compute_sr_refl
                 /* Interpolate the aerosols down the samples */
                 for (l = int_start; l <= int_end; l++)
                 {
-                    /* If this pixel is not fill or water and therefore is a
-                       pixel where the aerosol retrieval failed then
+                    /* If this pixel is not fill, water, or snow and therefore
+                       is a pixel where the aerosol retrieval failed then
                        interpolate the aerosol value */
                     win_pix = l * nsamps + j;
                     if (ipflag[win_pix] != IPFLAG_FILL &&
-                        ipflag[win_pix] != IPFLAG_WATER)
+                        ipflag[win_pix] != IPFLAG_WATER &&
+                        ipflag[win_pix] != IPFLAG_SNOW)
                     {
                         taero[win_pix] = taero[inf_pix] +
                             (taero[sup_pix] - taero[inf_pix]) *

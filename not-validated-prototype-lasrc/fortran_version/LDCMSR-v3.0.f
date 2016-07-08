@@ -67,8 +67,7 @@
 	integer*8 padding
 	integer sdsind(12)
 	data sdsind /0,1,2,3,4,5,6,-1,7,8,9,10/
-        data suffix /"01","02","03","04","05","06",
-     &      "07","08","09","10","11","QA"/
+	data suffix /"01","02","03","04","05","06","07","08","09","10","11","QA"/
 	integer ii,nr,nc,ib,als,i,j,nrp,ncp,ierr
 	integer nrcmg,nccmg,icmg,jcmg
 	real u,v
@@ -144,8 +143,8 @@ C The following arguments are all names of the LUTs to look up.
 !	integer ib
         integer retval
 	real roslamb
-       data (sbandname(i),i=1,8)/"ldcmb1","ldcmb2","ldcmb3","ldcmb4",
-     &"ldcmb5","ldcmb6","ldcmb7","ldcmb8"/
+       data (sbandname(i),i=1,8)/"ldcmb1","ldcmb2","ldcmb3","ldcmb4","ldcmb5","ldcmb6",
+     s  "ldcmb7","ldcmb8"/
         real tgo,roatm,ttatmg,satm,xrorayp,next
 c       integer ldcmind(9)
 c       data ldcmind /9,10,4,1,2,6,7,4,6/ 
@@ -411,6 +410,10 @@ C Read ozone and water vapor
 	read(5,'(A100)') filenameanc
 	read(5,*) xts,xfs
 	read(5,*) utmzone,row0,col0,y0,x0
+	frln=1
+	frcl=1
+	write(fileout,'(A200)') "correcteddata.hdf"
+c
 	else
 c the input format is tiff
 	do i=1,12
@@ -523,6 +526,12 @@ c open HDF subset
        write(6,*) dim_sizes(1),dim_sizes(2)
        nc= dim_sizes(1)
        nr=dim_sizes(2)
+	frln=1
+	lrln=nr
+	frcl=1
+	lrcl=nc
+	row0=row0-nr/2
+	col0=col0-nc/2
        endif 
        
        
@@ -619,11 +628,11 @@ c	 endif
 	 
 	 
 c using scene center to compute atmospheric parameter
-	 row=frln+nr/2
-	 col=frcl+nc/2
+	 row=frln+nr/2+row0
+	 col=frcl+nc/2+col0
+c 
+     	 
 	 call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
-	 tlat(i,j)=lat
-	 tlon(i,j)=lon
 	 ycmg=(89.975-lat)/0.05+1.
 	 xcmg=(179.975+lon)/0.05+1
 	 icmg=int(ycmg+0.5)
@@ -669,7 +678,7 @@ c using scene center to compute atmospheric parameter
 	   sds_index=sdsind(ib)
            sds_id =sfselect(sd_id, sds_index)
            write(6,*) "sds_id", sds_id
-           status = sfrdata(sds_id, start, stride, edges,band)
+           status = sfrdata(sds_id, start, stride, edges,tpband)
            write(6,*) "status", status
            status=sfendacc(sds_id)
            write(6,*) "status sfendacc ",status
@@ -723,6 +732,15 @@ c call the atmospheric correction
 	     enddo
 	     enddo
 	     else
+	     if (ihdf.ne.0) then
+             do i=frcl,lrcl
+	     do j=frln,lrln
+     	     k=i-frcl+1
+	     l=j-frln+1
+	     sband(ib,k,l)=tpband(i,j)
+	     enddo
+	     enddo
+	     else
              do i=frcl,lrcl
 	     do j=frln,lrln
      	     k=i-frcl+1
@@ -730,6 +748,7 @@ c call the atmospheric correction
 	     sband(ib,k,l)=band(i,j)
 	     enddo
 	     enddo
+	     endif
 	   endif
 	   
 	   if (ib.eq.9) then
@@ -836,12 +855,12 @@ c	 goto 11
 	 ipflag(i,j)=5
 	 goto 11
 	 endif
-c	 if ((j.eq.673).and.(i.eq.709)) then
-c	 write(6,*) "J'en tiens un"
-c	 endif
+	 if ((j.eq.673).and.(i.eq.709)) then
+	 write(6,*) "J'en tiens un"
+	 endif
 	 
-	 row=frln+(j-1)
-	 col=frcl+(i-1)
+	 row=frln+(j-1)+row0
+	 col=frcl+(i-1)+col0
 	 call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
 	 tlat(i,j)=lat
 	 tlon(i,j)=lon
@@ -1076,11 +1095,17 @@ c inverting aerosol
 	troatm(4)=aerob4(i,j)/10000.
 	troatm(7)=aerob7(i,j)/10000.
 	iband1=4
-	iband3=1 
-	if ((i.eq.238).and.(j.eq.69)) then
+	iband3=2 
+	pres=tp(i,j)
+	uoz=tozi(i,j)
+	uwv=twvi(i,j)
+	if ((i.eq.184).and.(j.eq.151)) then
 	write(6,*) "aeroband1 ",aerob1(i,j)
        write(6,*) i,j,xts,xtv,xfi,pres,uoz,uwv,erelc(1),erelc(2),erelc(7),
      s	troatm(1),troatm(2),troatm(4),troatm(7),iband1,iband3,tratiob1(i,j)
+        iverbose=1
+	else
+	iverbose=0
         endif
 c skipping the aerosol inversion goto 11
 c       goto 11
@@ -1225,6 +1250,9 @@ c compute the average temperature of the clear non water non filled data
 	   if ((.not.btest(cloud(i,j),cir)).and.(sband(5,i,j).gt.300)) then
 	   anom=sband(2,i,j)-sband(4,i,j)/2.
 	   if (anom.lt.300) then
+	   if ((sband(10,i,j).lt.2500)) then
+	   write(6,*) "J'en tiens un autre ",i,j
+	   endif
 	   nbclear=nbclear+1
 	   mclear=mclear+(sband(10,i,j)/10.)
 	   endif
@@ -1250,7 +1278,6 @@ c compute the average temperature of the clear non water non filled data
 c Cloud mask 
 c skipping cloud mask (goto 999)
 c          goto 999
-
 	  do i=1,nc
 	  do j=1,nr
 	  if (ipflag(i,j).gt.1) then
@@ -1386,7 +1413,7 @@ c detect water (ipflag=6)
        do j=1,nr
        do i=1,nc
        if ((.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))
-     s    .and.(.not.btest(cloud(i,j),clds)) .and.(.not.btest(cloud(i,j),clda))) then
+     s    .and.(.not.btest(cloud(i,j),clds)) .and.(.not.btest(cloud(i,j),clda)).and.(sband(4,i,j).lt.1000)) then
         if (sband(5,i,j).lt.100) then
 	fndvi=-0.01
 	else
@@ -1396,10 +1423,18 @@ c detect water (ipflag=6)
         ipflag(i,j)=6
         endif
 	endif
+c detect snow/ confusion with high aerosol for now (flag as cloud)
+        if (sband(4,i,j).gt.1000) then
+	fndvi=(sband(4,i,j)-sband(7,i,j)/2.)/dble(sband(4,i,j)+sband(7,i,j)/2.)
+	if (fndvi.gt.0.5) then
+        taero(i,j)=0.05
+        ipflag(i,j)=7
+        cloud(i,j)=cloud(i,j)+2
+        endif
+	endif
+	
 	enddo
 	enddo
-
-       
 c aerosol interpolation
 999    continue
 c begin skipping interpolation (goto 1001)
@@ -1636,6 +1671,7 @@ C endif of ib=1
 	 ii=index(fileout," ")-1
 	 write(6,*) "fileout ",fileout
          sd_id= sfstart(adjustl(fileout),DFACC_CREATE)
+	 write(6,*) " filout ",sd_id
 	 do ib=1,12
 	 if (ib.ne.8) then
 	 do i=1,nc
@@ -1692,16 +1728,16 @@ c check if QA band to write the attribute
 	 endif
 	 enddo
 c writing lat and lon
-c           write(sds_name,'(A3)') "lat"
-c  	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-c           status=sfwdata(sds_id,start,stride,edges,tlat)
-c  	 write(6,*) "status sfwdata ",status
-c           status = sfendacc(sds_id)
-c           write(sds_name,'(A3)') "lon"
-c  	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-c           status=sfwdata(sds_id,start,stride,edges,tlon)
-c  	 write(6,*) "status sfwdata ",status
-c           status = sfendacc(sds_id)
+c            write(sds_name,'(A3)') "lat"
+c   	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+c            status=sfwdata(sds_id,start,stride,edges,tlat)
+c   	 write(6,*) "status sfwdata ",status
+c            status = sfendacc(sds_id)
+c            write(sds_name,'(A3)') "lon"
+c   	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+c            status=sfwdata(sds_id,start,stride,edges,tlon)
+c   	 write(6,*) "status sfwdata ",status
+c            status = sfendacc(sds_id)
 c writing xcmg and ycmg
 c          write(sds_name,'(A4)') "xcmg"
 c 	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
@@ -1721,24 +1757,24 @@ cc       status=sfwdata(sds_id,start,stride,edges,twv)
 c	 write(6,*) "status sfwdata ",status
 cc       status = sfendacc(sds_id)
          ihdf=0
-         if (iout.eq.2) then
+         if (iout.ne.0) then
 c writing aerosol algorithm bands (toa)
 
-         write(sds_name,'(A7,A2)') "toaband",suffix(1)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
-         status=sfwdata(sds_id,start,stride,edges,aerob1)
-         write(sds_name,'(A7,A2)') "toaband",suffix(2)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
-         status=sfwdata(sds_id,start,stride,edges,aerob2)
-         write(sds_name,'(A7,A2)') "toaband",suffix(4)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
-         status=sfwdata(sds_id,start,stride,edges,aerob4)
-         write(sds_name,'(A7,A2)') "toaband",suffix(5)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
-         status=sfwdata(sds_id,start,stride,edges,aerob5)
-         write(sds_name,'(A7,A2)') "toaband",suffix(7)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
-         status=sfwdata(sds_id,start,stride,edges,aerob7)
+cc       write(sds_name,'(A7,A2)') "toaband",suffix(1)
+c	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+cc       status=sfwdata(sds_id,start,stride,edges,aerob1)
+cc       write(sds_name,'(A7,A2)') "toaband",suffix(2)
+c	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+cc       status=sfwdata(sds_id,start,stride,edges,aerob2)
+cc       write(sds_name,'(A7,A2)') "toaband",suffix(4)
+c	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+cc       status=sfwdata(sds_id,start,stride,edges,aerob4)
+cc       write(sds_name,'(A7,A2)') "toaband",suffix(5)
+c	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+cc       status=sfwdata(sds_id,start,stride,edges,aerob5)
+cc       write(sds_name,'(A7,A2)') "toaband",suffix(7)
+c	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+cc       status=sfwdata(sds_id,start,stride,edges,aerob7)
 	 
          write(sds_name,'(A4)') "twvi"
  	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
@@ -1831,8 +1867,8 @@ c	 status = sfendacc(sds_id)
 c writing projection metadata
 	 xd=nc
 	 yd=nr
-	 uplx=x0+gsize*frcl
-	 uply=y0-gsize*frln
+	 uplx=x0+gsize*(frcl+col0-2)
+	 uply=y0-gsize*(frln+row0-2)
 	 lorx=uplx+nc*gsize
 	 lory=uply-nr*gsize
 	 zone=utmzone
