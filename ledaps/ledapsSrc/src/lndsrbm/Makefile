@@ -54,7 +54,7 @@ MATHLIB = -lm
 LOADLIB = $(EXLIB) $(MATHLIB)
 
 # Define scripts
-SCRIPTS = lndsrbm.ksh
+SCRIPTS = lndsrbm.py
 
 # Define C executables
 EXE1 = lndsrbm
