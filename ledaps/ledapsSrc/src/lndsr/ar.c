@@ -586,15 +586,14 @@ int ArInterp(Lut_t *lut, Img_coord_int_t *input_loc, int ***line_ar,int *inter_a
   Img_coord_int_t p[4];
   int i, n;
   float dl, ds, w;
-  float sum[3], sum_w;
+  float sum, sum_w;
   Img_coord_int_t ar_region_half;
 
-  inter_aot[0] = lut->aerosol_fill;
-  inter_aot[1] = lut->aerosol_fill;
-  inter_aot[2] = lut->aerosol_fill;
+  *inter_aot = lut->aerosol_fill;
 
-  ar_region_half.l = (lut->ar_region_size.l + 1) / 2;
-  ar_region_half.s = (lut->ar_region_size.s + 1) / 2;
+  /* Note the right shift by 1 is a faster way of divide by 2 */
+  ar_region_half.l = (lut->ar_region_size.l + 1) >> 1;
+  ar_region_half.s = (lut->ar_region_size.s + 1) >> 1;
 
   p[0].l = (input_loc->l - ar_region_half.l) / lut->ar_region_size.l;
 
@@ -619,7 +618,7 @@ int ArInterp(Lut_t *lut, Img_coord_int_t *input_loc, int ***line_ar,int *inter_a
   p[3].s = p[1].s;
 
   n = 0;
-  sum[0]=sum[1]=sum[2] = sum_w = 0.0;
+  sum = sum_w = 0.0;
   for (i = 0; i < 4; i++) {
     if (p[i].l != -1  &&  p[i].s != -1) {
       if (line_ar[p[i].l][0][p[i].s] == lut->aerosol_fill) continue;
@@ -632,16 +631,12 @@ int ArInterp(Lut_t *lut, Img_coord_int_t *input_loc, int ***line_ar,int *inter_a
 
       n++;
       sum_w += w;
-      sum[0] += (line_ar[p[i].l][0][p[i].s] * w);
-      sum[1] += (line_ar[p[i].l][1][p[i].s] * w);
-      sum[2] += (line_ar[p[i].l][2][p[i].s] * w);
+      sum += (line_ar[p[i].l][0][p[i].s] * w);
     }
   }
 
   if ((n > 0)&&(sum_w>0)) {
-    inter_aot[0] = floor((sum[0] / sum_w) + 0.5);
-    inter_aot[1] = floor((sum[1] / sum_w) + 0.5);
-    inter_aot[2] = floor((sum[2] / sum_w) + 0.5);
+    *inter_aot = floor((sum / sum_w) + 0.5);
   }
 
   return 0;

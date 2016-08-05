@@ -172,7 +172,7 @@ int main (int argc, const char **argv) {
                                   flipped */
   
     int nbpts;
-    int inter_aot[3];
+    int inter_aot;
     float scene_gmt;
 
     Geoloc_t *space = NULL;
@@ -930,6 +930,9 @@ int main (int argc, const char **argv) {
 
         img.is_fill = false;
         img.l = il;
+#ifdef _OPENMP
+        #pragma omp parallel for private (is, geo, flat, flon, tmpflt_arr) firstprivate (img, atemp_line)
+#endif
         for (is = 0; is < input->size.s; is++) {
             /* Get the geolocation info for this pixel */
             img.s = is;
@@ -1061,8 +1064,8 @@ int main (int argc, const char **argv) {
             il_end = input->size.l - 1;
 
         /* Read each input band for each line in region */
-        for (il = il_start, il_region = 0; il < (il_end + 1);
-            il++, il_region++) {
+        for (il = il_start; il < (il_end + 1); il++) {
+            il_region = il - il_start;
             for (ib = 0; ib < input->nband; ib++) {
                 if (!GetInputLine(input, ib, il, line_in[il_region][ib]))
                     EXIT_ERROR("reading input data for a line (a)", "main");
@@ -1244,6 +1247,8 @@ int main (int argc, const char **argv) {
 
         loc.l=il;
         i_aot=il/lut->ar_region_size.l;
+        t6s_seuil=280.+(1000.*0.01);
+
         for (is=0;is<input->size.s;is++) {
             loc.s=is;
             j_aot=is/lut->ar_region_size.s;
@@ -1268,8 +1273,8 @@ int main (int argc, const char **argv) {
 
             /* Process QA for each pixel */
             if (!refl_is_fill) {  /* AOT / opacity */
-                ArInterp(lut, &loc, line_ar, inter_aot); 
-                line_out[lut->nband][is] = inter_aot[0];
+                ArInterp(lut, &loc, line_ar, &inter_aot); 
+                line_out[lut->nband][is] = inter_aot;
 
                 /**
                 Set bits for internal cloud mask
@@ -1303,7 +1308,6 @@ int main (int argc, const char **argv) {
                 
                 anom=line_out[0][is]-line_out[2][is]/2.;
                 t6=b6_line[0][is]*0.1;
-                t6s_seuil=280.+(1000.*0.01);
                 if (((anom > 300) && (line_out[4][is] > 300) &&
                      (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
                      (t6 < t6s_seuil)))   /* internal cloud mask bit */
