@@ -1,5 +1,5 @@
-## LaSRC Version 0.8.0 Release Notes
-Release Date: August 2016
+## LaSRC Version 0.9.0 Release Notes
+Release Date: October 2016
 
 ### Downloads
 LaSRC (Landsat Surface Reflectance Code) source code
@@ -10,7 +10,7 @@ LaSRC auxiliary files
 
     http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [lasrc-version_0.8.0]
+See git tag [lasrc-version_0.9.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -80,14 +80,11 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Updated the valid_range to be a floating point versus long to match the
-     new data type in the XML schema.
-  2. Change scene_id to product_id in the output XML to match the new schema.
-  3. Verified the code supports Albers for CONUS, Hawaii, and Alaska.
-  4. Verified the code support the new 4-character product type collection
-     filenames.
-  5. Fixed a bug in the per-pixel interpolation of the auxiliary input data.
-     The pixel location in the CMG-level auxiliary products should not be
-     rounded when going from Landsat pixel to CMG pixel.  The interpolation
-     of the auxiliary values is based on the pixel value being truncated versus
-     rounded.
+  1. Modified the cloud QA to contain the cloud and aerosol information in one
+     16-bit band for Collection products.  Pre-collection products will continue
+     to have two 8-bit QA bands, one for the cloud band and the other for the
+     aerosol band.
+  2. Fixed a bug in the do_lasrc.py script to correctly handle the new
+     Collection naming convention.
+  3. Modified how the bits are set in the cloud masks by using a bit shift and
+     an OR with the existing bits.

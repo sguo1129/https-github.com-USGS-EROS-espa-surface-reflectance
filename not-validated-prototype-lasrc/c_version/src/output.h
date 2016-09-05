@@ -36,8 +36,11 @@ Output_t *open_output
 (
     Espa_internal_meta_t *in_meta,  /* I: input metadata structure */
     Input_t *input,                 /* I: input band data structure */
-    bool toa                        /* I: set this structure up for the TOA
+    bool toa,                       /* I: set this structure up for the TOA
                                           bands vs. the SR bands */
+    bool process_collection         /* I: should this scene be processed as a
+                                          collection product, which affects
+                                          the output of QA bands */
 );
 
 int close_output
