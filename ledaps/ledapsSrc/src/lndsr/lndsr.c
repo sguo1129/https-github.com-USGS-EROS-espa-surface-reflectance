@@ -127,7 +127,7 @@ int write_6S_results_to_file(char *filename,sixs_tables_t *sixs_tables);
 void sun_angles (short jday,float gmt,float flat,float flon,float *ts,float *fs);
 /* Functions */
 
-int main (int argc, const char **argv) {
+int main (int argc, char *argv[]) {
     Param_t *param = NULL;
     Input_t *input = NULL, *input_b6 = NULL;
     InputPrwv_t *prwv_input = NULL;
@@ -172,7 +172,7 @@ int main (int argc, const char **argv) {
                                   flipped */
   
     int nbpts;
-    int inter_aot;
+    int inter_aot;            /* atmospheric opacity */
     float scene_gmt;
 
     Geoloc_t *space = NULL;
@@ -224,7 +224,7 @@ int main (int argc, const char **argv) {
   
     set_sixs_path_from(argv[0]);
 
-    /* Read the parameters from the input parameter file */
+    /* Read the parameters from the command-line and input parameter file */
     param = GetParam(argc, argv);
     if (param == NULL) EXIT_ERROR("getting runtime parameters", "main");
 
@@ -1220,11 +1220,12 @@ int main (int argc, const char **argv) {
         EXIT_ERROR("opening dark target temporary file", "main");
 
     for (il = 0; il < input->size.l; il++) {
-        if (!(il%100)) 
+/*        if (!(il%100)) 
         {
             printf("Processing surface reflectance for line %d\r",il);
             fflush(stdout);
         }
+*/
 
         /* Re-read each input band */
         for (ib = 0; ib < input->nband; ib++) {
@@ -1272,50 +1273,94 @@ int main (int argc, const char **argv) {
             }
 
             /* Process QA for each pixel */
-            if (!refl_is_fill) {  /* AOT / opacity */
+            if (!refl_is_fill) {
+                /* AOT / opacity */
                 ArInterp(lut, &loc, line_ar, &inter_aot); 
                 line_out[lut->nband][is] = inter_aot;
 
-                /**
-                Set bits for internal cloud mask
-                bit 0: fill
-                bit 6: dense dark vegetation (DDV)
-                bit 8: SR-based cloud
-                bit 9: SR-based cloud shadow
-                bit 10: SR-based snow
-                bit 11: Spectral test-based land/water mask
-                bit 12: SR-based adjacent cloud
-                **/
-                if (ddv_line[0][is]&0x01)  /* dark target bit */
-                    line_out[lut->nband+DDV][is] = QA_ON;
+                if (!param->process_collection) {
+                    /* pre-collection processing */
+                    /**
+                    Set bits for internal cloud mask.  This is written as
+                    separate bands for each QA.
+                    bit 0: fill
+                    bit 6: dense dark vegetation (DDV)
+                    bit 8: SR-based cloud
+                    bit 9: SR-based cloud shadow
+                    bit 10: SR-based snow
+                    bit 11: Spectral test-based land/water mask
+                    bit 12: SR-based adjacent cloud
+                    **/
+                    if (ddv_line[0][is]&0x01)  /* dark target bit */
+                        line_out[lut->nband+DDV][is] = QA_ON;
+    
+                    if (ddv_line[0][is]&0x10)  /* land */
+                        line_out[lut->nband+LAND_WATER][is] = QA_OFF;
+                    else  /* water */
+                        line_out[lut->nband+LAND_WATER][is] = QA_ON;
+    
+                    if (ddv_line[0][is]&0x20)   /* internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] = QA_ON;
+    
+                    if (ddv_line[0][is]&0x80)   /* internal snow mask bit */
+                        line_out[lut->nband+SNOW][is] = QA_ON;
+    
+                    /* try to redo the cloud mask Vermote May 29 2007 */
+                    /* reset cloud shadow and cloud adjacent bits - these are
+                       set again in lndsrbm */
+                    line_out[lut->nband+CLOUD_SHADOW][is] = QA_OFF;
+                    line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
+                    
+                    anom=line_out[0][is]-line_out[2][is]/2.;
+                    t6=b6_line[0][is]*0.1;
+                    if (((anom > 300) && (line_out[4][is] > 300) &&
+                         (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
+                         (t6 < t6s_seuil)))   /* internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] = QA_ON;
+                    else  /* reset internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] = QA_OFF;
+    
+                }
+                else {
+                    /* Collection processing. QA is written out in the could
+                       band as a 16-bit bit-packed product. Use QA values as-is
+                       because lndsrbm will not be called as a post-processing
+                       QA step. */
+                    if (ddv_line[0][is]&0x01)
+                        line_out[lut->nband+CLOUD][is] |= (1 << DDV_BIT);
 
-                if (ddv_line[0][is]&0x10)  /* land */
-                    line_out[lut->nband+LAND_WATER][is] = QA_OFF;
-                else  /* water */
-                    line_out[lut->nband+LAND_WATER][is] = QA_ON;
+                    if (ddv_line[0][is]&0x04)
+                        line_out[lut->nband+CLOUD][is] |= (1 << ADJ_CLOUD_BIT);
 
-                if (ddv_line[0][is]&0x20)   /* internal cloud mask bit */
-                    line_out[lut->nband+CLOUD][is] = QA_ON;
+                    if (!(ddv_line[0][is]&0x10))  /* if water, turn on */
+                        line_out[lut->nband+CLOUD][is] |= (1 << LAND_WATER_BIT);
 
-                if (ddv_line[0][is]&0x80)   /* internal snow mask bit */
-                    line_out[lut->nband+SNOW][is] = QA_ON;
+                    if (ddv_line[0][is]&0x20)
+                        line_out[lut->nband+CLOUD][is] |= (1 << CLOUD_BIT);
 
-                /* try to redo the cloud mask Vermote May 29 2007 */
-                /* reset cloud shadow and cloud adjacent bits - these are set
-                   again in lndsrbm */
-                line_out[lut->nband+CLOUD_SHADOW][is] = QA_OFF;
-                line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
-                
-                anom=line_out[0][is]-line_out[2][is]/2.;
-                t6=b6_line[0][is]*0.1;
-                if (((anom > 300) && (line_out[4][is] > 300) &&
-                     (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
-                     (t6 < t6s_seuil)))   /* internal cloud mask bit */
-                    line_out[lut->nband+CLOUD][is] = QA_ON;
-                else  /* reset internal cloud mask bit */
-                    line_out[lut->nband+CLOUD][is] = QA_OFF;
+                    if (ddv_line[0][is]&0x40)
+                        line_out[lut->nband+CLOUD][is] |=
+                            (1 << CLOUD_SHADOW_BIT);
 
-                line_out[lut->nband+NB_DARK][is]=line_ar_stats[i_aot][0][j_aot];
+                    if (ddv_line[0][is]&0x80)
+                        line_out[lut->nband+CLOUD][is] |= (1 << SNOW_BIT);
+
+                    anom=line_out[0][is]-line_out[2][is]/2.;
+                    t6=b6_line[0][is]*0.1;
+                    if (((anom > 300) && (line_out[4][is] > 300) &&
+                         (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
+                         (t6 < t6s_seuil)))   /* internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] |= (1 << CLOUD_BIT);
+                    else  /* reset internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] &= ~(1 << CLOUD_BIT);
+                }
+
+                /* Set up the number dark, avg dark, and std dark bands for
+                   statistics */
+                /* TODO -- this can probably disappear since they aren't
+                   written or used */
+                line_out[lut->nband+NB_DARK][is]=
+                    line_ar_stats[i_aot][0][j_aot];
                 line_out[lut->nband+AVG_DARK][is]=
                     line_ar_stats[i_aot][1][j_aot];
                 line_out[lut->nband+STD_DARK][is]=
@@ -1336,7 +1381,7 @@ int main (int argc, const char **argv) {
                 /* fill, DDV, cloud, cloud shadow, snow, land/water,
                    and adjacent cloud QA bands are all 8-bit products */
                 if (!PutOutputLine(output, ib, il, line_out[ib]))
-                    EXIT_ERROR("writing output data for a line", "main");
+                    EXIT_ERROR("writing output QA data for a line", "main");
             }
             else {
                 if (!PutOutputLine(output, ib, il, line_out[ib]))

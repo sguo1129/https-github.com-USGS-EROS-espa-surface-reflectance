@@ -14,18 +14,19 @@
 #include "envi_header.h"
 #include "espa_geoloc.h"
 
-/* Extra bands - atmos_opacity, fill_QA, DDV_QA, cloud_QA, cloud_shadow_QA,
+/* Extra bands - atmos_opacity, cloud_QA, fill_QA, DDV_QA, cloud_shadow_QA,
    snow_QA, land_water_QA, adjacent_cloud_QA, nb_dark_pixels, avg_dark_sr_b7,
    std_dark_sr_b7 */
 #define NBAND_SR_EXTRA (11)
 #define NBAND_REFL_MAX (6)
 #define NBAND_PRWV_MAX (3)
 #define NBAND_SR_MAX (NBAND_REFL_MAX + NBAND_SR_EXTRA)
+
 typedef enum {
   ATMOS_OPACITY = 0,
+  CLOUD,
   FILL,
   DDV,
-  CLOUD,
   CLOUD_SHADOW,
   SNOW,
   LAND_WATER,
@@ -39,6 +40,16 @@ typedef enum {
   QA_OFF = 0,
   QA_ON = 255
 } QA_t;
+
+/* Bit representations for the bit-packed QA band */
+typedef enum {
+  DDV_BIT = 0,
+  CLOUD_BIT,
+  CLOUD_SHADOW_BIT,
+  ADJ_CLOUD_BIT,
+  SNOW_BIT,
+  LAND_WATER_BIT,
+} QA_Band_Bit_t;
 
 /* Satellite type definition */
 
