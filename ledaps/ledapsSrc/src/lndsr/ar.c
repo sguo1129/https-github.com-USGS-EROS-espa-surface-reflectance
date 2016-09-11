@@ -10,11 +10,6 @@
 
 #define AOT_MIN_NB_SAMPLES 100
 
-#ifdef DEBUG_AR
-extern FILE *fd_ar_diags;
-extern int diags_il_ar;
-#endif
-
 #ifndef  HPUX
 #define chand chand_
 #define csalbr csalbr_
@@ -26,9 +21,8 @@ int compute_aot(int band,float rho_toa,float rho_surf_est,float ts,float tv, flo
 int update_gridcell_atmos_coefs(int irow,int icol,atmos_t *atmos_coef,Ar_gridcell_t *ar_gridcell, sixs_tables_t *sixs_tables,int **line_ar,Lut_t *lut,int nband, int bkgd_aerosol);
 
 bool Ar(int il_ar,Lut_t *lut, Img_coord_int_t *size_in, int16 ***line_in, 
-        char **ddv_line, int **line_ar, int **line_ar_stats,
-        Ar_stats_t *ar_stats, Ar_gridcell_t *ar_gridcell,
-        sixs_tables_t *sixs_tables) 
+        char **ddv_line, int **line_ar, Ar_stats_t *ar_stats,
+        Ar_gridcell_t *ar_gridcell, sixs_tables_t *sixs_tables) 
 {
 /***
 ddv_line contains results of cloud_screening when this routine is called
@@ -48,7 +42,6 @@ The DDV flag in ddv_line (bit 0) is updated in this routine
   int ib;
   double sum_band[3],sum_band_sq[3];
   double sum_srefl,sum_srefl_sq;
-/*  float rho_surf; */
   short *collect_band[3],*collect_band7,tmp_short;
   int collect_nbsamps;
   
@@ -196,36 +189,16 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
       }  /* end for is */
     }  /* end for il */
     
-#ifdef DEBUG_AR
-	if (fd_ar_diags!=NULL)
-   		fprintf(fd_ar_diags,"%d %d %d",diags_il_ar,is_ar,collect_nbsamps);
-#endif
-/*printf ("DEBUG: collect_nbsamps: %d\n", collect_nbsamps);*/
     if (collect_nbsamps == 0) {
       line_ar[0][is_ar] = lut->aerosol_fill;
       line_ar[1][is_ar] = lut->aerosol_fill;
       line_ar[2][is_ar] = lut->aerosol_fill;
-      line_ar_stats[0][is_ar] = 0;
-      line_ar_stats[1][is_ar] = lut->in_fill;
-      line_ar_stats[2][is_ar] = lut->in_fill;
       ar_stats->nfill++;
-#ifdef DEBUG_AR
-	  if (fd_ar_diags != NULL) {
-      	for (ib=0;ib<3;ib++) 
-         	fprintf(fd_ar_diags," %f %f",-1.,-1.);
-      	fprintf(fd_ar_diags," %f %f",-1.,-1.);
-      	fprintf(fd_ar_diags," %f %f %f %f %f %f %f\n",ar_gridcell->line_sun_zen[is_ar],
-             ar_gridcell->line_view_zen[is_ar],ar_gridcell->line_rel_az[is_ar],
-             ar_gridcell->line_wv[is_ar],ar_gridcell->line_ozone[is_ar],
-             ar_gridcell->line_spres[is_ar],-1.);
-	  }
-#endif
     } else {
 
 /**
 		Sort collected observations
 **/
-/*    printf("Sort %d obs\n",collect_nbsamps); fflush(stdout); */
 		for (i=0;i<(collect_nbsamps-1);i++) {
 			for (j=i+1;j<collect_nbsamps;j++) {
 				if (collect_band[0][j] < collect_band[0][i]) {
@@ -241,26 +214,7 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 			}
 		}
 
-
- /*		collect_nbsamps=(int)(collect_nbsamps *0.1);  Take 10% of the observations */
 		if (collect_nbsamps >= 2*AOT_MIN_NB_SAMPLES) {
-
-/*
-		start_i=0;
-		while (start_i < (collect_nbsamps-AOT_MIN_NB_SAMPLES)) {
-			sum_srefl=0.;
-			sum_srefl_sq=0.;
-			for (i=start_i;i<(start_i+AOT_MIN_NB_SAMPLES);i++) {
-				sum_srefl += (collect_band7[i]*0.0001);
-				sum_srefl_sq += ((collect_band7[i]*0.0001)*(collect_band7[i]*0.0001));
-			}
-      		avg_srefl = (sum_srefl) / AOT_MIN_NB_SAMPLES; 
-			std_srefl=sqrt(fabs(sum_srefl_sq-(sum_srefl*sum_srefl/AOT_MIN_NB_SAMPLES))/(AOT_MIN_NB_SAMPLES-1));
-			printf("IL_AR=%d IS_AR=%d START_I=%d AVG_REFL=%f STD_REFL=%f\n",il_ar,is_ar,start_i,avg_srefl,std_srefl);
-			
-			start_i+=AOT_MIN_NB_SAMPLES;
-		}
-*/
 		start_i=AOT_MIN_NB_SAMPLES;
 		collect_nbsamps=AOT_MIN_NB_SAMPLES; /* Take the first AOT_MIN_NB_SAMPLES samples only */
 		for (ib=0;ib<3;ib++) {
@@ -277,6 +231,7 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
 			sum_srefl += (collect_band7[i+start_i]*0.0001);
 			sum_srefl_sq += ((collect_band7[i+start_i]*0.0001)*(collect_band7[i+start_i]*0.0001));
 		}
+
 		/* update stats line */
       avg_srefl = (sum_srefl) / collect_nbsamps; 
 		for (ib=0;ib<3;ib++)
@@ -301,54 +256,21 @@ exclude clouds, cloud shadow & snow pixels flagged by the internal cloud mask
           		std_band[ib]=0;
       	}
 		}
-      line_ar_stats[0][is_ar] = collect_nbsamps;
-      line_ar_stats[1][is_ar] = (int)(avg_srefl*10000.);
-      line_ar_stats[2][is_ar] = 0;
-/*
-      line_ar_stats[2][is_ar] = (int)(((float)nb_water_pixs/nb_all_pixs)*1000.);
-*/
 	fraction_water=(float)nb_water_pixs/(nb_all_pixs-nb_fill_pixs);
 	fraction_clouds=(float)nb_cld_pixs/(nb_all_pixs-nb_fill_pixs);
 	fraction_cldshadow=(float)nb_cldshadow_pixs/(nb_all_pixs-nb_fill_pixs);
 	fraction_snow=(float)nb_snow_pixs/(nb_all_pixs-nb_fill_pixs);
-	if (nb_snow_pixs >= 5 ) {
-	line_ar_stats[0][is_ar]=-100;
-	/* resetting the number of usable observation if snow pixel present EFV March 2007*/
-	}
-#ifdef DEBUG_AR
-	  if (fd_ar_diags != NULL) {
-      	for (ib=0;ib<3;ib++) 
-         	fprintf(fd_ar_diags," %f %f",avg_band[ib],std_band[ib]);
-      	fprintf(fd_ar_diags," %f %f",avg_srefl,std_srefl);
-      	fprintf(fd_ar_diags," %f %f %f %f %f %f %f %f %f %f",ar_gridcell->line_sun_zen[is_ar],
-             ar_gridcell->line_view_zen[is_ar],ar_gridcell->line_rel_az[is_ar],
-             ar_gridcell->line_wv[is_ar],ar_gridcell->line_ozone[is_ar],
-             ar_gridcell->line_spres[is_ar],fraction_water,fraction_clouds,
-             fraction_cldshadow,fraction_snow);
-	  }
-#endif
 		
 /**
 	Compute AOT blue band
 ***/
 
-/*printf ("DEBUG: std_srefl: %f (<= 1.015)\n", std_srefl);
-printf ("DEBUG: avg_srefl: %f (<= 0.15)\n", avg_srefl);
-printf ("DEBUG: nb_snow_pix: %d (< 5)\n", nb_snow_pixs);
-printf ("DEBUG: fraction_water: %f (< 0.3)\n", fraction_water);
-printf ("DEBUG: fraction_clouds: %f (< 1e-10)\n", fraction_clouds);
-*/
 	 if ((std_srefl <= 1.015) && (avg_srefl <= 0.15) && (nb_snow_pixs < 5 )&& (fraction_water < 0.3) && (fraction_clouds < 1e-10)) {
 /*		rho_surf=0.33*avg_srefl; */
 				
 	   compute_aot(0,avg_band[0],avg_band[2],fts,ftv,phi,uoz,uwv,spres,sixs_tables,&avg_aot);
       	
       line_ar[0][is_ar] = (int)(avg_aot*1000.);
-      line_ar_stats[2][is_ar] =(int)(avg_aot*1000.);
-#ifdef DEBUG_AR
-	  if (fd_ar_diags!=NULL)
-      	fprintf(fd_ar_diags," %f",avg_aot);
-#endif
 
 /***
 	Filter aot : Correct red band using retreived aot. if over 30% of the corrected refelctances are
@@ -385,48 +307,13 @@ printf ("DEBUG: fraction_clouds: %f (< 1e-10)\n", fraction_clouds);
 			
 				if ((rho < 0.) || (rho > rho7 )) /*eric introduced that to get rid of the salt pan */
 					nb_negative_red++;
-/*				if ((rho7 > 0.2) && (((rho4-rho6)/(rho4+rho6)) < 0.1) && (avg_aot > 0.3) && ((rho/rho1) > 2.0))
-				        {
-					printf(" got some negative red\n");
-			                nb_negative_red++;
-					}*/
 			}
 			}
 		}
-/*		if (((float)nb_negative_red/(float)nb_red_obs) > 0.3) { Eric Change for test*/
 		if (((float)nb_negative_red/(float)nb_red_obs) > 0.01) {
 			line_ar[0][is_ar]=lut->aerosol_fill;
-			line_ar_stats[0][is_ar]=-100;
-#ifdef DEBUG_AR
-	  		if (fd_ar_diags!=NULL)
-      			fprintf(fd_ar_diags," -1. %f\n",((float)nb_negative_red/(float)nb_red_obs));
-#endif
-		} else {
-#ifdef DEBUG_AR
-	  		if (fd_ar_diags!=NULL)
-      			fprintf(fd_ar_diags," %f %f\n",avg_aot,((float)nb_negative_red/(float)nb_red_obs));
-#endif
 		}
 
-
-
-
-/*     printf("DONE\n"); fflush(stdout); */
-/**
-	Compute AOT green band
-		rho_surf=avg_srefl*1.4;  / * estimated reflectance in band2 = 7/5*band7 * /
-				
-	   compute_aot(1,avg_band[1],rho_surf,fts,ftv,phi,uoz,uwv,spres,sixs_tables,&avg_aot);
-      line_ar[1][is_ar] = (int)(avg_aot*1000.);
-***/
-/**
-	Compute AOT red band
-		rho_surf=avg_srefl*0.5;  / * estimated reflectance in band3 = band7/2 * /
-				
-	   compute_aot(2,avg_band[2],rho_surf,fts,ftv,phi,uoz,uwv,spres,sixs_tables,&avg_aot);
-      line_ar[2][is_ar] = (int)(avg_aot*1000.);
-
-***/
       if (ar_stats->first) {
 
         ar_stats->ar_min = ar_stats->ar_max = line_ar[0][is_ar];
@@ -444,32 +331,12 @@ printf ("DEBUG: fraction_clouds: %f (< 1e-10)\n", fraction_clouds);
       	line_ar[0][is_ar] = lut->aerosol_fill;
       	line_ar[1][is_ar] = lut->aerosol_fill;
       	line_ar[2][is_ar] = lut->aerosol_fill;
-#ifdef DEBUG_AR
-	  if (fd_ar_diags)
-      	fprintf(fd_ar_diags," -1.\n");
-#endif
-
 	  }
 	  } else {
       line_ar[0][is_ar] = lut->aerosol_fill;
       line_ar[1][is_ar] = lut->aerosol_fill;
       line_ar[2][is_ar] = lut->aerosol_fill;
-      line_ar_stats[0][is_ar] = 0;
-      line_ar_stats[1][is_ar] = lut->in_fill;
-      line_ar_stats[2][is_ar] = lut->in_fill;
       ar_stats->nfill++;
-#ifdef DEBUG_AR
-	  if (fd_ar_diags!=NULL) {
-      	for (ib=0;ib<3;ib++)
-         	fprintf(fd_ar_diags," %f %f",-1.,-1.);
-      	fprintf(fd_ar_diags," %f %f",-1.,-1.);
-      	fprintf(fd_ar_diags," %f %f %f %f %f %f %f\n",ar_gridcell->line_sun_zen[is_ar],
-             ar_gridcell->line_view_zen[is_ar],ar_gridcell->line_rel_az[is_ar],
-             ar_gridcell->line_wv[is_ar],ar_gridcell->line_ozone[is_ar],
-             ar_gridcell->line_spres[is_ar],-1.);
-	  }
-#endif
-
 	  }
     }
   }

@@ -67,7 +67,6 @@
 #include "sixs_runs.h"
 
 #define AERO_NB_BANDS 3
-#define AERO_STATS_NB_BANDS 3
 #define SP_INDEX    0
 #define WV_INDEX    1
 #define ATEMP_INDEX 2
@@ -144,9 +143,6 @@ int main (int argc, char *argv[]) {
     int ***line_ar = NULL;
     int **line_ar_band_buf = NULL;
     int *line_ar_buf = NULL;
-    int ***line_ar_stats = NULL;
-    int **line_ar_stats_band_buf = NULL;
-    int *line_ar_stats_buf = NULL;
     int16** b6_line = NULL;
     int16* b6_line_buf = NULL;
     float *atemp_line = NULL;
@@ -506,29 +502,6 @@ int main (int argc, char *argv[]) {
         for (ib = 0; ib < AERO_NB_BANDS; ib++) {
             line_ar[il][ib] = line_ar_buf;
             line_ar_buf += lut->ar_size.s;
-        }
-    }
-
-    line_ar_stats = calloc(lut->ar_size.l, sizeof(int **));
-    if (line_ar_stats == NULL) 
-        EXIT_ERROR("allocating aerosol stats line buffer (a)", "main");
-
-    line_ar_stats_band_buf = calloc(lut->ar_size.l * AERO_STATS_NB_BANDS,
-        sizeof(int *));
-    if (line_ar_stats_band_buf == NULL) 
-        EXIT_ERROR("allocating aerosol stats line buffer (b)", "main");
-
-    line_ar_stats_buf = calloc(lut->ar_size.l * lut->ar_size.s *
-        AERO_STATS_NB_BANDS, sizeof(int));
-    if (line_ar_stats_buf == NULL) 
-        EXIT_ERROR("allocating aerosol stats line buffer (c)", "main");
-
-    for (il = 0; il < lut->ar_size.l; il++) {
-        line_ar_stats[il] = line_ar_stats_band_buf;
-        line_ar_stats_band_buf += AERO_STATS_NB_BANDS;
-        for (ib = 0; ib < AERO_STATS_NB_BANDS; ib++) {
-            line_ar_stats[il][ib] = line_ar_stats_buf;
-            line_ar_stats_buf += lut->ar_size.s;
         }
     }
 
@@ -1176,7 +1149,7 @@ int main (int argc, char *argv[]) {
         diags_il_ar=il_ar;
 #endif
         if (!Ar(il_ar,lut, &input->size, line_in, ddv_line, line_ar[il_ar],
-            line_ar_stats[il_ar], &ar_stats, &ar_gridcell, &sixs_tables))
+            &ar_stats, &ar_gridcell, &sixs_tables))
             EXIT_ERROR("computing aerosol", "main");
 
         /***
@@ -1220,12 +1193,11 @@ int main (int argc, char *argv[]) {
         EXIT_ERROR("opening dark target temporary file", "main");
 
     for (il = 0; il < input->size.l; il++) {
-/*        if (!(il%100)) 
+        if (!(il%100)) 
         {
             printf("Processing surface reflectance for line %d\r",il);
             fflush(stdout);
         }
-*/
 
         /* Re-read each input band */
         for (ib = 0; ib < input->nband; ib++) {
@@ -1354,36 +1326,22 @@ int main (int argc, char *argv[]) {
                     else  /* reset internal cloud mask bit */
                         line_out[lut->nband+CLOUD][is] &= ~(1 << CLOUD_BIT);
                 }
-
-                /* Set up the number dark, avg dark, and std dark bands for
-                   statistics */
-                /* TODO -- this can probably disappear since they aren't
-                   written or used */
-                line_out[lut->nband+NB_DARK][is]=
-                    line_ar_stats[i_aot][0][j_aot];
-                line_out[lut->nband+AVG_DARK][is]=
-                    line_ar_stats[i_aot][1][j_aot];
-                line_out[lut->nband+STD_DARK][is]=
-                    line_ar_stats[i_aot][2][j_aot];
             }
             else {
                 line_out[lut->nband][is]=lut->aerosol_fill;
                 line_out[lut->nband+FILL][is] = QA_ON;  /* set fill bit */
-                line_out[lut->nband+NB_DARK][is]=0;
-                line_out[lut->nband+AVG_DARK][is]=lut->in_fill;
-                line_out[lut->nband+STD_DARK][is]=lut->in_fill;
             }
         } /* for is */
 
         /* Write each output band */
         for (ib = 0; ib < output->nband_out; ib++) {
-            if (ib >= lut->nband+FILL && ib <= lut->nband+ADJ_CLOUD) {
+            if (ib >= lut->nband+FILL) {  /* QA bands */
                 /* fill, DDV, cloud, cloud shadow, snow, land/water,
                    and adjacent cloud QA bands are all 8-bit products */
                 if (!PutOutputLine(output, ib, il, line_out[ib]))
                     EXIT_ERROR("writing output QA data for a line", "main");
             }
-            else {
+            else {  /* image bands */
                 if (!PutOutputLine(output, ib, il, line_out[ib]))
                     EXIT_ERROR("writing output data for a line", "main");
             }
@@ -1454,9 +1412,6 @@ int main (int argc, char *argv[]) {
     free(line_ar[0][0]);
     free(line_ar[0]);
     free(line_ar);
-    free(line_ar_stats[0][0]);
-    free(line_ar_stats[0]);
-    free(line_ar_stats);
     free(line_in[0][0]);
     free(line_in[0]);
     free(line_in);

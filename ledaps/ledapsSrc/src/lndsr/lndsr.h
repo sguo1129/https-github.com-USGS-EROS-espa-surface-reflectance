@@ -15,9 +15,8 @@
 #include "espa_geoloc.h"
 
 /* Extra bands - atmos_opacity, cloud_QA, fill_QA, DDV_QA, cloud_shadow_QA,
-   snow_QA, land_water_QA, adjacent_cloud_QA, nb_dark_pixels, avg_dark_sr_b7,
-   std_dark_sr_b7 */
-#define NBAND_SR_EXTRA (11)
+   snow_QA, land_water_QA, adjacent_cloud_QA */
+#define NBAND_SR_EXTRA (8)
 #define NBAND_REFL_MAX (6)
 #define NBAND_PRWV_MAX (3)
 #define NBAND_SR_MAX (NBAND_REFL_MAX + NBAND_SR_EXTRA)
@@ -30,10 +29,7 @@ typedef enum {
   CLOUD_SHADOW,
   SNOW,
   LAND_WATER,
-  ADJ_CLOUD,
-  NB_DARK,
-  AVG_DARK,
-  STD_DARK
+  ADJ_CLOUD
 } Extra_Band_t;
 
 typedef enum {

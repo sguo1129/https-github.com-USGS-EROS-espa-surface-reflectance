@@ -69,7 +69,7 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
                          within the output structure */
   char *band_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity", "cloud_qa",
     "fill_qa", "ddv_qa", "cloud_shadow_qa", "snow_qa", "land_water_qa",
-    "adjacent_cloud_qa", "nb_dark_pixels", "avg_dark_sr_b7", "std_dark_sr_b7"};
+    "adjacent_cloud_qa"};
     /* The atmospheric opacity and cloud bands are the only ones used for
        Collections.  The others are used for pre-collections. */
 
@@ -79,13 +79,13 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
   if (!param->process_collection)
   { /* Use all QA bands */
     nband_tot = nband + NBAND_SR_EXTRA;
-    nband_out = nband + NBAND_SR_EXTRA - 3;
+    nband_out = nband_tot;
     nband_out_extra = nband_out - nband;
   }
   else
   { /* Only QA bands are the atmospheric opacity and cloud QA */
     nband_tot = nband + NBAND_SR_EXTRA;
-    nband_out = nband + NBAND_SR_EXTRA - 9;
+    nband_out = nband_tot - 6;
     nband_out_extra = nband_out - nband;
   }
 
