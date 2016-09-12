@@ -8,7 +8,7 @@ LaSRC (Landsat Surface Reflectance Code) source code
 
 LaSRC auxiliary files
 
-    http://espa.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
+    http://edclpdsftp.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
 See git tag [lasrc-version_0.8.0]
 
