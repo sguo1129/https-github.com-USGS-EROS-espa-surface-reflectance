@@ -8,7 +8,7 @@ Ledaps source code
 
 Ledaps auxiliary files
 
-    http://espa.cr.usgs.gov/downloads/auxiliaries/ledaps_auxiliary/ledaps_aux.1978-2014.tar.gz
+    http://edclpdsftp.cr.usgs.gov/downloads/auxiliaries/ledaps_auxiliary/ledaps_aux.1978-2014.tar.gz
 
 See git tag [ledaps-version_2.8.0]
 
