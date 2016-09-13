@@ -13,7 +13,7 @@ NOTES:
   1. The XML metadata format read by this application follows the ESPA internal
      metadata format found in ESPA Raw Binary Format v1.0.doc.  The schema for
      the ESPA internal metadata format is available at
-     http://edclpdsftp.cr.usgs.gov/schema/espa_internal_metadata_vX_Y.xsd.
+     http://espa.cr.usgs.gov/schema/espa_internal_metadata_vX_Y.xsd.
 *****************************************************************************/
 #include <getopt.h>
 #include <math.h>
