@@ -1351,7 +1351,7 @@ int compute_sr_refl
                             {
                                 /* Set the temporary bit */
                                 if (tresi[win_pix] < 0)
-                                    cloud[win_pix] |= CLDT_QA;
+                                    cloud[win_pix] |= (1 << CLDT_QA);
                             }
                         }
                     }  /* end for l */
