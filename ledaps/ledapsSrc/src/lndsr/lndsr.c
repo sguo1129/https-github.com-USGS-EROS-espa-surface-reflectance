@@ -1251,7 +1251,7 @@ int main (int argc, char *argv[]) {
                 line_out[lut->nband][is] = inter_aot;
 
                 if (!param->process_collection) {
-                    /* pre-collection processing */
+                    /* Pre-collection processing */
                     /**
                     Set bits for internal cloud mask.  This is written as
                     separate bands for each QA.
@@ -1294,10 +1294,11 @@ int main (int argc, char *argv[]) {
     
                 }
                 else {
-                    /* Collection processing. QA is written out in the could
-                       band as a 16-bit bit-packed product. Use QA values as-is
-                       because lndsrbm will not be called as a post-processing
-                       QA step. */
+                    /* Processing Collection products. QA is written out in the
+                       cloud band as a bit-packed product (16-bit). We will use
+                       QA values as-is (versus resetting them for pre-collection
+                       products) because lndsrbm will not be called as a
+                       post-processing QA step. */
                     if (ddv_line[0][is]&0x01)
                         line_out[lut->nband+CLOUD][is] |= (1 << DDV_BIT);
 
