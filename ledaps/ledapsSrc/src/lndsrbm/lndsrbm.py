@@ -9,10 +9,16 @@ from espa import Metadata
 ERROR = 1
 SUCCESS = 0
 
+class CommandFailed(Exception):
+    """Exception to capture an external command failing."""
+    pass
+
 #############################################################################
 # Check if a string is a float
 #############################################################################
 def is_float(string_to_check):
+    """Check if the string is a float"""
+
     try:
         float(string_to_check)
         return True
@@ -25,24 +31,26 @@ def is_float(string_to_check):
 # The actual conversions are performed by the xy2geo and geo2xy tools, which
 # are the tools supported by the command_name argument.
 #
-# This returns the row value (latitude or x), column value (longitude or y),
-# and a status (SUCCESS or ERROR).  Upon error, the row and column values
-# returned are -9999.0.
+# This returns the row value (latitude or x) and column value (longitude or y).
 #############################################################################
 def convert_location(command_name, row, column, xml_filename, output_filename,
                      error_filename):
-
-    # Initialize values
-    status_string = "Success"
+    """Convert x/y to latitude/longitude, or vice versa"""
 
     # Run tool to convert location
-    cmdstr = command_name + " " + xml_filename + " " + str(column) + " " \
-        + str(row) + " " + output_filename
+    cmdstr = ' '.join([command_name, xml_filename, str(column), str(row),
+                       output_filename])
     commands.getstatusoutput(cmdstr)
     if os.path.exists(error_filename):
-        status_string = 'Error running {0}.  Processing will terminate. ' \
-            'See file {1}'.format(command_name, error_filename)
-        return -9999.0, -9999.0, ERROR, status_string
+        message = 'Error running {0}. See file {1}'.format(command_name,
+                                                           error_filename)
+        raise CommandFailed(message)
+
+    # Check that the output file exists.
+    if not os.path.isfile(output_filename):
+        message = ('Error running {0}.  Output file was not created. '
+                   'See file {1}'.format(command_name, error_filename))
+        raise CommandFailed(message)
 
     # Read the row and column from the file
     value_file = open(output_filename, "r")
@@ -52,45 +60,36 @@ def convert_location(command_name, row, column, xml_filename, output_filename,
     row_value = line.split()[8]
     column_value = line.split()[6]
     if not row_value:
-        status_string = 'Row value in file {0} is missing. ' \
-            'Processing will terminate.'.format(output_filename)
-        return -9999.0, -9999.0, ERROR, status_string
+        message = 'Row value in file {0} is missing. '.format(output_filename)
+        raise IOError(message)
     if not column_value:
-        status_string = 'Column value in file {0} is missing. ' \
-            'Processing will terminate.'.format(output_filename)
-        return -9999.0, -9999.0, ERROR, status_string
+        message = 'Column value in file {0} is missing. '.format(
+            output_filename)
+        raise IOError(message)
 
-    return float(row_value), float(column_value), SUCCESS, status_string
+    return float(row_value), float(column_value)
 
 #############################################################################
 # Retrieve air temperature values.
 #
 # Input: name of input ancillary file, xgrib and ygrib locations, temporary
 # file for storing the air temperature values
-#
-# Return: SUCCESS or ERROR status and a status string are returned.
 #############################################################################
 def get_air_temperatures(ancillary_filename, xgrib, ygrib,
                          air_temperature_filename):
-
-    # Initialize values
-    status_string = "Success"
-
-    # Where is this executable?
-    exe_dir = os.environ['BIN']
+    """Retrieve air temperature values from ancillary file"""
 
     # Read the air temperature values from the PRWV auxiliary file for
     # the center of the scene.  This uses the -t parameter which causes
     # the air temperature values to be sent to a data file
-    cmdstr = exe_dir + "/SDSreader3.0 -f " + ancillary_filename + " -w \"" \
-        + str(ygrib) + " " + str(xgrib) + " 1 1 \" -t " \
-        + air_temperature_filename
+    cmdstr = ' '.join(['SDSreader3.0 -f ', ancillary_filename, ' -w \"',
+                       str(ygrib), str(xgrib), ' 1 1 \" -t ',
+                       air_temperature_filename])
     (status, output) = commands.getstatusoutput(cmdstr)
     exit_code = status >> 8
     if exit_code != 0:
-        status_string = 'Error running SDSreader3.0.  Processing will ' \
-                     'terminate.'
-        return ERROR, status_string
+        message = 'Error running SDSreader3.0.'
+        raise CommandFailed(message)
 
     # Display the air temperature values
     air_temperature_file = open(air_temperature_filename, "r")
@@ -98,34 +97,28 @@ def get_air_temperatures(ancillary_filename, xgrib, ygrib,
     print air_temperature_lines.strip()
     air_temperature_file.close()
 
-    return SUCCESS, status_string
-
 #############################################################################
 # Retrieve scene center temperature.
 #
 # Input: Name of the surface reflectance text file to read
 #
 # Return: scene center temperature
-# In addition, SUCCESS or ERROR status and a status string are returned.
 #############################################################################
 def get_center_temperature(scene_center_time, air_temperature_filename,
                            center_temperature_filename):
+    """Retrieve the scene center temperature from a formatted text file"""
 
     # Initialize values
-    status_string = "Success"
     temperature = -9999.0
 
-    # Where is this executable?
-    exe_dir = os.environ['BIN']
-
     # Run tool to get the temperature at the scene center
-    cmdstr = exe_dir + "/comptemp" + " " + str(scene_center_time) + " " \
-        + air_temperature_filename + " " + center_temperature_filename
+    cmdstr = ' '.join(['comptemp', str(scene_center_time),
+                       air_temperature_filename, center_temperature_filename])
     (status, output) = commands.getstatusoutput(cmdstr)
     exit_code = status >> 8
     if exit_code != 0:
-        status_string = 'Error running comptemp.  Processing will terminate.'
-        return temperature, ERROR, status_string
+        message = 'Error running comptemp.'
+        raise CommandFailed(message)
 
     # Read the scene center temperature from the file
     center_temperature_file = open(center_temperature_filename, "r")
@@ -133,20 +126,18 @@ def get_center_temperature(scene_center_time, air_temperature_filename,
     center_temperature_file.close()
     temperature_line = temperature_line.strip()
     if not temperature_line:
-        status_string = 'Temperature value in file {0} is missing. ' \
-                        'Processing will terminate.'.format( \
-                        center_temperature_filename)
-        return temperature, ERROR, status_string
+        message = 'Temperature value in file {0} is missing. '.format(
+            center_temperature_filename)
+        raise IOError(message)
 
     if is_float(temperature_line):
         temperature = float(temperature_line)
     else:
-        status_string = 'Temperature value in file {0} should be a float. ' \
-                        'Processing will terminate.'.format( \
-                        center_temperature_filename)
-        return temperature, ERROR, status_string
+        message = 'Temperature value in file {0} should be a float. '.format(
+            center_temperature_filename)
+        raise FloatingPointError(message)
 
-    return temperature, SUCCESS, status_string
+    return temperature
 
 #############################################################################
 # Retrieve and verify XML and ancillary filenames from the surface reflectance
@@ -154,32 +145,30 @@ def get_center_temperature(scene_center_time, air_temperature_filename,
 #
 # Input: Name of the surface reflectance text file to read
 #
-# Return: XML filename, anciillary filename.
-# In addition, SUCCESS or ERROR status and a status string are returned.
+# Return: XML filename, ancillary filename.
 #############################################################################
 def get_xml_and_ancillary_filenames(lndsr_filename):
+    """Retrieve the XML and ancillary filenames from a formatted text file"""
 
     # Initialize values
-    status_string = "Success"
-    xml_filename = ""
-    ancillary_filename = ""
+    xml_filename = ''
+    ancillary_filename = ''
 
     # Make sure the lndsr file exists
     if not os.path.exists(lndsr_filename):
-        status_string = 'lndsr SR text file does not exist or is not ' \
-                        'accessible: {0}'.format(lndsr_filename)
-        return xml_filename, ancillary_filename, ERROR, status_string
+        message = ('lndsr SR text file does not exist or is not '
+                   'accessible: {0}'.format(lndsr_filename))
+        raise IOError(message)
 
     # Make sure the lndsr file is really a file
     if not os.path.isfile(lndsr_filename):
-        status_string = 'lndsr parameter is not a file: {0}' \
-            .format(lndsr_filename)
-        return xml_filename, ancillary_filename, ERROR, status_string
+        message = 'lndsr parameter is not a file: {0}'.format(lndsr_filename)
+        raise IOError(message)
 
     # Find the XML filename and the reanalysis ancillary filename in the
     # lndsr file
-    xml_filename = ""
-    ancillary_filename = ""
+    xml_filename = ''
+    ancillary_filename = ''
     with open(lndsr_filename, 'r') as lndsr_file:
         lndsr_filename = lndsr_file.readlines()
         lndsr_file.close()
@@ -188,38 +177,38 @@ def get_xml_and_ancillary_filenames(lndsr_filename):
         for line in lndsr_filename:
 
             # Check for a match on the XML file.
-            if line.startswith("XML_FILE"):
+            if line.startswith('XML_FILE'):
                 columns = line.split()
                 xml_filename = columns[2].rstrip()
 
             # Check for a match on the reanalysis file
-            if line.startswith("PRWV_FIL"):
+            if line.startswith('PRWV_FIL'):
                 columns = line.split()
                 ancillary_filename = columns[2].rstrip()
 
     # Verify that the filenames were found
     if not xml_filename:
-        status_string = 'Could not find the XML filename in: {0}' \
-            .format(lndsr_filename)
-        return xml_filename, ancillary_filename, ERROR, status_string
+        message = 'Could not find the XML filename in: {0}'.format(
+            lndsr_filename)
+        raise IOError(message)
     if not ancillary_filename:
-        status_string = 'Could not find the reanalysis filename in: {0}' \
-            .format(lndsr_filename)
-        return xml_filename, ancillary_filename, ERROR, status_string
+        message = 'Could not find the reanalysis filename in: {0}'.format(
+            lndsr_filename)
+        raise IOError(message)
 
     # Make sure the XML file exists
     if not os.path.exists(xml_filename):
-        status_string = 'XML file does not exist or is not ' \
-                     'accessible: {0}'.format(xml_filename)
-        return xml_filename, ancillary_filename, ERROR, status_string
+        message = 'XML file does not exist or is not accessible: {0}'.format(
+            xml_filename)
+        raise IOError(message)
 
     # Make sure the ancillary file exists
     if not os.path.exists(ancillary_filename):
-        status_string = 'Ancillary file does not exist or is not ' \
-                     'accessible: {0}'.format(ancillary_filename)
-        return xml_filename, ancillary_filename, ERROR, status_string
+        message = 'Ancillary file does not exist or is not ' \
+                  'accessible: {0}'.format(ancillary_filename)
+        raise IOError(message)
 
-    return xml_filename, ancillary_filename, SUCCESS, status_string
+    return xml_filename, ancillary_filename
 
 #############################################################################
 # Retrieve delta x and y values.
@@ -231,13 +220,16 @@ def get_xml_and_ancillary_filenames(lndsr_filename):
 #
 # Return: The delta x and delta y values are returned.  In addition,
 # scene center latitude and longitude, and row and column, are returned.
-# In addition, SUCCESS or ERROR status and a status string are returned.
 #############################################################################
 def get_deltas(center_row, center_column, xml_filename, center_lat_lon_filename,
                offset_lat_lon_filename, xy_filename, geoxy_error_filename):
+    """Retrieve delta x and y, scene center latitude and longitude, row,
+       and column"""
+
+    # Obtain logger from logging using the module's name
+    logger = logging.getLogger(__name__)
 
     # Initialize values
-    status_string = "Success"
     delta_x = -9999.0
     delta_y = -9999.0
     scene_center_lat = -9999.0
@@ -245,65 +237,60 @@ def get_deltas(center_row, center_column, xml_filename, center_lat_lon_filename,
     cs_row = -9999.0
     cs_column = -9999.0
 
-    # Where is this executable?
-    exe_dir = os.environ['BIN']
-
     # Run tool to convert scene center location to latitude and longitude
-    scene_center_lat, scene_center_lon, status, status_string \
-        = convert_location(
-            exe_dir + "/xy2geo", center_row, center_column, xml_filename,
+    try:
+        scene_center_lat, scene_center_lon = convert_location(
+            'xy2geo', center_row, center_column, xml_filename,
             center_lat_lon_filename, geoxy_error_filename)
-    if status != SUCCESS:
-        return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row,  \
-            cs_column, ERROR, status_string
+    except (CommandFailed, IOError) as message:
+        message = 'Failed to convert location for scene center.'
+        logger.error(message)
+        raise
     if scene_center_lat < -90.0 or scene_center_lat > 90.0:
-        status_string = 'Scene center latitude {0} should be from -90.0 to ' \
-                        '90.0. Processing will terminate.' \
-                        .format(scene_center_lat)
-        return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-            cs_column, ERROR, status_string
+        message = ('Scene center latitude {0} should be from -90.0 to '
+                   '90.0'.format(scene_center_lat))
+        raise ValueError(message)
     if scene_center_lon < -180.0 or scene_center_lon > 180.0:
-        status_string = 'Scene center longitude {0} should be from -180.0 to ' \
-                        '180.0.  Processing will terminate.' \
-                        .format(scene_center_lon)
-        return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-            cs_column, ERROR, status_string
+        message = ('Scene center longitude {0} should be from -180.0 to '
+                   '180'.format(scene_center_lon))
+        raise ValueError(message)
 
     # Compute latitude and longitude of the point 100 pixels north from
     # the center
-    offset_lat, offset_lon, status, status_string \
-        = convert_location(exe_dir + "/xy2geo", center_row - 100,
-                           center_column, xml_filename,
-                           offset_lat_lon_filename, geoxy_error_filename)
-    if status != SUCCESS:
-        return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-            cs_column, ERROR, status_string
+    try:
+        offset_lat, offset_lon = convert_location('xy2geo', center_row - 100,
+                                                  center_column, xml_filename,
+                                                  offset_lat_lon_filename,
+                                                  geoxy_error_filename)
+    except (CommandFailed, IOError) as message:
+        message = 'Failed to convert location for 100 pixel offset.'
+        logger.error(message)
+        raise
     if offset_lat < -90.0 or offset_lat > 90.0:
-        status_string = 'Offset latitude {0} should be from -90.0 to 90.0. ' \
-                        'Processing will terminate.'.format(offset_lat)
-        return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-            cs_column, ERROR, status_string
+        message = ('Offset latitude {0} should be from -90.0 to 90.0. '
+                   .format(offset_lat))
+        raise ValueError(message)
     if offset_lon < -180.0 or offset_lon > 180.0:
-        status_string = 'Offset longitude {0} should be from -180.0 to ' \
-                        '180.0. Processing will terminate.'.format(offset_lon)
-        return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-            cs_column, ERROR, status_string
+        message = ('Offset longitude {0} should be from -180.0 to 180.0. '
+                   .format(offset_lon))
+        raise ValueError(message)
 
     # Now move to the longitude of the center of the image.
-    cs_row, cs_column, status, status_string \
-        = convert_location(exe_dir + "/geo2xy", offset_lat,
-                           scene_center_lon, xml_filename, xy_filename,
-                           geoxy_error_filename)
-    if status != SUCCESS:
-        return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-            cs_column, ERROR, status_string
+    try:
+        cs_row, cs_column = convert_location('geo2xy', offset_lat,
+                                             scene_center_lon, xml_filename,
+                                             xy_filename, geoxy_error_filename)
+    except (CommandFailed, IOError) as message:
+        message = 'Failed to convert location for image center longitude.'
+        logger.error(message)
+        raise
 
     # Compute the deviation in pixels
     delta_x = float(cs_column) - center_column
     delta_y = center_row - float(cs_row)
 
     return delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-        cs_column, SUCCESS, status_string
+        cs_column
 
 #############################################################################
 # Retrieve specific metadata values from the XML format metadata file.
@@ -311,26 +298,24 @@ def get_deltas(center_row, center_column, xml_filename, center_lat_lon_filename,
 # Input: Name of the input metadata file to read
 #
 # Return: The metadata values are returned.
-# In addition, SUCCESS or ERROR status and a status string are returned.
 #############################################################################
 def get_metadata(xml_filename):
+    """Get various values from the specified metadata file"""
 
     # Initialize values
-    status_string = "Success"
     lon1 = -9999.0
     lon2 = -9999.0
     lat1 = -9999.0
     lat2 = -9999.0
     number_lines = -9999
     number_samples = -9999
-    scene_center_time = ""
+    scene_center_time = ''
 
     # Verify that the XML file exists
     if not os.path.exists(xml_filename):
-        status_string = 'XML file does not exist or is not ' \
-                        'accessible: {0}'.format(xml_filename)
-        return scene_center_time, number_lines, number_samples, lon1, lon2, \
-            lat1, lat2, ERROR, status_string
+        message = 'XML file does not exist or is not accessible: {0}'.format(
+            xml_filename)
+        raise IOError(message)
 
     # Extract values using ESPA metadata library
     espa_metadata = Metadata()
@@ -350,10 +335,8 @@ def get_metadata(xml_filename):
             break
 
     if not found_sr_band1:
-        status_string = 'Could not find XML data for surface reflectance ' \
-                        'band 1. Processing will terminate.'
-        return scene_center_time, number_lines, number_samples, lon1, lon2, \
-            lat1, lat2, ERROR, status_string
+        message = 'Could not find XML data for surface reflectance band 1.'
+        raise IOError(message)
 
     # Retrieve latitude and longitude values
     lon1 = global_metadata.bounding_coordinates.west
@@ -363,29 +346,24 @@ def get_metadata(xml_filename):
 
     # Verify latitude and longitude values
     if lat1 < -90.0 or lat1 > 90.0:
-        status_string = 'North latitude {0} should be from -90.0 to 90.0. ' \
-                        'Processing will terminate.'.format(lat1)
-        return scene_center_time, number_lines, number_samples, lon1, lon2, \
-            lat1, lat2, ERROR, status_string
+        message = 'North latitude {0} should be from -90.0 to 90.0. '.format(
+            lat1)
+        raise ValueError(message)
     if lat2 < -90.0 or lat2 > 90.0:
-        status_string = 'South latitude {0} should be from -90.0 to 90.0. ' \
-                        'Processing will terminate.'.format(lat2)
-        return scene_center_time, number_lines, number_samples, lon1, lon2, \
-            lat1, lat2, ERROR, status_string
+        message = 'South latitude {0} should be from -90.0 to 90.0. '.format(
+            lat2)
+        raise ValueError(message)
     if lon1 < -180.0 or lon1 > 180.0:
-        status_string = 'West longitude {0} should be from -180.0 to 180.0. ' \
-                        'Processing will terminate.'.format(lon1)
-        return scene_center_time, number_lines, number_samples, lon1, lon2, \
-            lat1, lat2, ERROR, status_string
+        message = 'West longitude {0} should be from -180.0 to 180.0. '.format(
+            lon1)
+        raise ValueError(message)
     if lon2 < -180.0 or lon2 > 180.0:
-        status_string = 'East longitude {0} should be from -180.0 to 180.0. ' \
-                        'Processing will terminate.'.format(lon2)
-        return scene_center_time, number_lines, number_samples, lon1, lon2, \
-            lat1, lat2, ERROR, status_string
+        message = 'East longitude {0} should be from -180.0 to 180.0. '.format(
+            lon2)
+        raise ValueError(message)
 
     return scene_center_time, number_lines, number_samples, lon1, lon2, lat1, \
-        lat2, SUCCESS, status_string
-
+        lat2
 
 #############################################################################
 # Update the acquisition time from the metadata to scene center time in a
@@ -396,11 +374,12 @@ def get_metadata(xml_filename):
 # Return: scene center time
 #############################################################################
 def update_scene_center_time(scene_center_time, lonc):
+    """Update the acquisition time to scene center time"""
 
-    if scene_center_time == "00:00:00.000000Z":
+    if scene_center_time == '00:00:00.000000Z':
         scene_center_time = 10.5 - lonc / 15
     else:
-        scene_center_time_list = scene_center_time.split(":")
+        scene_center_time_list = scene_center_time.split(':')
         hour = float(scene_center_time_list[0])
         minute = float(scene_center_time_list[1])
         scene_center_time = hour + minute / 60.0
@@ -428,6 +407,7 @@ def update_scene_center_time(scene_center_time, lonc):
 # Usage: lndsrbm.py --help prints the help message
 ############################################################################
 class Lndsrbm():
+    """Class to prepare for and run the lndsrbm application"""
 
     def __init__(self):
         pass
@@ -447,6 +427,7 @@ class Lndsrbm():
     #     SUCCESS - successful processing
     #######################################################################
     def runLndsrbm(self, lndsr_input=None):
+        """Prepare for and run the lndsrbm application"""
 
         # If no parameters were passed then get the info from the command
         # line
@@ -454,17 +435,17 @@ class Lndsrbm():
 
             # Get the command line argument for the lndsr file
             parser = OptionParser()
-            parser.add_option("-f", "--lndsr",
-                              type="string", dest="lndsr_input",
-                              help="name of Landsat surface reflectance text "
-                              "file",
-                              metavar="FILE")
+            parser.add_option('-f', '--lndsr',
+                              type='string', dest='lndsr_input',
+                              help='name of Landsat surface reflectance text '
+                              'file',
+                              metavar='FILE')
             (options, args) = parser.parse_args()
 
             # Validate the command-line option
             lndsr_input = options.lndsr_input  # name of the lndsr text file
             if lndsr_input is None:
-                parser.error("missing lndsr SR text file command-line argument")
+                parser.error('missing lndsr SR text file command-line argument')
                 return ERROR
 
         # Obtain logger from logging using the module's name
@@ -472,25 +453,26 @@ class Lndsrbm():
         logger.info('Lndsrbm processing of surface reflectance text file: {0}'
                     .format(lndsr_input))
 
-        # Where are the executables?
-        exe_dir = os.environ['BIN']
-        logger.info('exe_dir: {0}'.format(exe_dir))
-
         # Retrieve the XML filename and the ancillary filename
-        xml_filename, ancillary_filename, status, status_string \
-            = get_xml_and_ancillary_filenames(lndsr_input)
-        if status != SUCCESS:
-            logger.error(status_string)
-            return ERROR
+        try:
+            xml_filename, ancillary_filename \
+                = get_xml_and_ancillary_filenames(lndsr_input)
+        except IOError as message:
+            message = ('Could not get XML and ancillary filenames. '
+                       'Processing will terminate.')
+            logger.error(message)
+            raise
         logger.info('using ancillary data {0}'.format(ancillary_filename))
 
         # Retrieve the metadata values
-        scene_center_time, number_lines, number_samples, lon1, lon2, lat1, \
-            lat2, status, status_string = get_metadata(xml_filename)
-        if status != SUCCESS:
-            logger.error(status_string)
-            return ERROR
-        logger.info('West bound: {0} East bound: {1} North bound {2} South ' \
+        try:
+            scene_center_time, number_lines, number_samples, lon1, lon2, lat1, \
+                lat2 = get_metadata(xml_filename)
+        except (IOError, ValueError) as message:
+            message = 'Error running get_metadata.  Processing will terminate.'
+            logger.error(message)
+            raise
+        logger.info('West bound: {0} East bound: {1} North bound {2} South '
                     'bound: {3}'.format(lon1, lon2, lat1, lat2))
 
         # Compute latitude and longitude of the center of the scene
@@ -508,27 +490,32 @@ class Lndsrbm():
         logger.info('Scene time: {0}'.format(scene_center_time))
 
         # Get the air temperatures
-        air_temperature_filename = "tmp.airtemp"
-        status, status_string = get_air_temperatures(ancillary_filename,
-                                                     xgrib, ygrib,
-                                                     air_temperature_filename)
-        if status != SUCCESS:
-            logger.error(status_string)
-            return ERROR
+        air_temperature_filename = 'tmp.airtemp'
+        try:
+            get_air_temperatures(ancillary_filename, xgrib, ygrib,
+                                 air_temperature_filename)
+        except CommandFailed as message:
+            message = ('Error running get_air_temperatures.  Processing '
+                       'will terminate.')
+            logger.error(message)
+            raise
 
         # Get the scene center temperature
-        center_temperature_filename = "scene_center_temperature.dat"
-        temperature, status, status_string = get_center_temperature(
-            scene_center_time, air_temperature_filename,
-            center_temperature_filename)
-        if status != SUCCESS:
-            logger.error(status_string)
-            return ERROR
+        center_temperature_filename = 'scene_center_temperature.dat'
+        try:
+            temperature = get_center_temperature(
+                scene_center_time, air_temperature_filename,
+                center_temperature_filename)
+        except (CommandFailed, IOError, FloatingPointError) as message:
+            message = ('Error running get_center_temperature. '
+                       'Processing will terminate.')
+            logger.error(message)
+            raise
         logger.info('tclear: {0}'.format(temperature))
 
         # Remove the geo_xy.ERROR file if it exists.  It is used to flag errors
         # with the xy2geo or geo2xy processing
-        geoxy_error_filename = "geo_xy.ERROR"
+        geoxy_error_filename = 'geo_xy.ERROR'
         try:
             os.remove(geoxy_error_filename)
             logger.info('Removing geoxy ERROR file: {0}'
@@ -542,17 +529,19 @@ class Lndsrbm():
         center_column = float(number_samples) / 2
         logger.info('Center col/row: {0} {1}'.format(center_column, center_row))
 
-        center_lat_lon_filename = "scene_center_lat_lon.dat"
-        offset_lat_lon_filename = "offset_lat_lon.dat"
-        xy_filename = "xy.dat"
-        delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
-            cs_column, status, status_string \
-            = get_deltas(center_row, center_column, xml_filename,
-                         center_lat_lon_filename, offset_lat_lon_filename,
-                         xy_filename, geoxy_error_filename)
-        if status != SUCCESS:
-            logger.error(status_string)
-            return ERROR
+        center_lat_lon_filename = 'scene_center_lat_lon.dat'
+        offset_lat_lon_filename = 'offset_lat_lon.dat'
+        xy_filename = 'xy.dat'
+        try:
+            delta_x, delta_y, scene_center_lat, scene_center_lon, cs_row, \
+                cs_column = get_deltas(center_row, center_column, xml_filename,
+                                       center_lat_lon_filename,
+                                       offset_lat_lon_filename, xy_filename,
+                                       geoxy_error_filename)
+        except (CommandFailed, ValueError) as message:
+            message = 'Could not get delta values. Processing will terminate.'
+            logger.error(message)
+            raise
 
         logger.info('Center lat/long: {0} {1}'
                     .format(scene_center_lat, scene_center_lon))
@@ -561,19 +550,19 @@ class Lndsrbm():
 
         # Update the cloud mask
         logger.info('Updating cloud mask')
-        cmdstr = exe_dir + "/lndsrbm --center_temp" + " " + str(temperature) \
-            + " --dx " + str(delta_x) + " --dy " + str(delta_y) + " --xml " \
-            + xml_filename
+        cmdstr = ' '.join(['lndsrbm --center_temp', str(temperature),
+                           '--dx', str(delta_x), '--dy', str(delta_y), '--xml',
+                           xml_filename])
         logger.info('{0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
         logger.info(output)
         exit_code = status >> 8
         if exit_code != 0:
-            logger.error('Error running lndsrbm.  Processing will terminate.')
-            return ERROR
+            message = 'Error running lndsrbm. Processing will terminate.'
+            raise CommandFailed(message)
 
         # Clean up files
-        cleanup_list = ["tmp.airtemp", center_temperature_filename,
+        cleanup_list = ['tmp.airtemp', center_temperature_filename,
                         center_lat_lon_filename, offset_lat_lon_filename,
                         xy_filename]
         for cleanup_filename in cleanup_list:
@@ -585,7 +574,6 @@ class Lndsrbm():
 
         # Successful completion
         logger.info('Completion of lndsrbm.py.')
-        return SUCCESS
 
 # ##### end of Lndsrbm class #####
 
@@ -597,4 +585,14 @@ if __name__ == "__main__":
                                 '%(funcName)s -- %(message)s'),
                         datefmt='%Y-%m-%d %H:%M:%S',
                         level=logging.INFO)
-    sys.exit(Lndsrbm().runLndsrbm())
+
+    # Obtain logger from logging using the module's name
+    logger = logging.getLogger(__name__)
+
+    try:
+        Lndsrbm().runLndsrbm()
+    except Exception:
+        logger.exception('lndsrbm.py failed')
+        sys.exit(1)
+
+    sys.exit(0)
