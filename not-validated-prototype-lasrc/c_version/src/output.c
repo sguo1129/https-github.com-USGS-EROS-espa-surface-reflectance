@@ -60,12 +60,7 @@ Output_t *open_output
                                     band */
     Espa_band_meta_t *bmeta = NULL;  /* pointer to the band metadata array
                                         within the output structure */
-
-    int nband = NBAND_TTL_OUT;   /* number of output bands to be created */
-
-    /* If processing collection products, there is one less QA band */
-    if (process_collection)
-        nband--;
+    int nband;                   /* number of output bands to be created */
 
     /* Create the Output data structure */
     this = (Output_t *) malloc (sizeof (Output_t));
@@ -104,6 +99,12 @@ Output_t *open_output
 
     /* Copy the instrument type */
     this->inst = input->meta.inst;
+
+    /* If processing collection products, there is one less QA band */
+    nband = NBAND_TTL_OUT;
+    if (process_collection)
+        nband--;
+    this->process_collection = process_collection;
 
     /* Allocate memory for the total bands */
     if (allocate_band_metadata (&this->metadata, nband) != SUCCESS)
@@ -454,12 +455,8 @@ int free_output
         }
 
         /* Free the bitmap data for the ipflag band, if it exists */
-        if (this->nband == NBAND_TTL_OUT)
-        {
-            for (b = 0; b < this->metadata.band[SR_IPFLAG].nclass; b++)
-                free (this->metadata.band[SR_IPFLAG].class_values[b].description);
+        if (!this->process_collection)
             free (this->metadata.band[SR_IPFLAG].class_values);
-        }
 
         /* Free the band data */
         free (this->metadata.band);

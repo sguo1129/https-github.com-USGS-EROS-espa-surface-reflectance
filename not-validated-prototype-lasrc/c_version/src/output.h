@@ -20,6 +20,7 @@
 typedef struct {
   bool open;            /* Flag to indicate whether output file is open;
                            'true' = open, 'false' = not open */
+  bool process_collection; /* Is this scene a Collection product? */
   Inst_t inst;          /* instrument */
   int nband;            /* Number of output bands */
   int nlines;           /* Number of output lines */
