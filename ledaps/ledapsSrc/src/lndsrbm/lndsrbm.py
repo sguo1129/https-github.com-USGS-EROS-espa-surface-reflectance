@@ -72,17 +72,17 @@ def convert_location(command_name, row, column, xml_filename, output_filename,
 #############################################################################
 # Retrieve air temperature values.
 #
-# Input: name of input ancillary file, xgrib and ygrib locations, temporary
+# Input: name of input auxiliary file, xgrib and ygrib locations, temporary
 # file for storing the air temperature values
 #############################################################################
-def get_air_temperatures(ancillary_filename, xgrib, ygrib,
+def get_air_temperatures(auxiliary_filename, xgrib, ygrib,
                          air_temperature_filename):
-    """Retrieve air temperature values from ancillary file"""
+    """Retrieve air temperature values from auxiliary file"""
 
     # Read the air temperature values from the PRWV auxiliary file for
     # the center of the scene.  This uses the -t parameter which causes
     # the air temperature values to be sent to a data file
-    cmdstr = ' '.join(['SDSreader3.0 -f ', ancillary_filename, ' -w \"',
+    cmdstr = ' '.join(['SDSreader3.0 -f ', auxiliary_filename, ' -w \"',
                        str(ygrib), str(xgrib), ' 1 1 \" -t ',
                        air_temperature_filename])
     (status, output) = commands.getstatusoutput(cmdstr)
@@ -140,19 +140,19 @@ def get_center_temperature(scene_center_time, air_temperature_filename,
     return temperature
 
 #############################################################################
-# Retrieve and verify XML and ancillary filenames from the surface reflectance
+# Retrieve and verify XML and auxiliary filenames from the surface reflectance
 # text file.
 #
 # Input: Name of the surface reflectance text file to read
 #
-# Return: XML filename, ancillary filename.
+# Return: XML filename, auxiliary filename.
 #############################################################################
-def get_xml_and_ancillary_filenames(lndsr_filename):
-    """Retrieve the XML and ancillary filenames from a formatted text file"""
+def get_xml_and_auxiliary_filenames(lndsr_filename):
+    """Retrieve the XML and auxiliary filenames from a formatted text file"""
 
     # Initialize values
     xml_filename = ''
-    ancillary_filename = ''
+    auxiliary_filename = ''
 
     # Make sure the lndsr file exists
     if not os.path.exists(lndsr_filename):
@@ -165,10 +165,10 @@ def get_xml_and_ancillary_filenames(lndsr_filename):
         message = 'lndsr parameter is not a file: {0}'.format(lndsr_filename)
         raise IOError(message)
 
-    # Find the XML filename and the reanalysis ancillary filename in the
+    # Find the XML filename and the reanalysis auxiliary filename in the
     # lndsr file
     xml_filename = ''
-    ancillary_filename = ''
+    auxiliary_filename = ''
     with open(lndsr_filename, 'r') as lndsr_file:
         lndsr_filename = lndsr_file.readlines()
         lndsr_file.close()
@@ -184,14 +184,14 @@ def get_xml_and_ancillary_filenames(lndsr_filename):
             # Check for a match on the reanalysis file
             if line.startswith('PRWV_FIL'):
                 columns = line.split()
-                ancillary_filename = columns[2].rstrip()
+                auxiliary_filename = columns[2].rstrip()
 
     # Verify that the filenames were found
     if not xml_filename:
         message = 'Could not find the XML filename in: {0}'.format(
             lndsr_filename)
         raise IOError(message)
-    if not ancillary_filename:
+    if not auxiliary_filename:
         message = 'Could not find the reanalysis filename in: {0}'.format(
             lndsr_filename)
         raise IOError(message)
@@ -202,13 +202,13 @@ def get_xml_and_ancillary_filenames(lndsr_filename):
             xml_filename)
         raise IOError(message)
 
-    # Make sure the ancillary file exists
-    if not os.path.exists(ancillary_filename):
+    # Make sure the auxiliary file exists
+    if not os.path.exists(auxiliary_filename):
         message = 'Ancillary file does not exist or is not ' \
-                  'accessible: {0}'.format(ancillary_filename)
+                  'accessible: {0}'.format(auxiliary_filename)
         raise IOError(message)
 
-    return xml_filename, ancillary_filename
+    return xml_filename, auxiliary_filename
 
 #############################################################################
 # Retrieve delta x and y values.
@@ -453,16 +453,16 @@ class Lndsrbm():
         logger.info('Lndsrbm processing of surface reflectance text file: {0}'
                     .format(lndsr_input))
 
-        # Retrieve the XML filename and the ancillary filename
+        # Retrieve the XML filename and the auxiliary filename
         try:
-            xml_filename, ancillary_filename \
-                = get_xml_and_ancillary_filenames(lndsr_input)
+            xml_filename, auxiliary_filename \
+                = get_xml_and_auxiliary_filenames(lndsr_input)
         except IOError as message:
-            message = ('Could not get XML and ancillary filenames. '
+            message = ('Could not get XML and auxiliary filenames. '
                        'Processing will terminate.')
             logger.error(message)
             raise
-        logger.info('using ancillary data {0}'.format(ancillary_filename))
+        logger.info('using auxiliary data {0}'.format(auxiliary_filename))
 
         # Retrieve the metadata values
         try:
@@ -492,7 +492,7 @@ class Lndsrbm():
         # Get the air temperatures
         air_temperature_filename = 'tmp.airtemp'
         try:
-            get_air_temperatures(ancillary_filename, xgrib, ygrib,
+            get_air_temperatures(auxiliary_filename, xgrib, ygrib,
                                  air_temperature_filename)
         except CommandFailed as message:
             message = ('Error running get_air_temperatures.  Processing '

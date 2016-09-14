@@ -3,7 +3,7 @@
 import unittest
 import os
 
-from lndsrbm import convert_location, get_air_temperatures, get_center_temperature, get_xml_and_ancillary_filenames, get_metadata, update_scene_center_time
+from lndsrbm import convert_location, get_air_temperatures, get_center_temperature, get_xml_and_auxiliary_filenames, get_metadata, update_scene_center_time
 
 class TestLndsrbm(unittest.TestCase):
 
@@ -38,7 +38,7 @@ class TestLndsrbm(unittest.TestCase):
         exe_dir = os.environ['BIN']
         center_row = 3490.5
         center_column = 3900.5
-        xml_filename = "LE70450322002059EDC00.xml"
+        xml_filename = "unittests/LE70450322002059EDC00.xml"
         center_lat_lon_filename = "scene_center_lat_lon.dat"
         geoxy_error_filename = "geo_xy.ERROR"
         if os.path.exists(geoxy_error_filename):
@@ -54,7 +54,7 @@ class TestLndsrbm(unittest.TestCase):
         exe_dir = os.environ['BIN']
         offset_lat = 2.919583
         scene_center_lon = -70.151414
-        xml_filename = "LE70450322002059EDC00.xml"
+        xml_filename = "unittests/LE70450322002059EDC00.xml"
         xy_filename = "xy.dat"
         geoxy_error_filename = "geo_xy.ERROR"
         if os.path.exists(geoxy_error_filename):
@@ -70,7 +70,7 @@ class TestLndsrbm(unittest.TestCase):
         exe_dir = os.environ['BIN']
         center_row = 3490.5
         center_column = 3900.5
-        xml_filename = "LE70050582002003EDC00.not_there"
+        xml_filename = "unittests/LE70050582002003EDC00.not_there"
         center_lat_lon_filename = "scene_center_lat_lon.dat"
         geoxy_error_filename = "geo_xy.ERROR"
         if os.path.exists(geoxy_error_filename):
@@ -90,12 +90,12 @@ class TestLndsrbm(unittest.TestCase):
         """Tests getting air temperature and scene center temperature"""
 
         # Test successful retrieval of air temperatures.
-        ancillary_filename \
+        auxiliary_filename \
             = "/usr/local/ledaps/ANC/REANALYSIS/RE_2002/REANALYSIS_2002003.hdf"
         air_temperature_filename = "tmp.airtemp"
         xgrib = 43
         ygrib = 35
-        get_air_temperatures(ancillary_filename, xgrib, ygrib,
+        get_air_temperatures(auxiliary_filename, xgrib, ygrib,
                              air_temperature_filename)
 
         # Test successful retrieval of scene center temperature, based on
@@ -109,16 +109,16 @@ class TestLndsrbm(unittest.TestCase):
         self.assertEqual(temperature, 296.756409)
 
 
-    def test_get_xml_and_ancillary_filenames(self):
-        """Tests getting the XML filename and the ancillary filename"""
+    def test_get_xml_and_auxiliary_filenames(self):
+        """Tests getting the XML filename and the auxiliary filename"""
 
-        # Test successful retrieval of XML and ancillary filenames.
-        lndsr_filename = "lndsr.LE70450322002059EDC00.txt"
-        xml_filename, ancillary_filename \
-            = get_xml_and_ancillary_filenames(lndsr_filename)
+        # Test successful retrieval of XML and auxiliary filenames.
+        lndsr_filename = "unittests/lndsr.LE70450322002059EDC00.txt"
+        xml_filename, auxiliary_filename \
+            = get_xml_and_auxiliary_filenames(lndsr_filename)
 
-        self.assertEqual(xml_filename, "LE70450322002059EDC00.xml")
-        self.assertEqual(ancillary_filename,
+        self.assertEqual(xml_filename, "unittests/LE70450322002059EDC00.xml")
+        self.assertEqual(auxiliary_filename,
             "/usr/local/ledaps/ANC/REANALYSIS/RE_2002/REANALYSIS_2002003.hdf")
 
 
@@ -137,7 +137,7 @@ class TestLndsrbm(unittest.TestCase):
         """Tests various elements that are retrieved with get_metadata()"""
 
         # Test successful retrieval of metadata fields.
-        xml_filename = "LE70450322002059EDC00.xml"
+        xml_filename = "unittests/LE70450322002059EDC00.xml"
         scene_center_time, number_lines, number_samples, lon1, lon2, lat1, \
             lat2 = get_metadata(xml_filename)
 
