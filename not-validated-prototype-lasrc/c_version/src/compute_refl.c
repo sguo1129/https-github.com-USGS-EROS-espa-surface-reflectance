@@ -1351,7 +1351,7 @@ int compute_sr_refl
                             {
                                 /* Set the temporary bit */
                                 if (tresi[win_pix] < 0)
-                                    cloud[win_pix] |= CLDT_QA;
+                                    cloud[win_pix] |= (1 << CLDT_QA);
                             }
                         }
                     }  /* end for l */
@@ -1367,7 +1367,7 @@ int compute_sr_refl
         /* If the temporary bit was set in the above loop */
         if (btest (cloud[i], CLDT_QA))
         {
-            /* Remove the temporary bit and set the cloud shadow bit */
+            /* Clear the temporary bit and set the cloud shadow bit */
             cloud[i] &= ~(1 << CLDT_QA);
             cloud[i] |= (1 << CLDS_QA);
             if (process_collection)
