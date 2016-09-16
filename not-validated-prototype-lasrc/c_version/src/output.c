@@ -238,8 +238,8 @@ Output_t *open_output
                 strcpy (bmeta[ib].bitmap_description[4], "aerosol");
                 strcpy (bmeta[ib].bitmap_description[5], "aerosol");
                 strcpy (bmeta[ib].bitmap_description[6], "reserved for snow");
-                strcpy (bmeta[ib].bitmap_description[7], "deep water");
-                strcpy (bmeta[ib].bitmap_description[8], "water");
+                strcpy (bmeta[ib].bitmap_description[7], "water");
+                strcpy (bmeta[ib].bitmap_description[8], "aerosol retrieval");
                 strcpy (bmeta[ib].bitmap_description[9], "aerosol retrieval");
                 strcpy (bmeta[ib].bitmap_description[10],
                     "aerosol interpolation");
@@ -274,7 +274,7 @@ Output_t *open_output
             bmeta[ib].class_values[5].class = 5;
             bmeta[ib].class_values[6].class = 6;
             strcpy (bmeta[ib].class_values[0].description,
-                "aerosol retrieval successful");
+                "aerosol retrieval successful (not valid for cirrus pixels)");
             strcpy (bmeta[ib].class_values[1].description,
                 "aerosol retrieval failed, but aerosol was interpolated");
             strcpy (bmeta[ib].class_values[2].description,
