@@ -19,6 +19,7 @@ int main (int argc, char **argv)
     double arg_x, arg_y;    /* sample/line or long/lat values */
     char *error_file = "geo_xy.ERROR";
     FILE *error_ptr=NULL;
+    FILE *output_fp = NULL; /* Optional file for results */
   
     /* Function prototypes */
     int LSsphdz(char *projection, float coordinates[8], double *parm,
@@ -37,14 +38,29 @@ int main (int argc, char **argv)
     /* Get command-line args or print usage information */
     if (argc < 4) {
     #ifdef INV
-        printf ("usage: %s <XML file> <sample> <line>\n", argv[0]);
+        printf ("usage: %s <XML file> <sample> <line> [<output file>]\n", 
+            argv[0]);
     #else
-        printf ("usage: %s <XML file> <longitude> <latitude>\n", argv[0]);
+        printf ("usage: %s <XML file> <longitude> <latitude> [<output file>]\n",
+            argv[0]);
     #endif
         exit (0);
     }
     arg_x = atof (argv[2]);  /* sample or longitude value */
     arg_y = atof (argv[3]);  /* line or latitude value */
+    if (argc == 5)
+    {
+        output_fp = fopen (argv[4], "w");
+        if (output_fp == NULL)
+        {
+            printf ("Error opening : %s, cannot continue\n", argv[4]);
+            error_ptr = fopen (error_file, "w");
+            fprintf(error_ptr, "Error opening file %s, cannot continue\n", 
+                argv[4]);
+            fclose (error_ptr);
+            exit(1);
+        }
+    }
   
     /* Get projection information from the XML file */
     ret = get_data (argv[1], projection, &zonecode, &sphercode,
@@ -119,6 +135,12 @@ int main (int argc, char **argv)
        script uses it directly */
     printf ("line   %5.1f  samp   %5.1f  => long %f lat %f  (%s)\n", dl, ds,
         lon, lat, projection);
+    if (argc == 5)
+    {
+        fprintf (output_fp, "line   %5.1f  samp   %5.1f  => long %f lat %f  "
+            "(%s)\n", dl, ds, lon, lat, projection);
+        fclose(output_fp);
+    }
 #else
     /* Forward mapping */
     lon = arg_x;
@@ -136,6 +158,12 @@ int main (int argc, char **argv)
        script uses it directly */
     printf ("long %f lat %f => line   %f  samp   %f  (%s)\n", lon, lat, dl, ds,
         projection);
+    if (argc == 5)
+    {
+        fprintf (output_fp, "long %f lat %f => samp   %f  line   %f  (%s)\n", 
+        lon, lat, ds, dl, projection);
+        fclose(output_fp);
+    }
 #endif
   
   exit (1);

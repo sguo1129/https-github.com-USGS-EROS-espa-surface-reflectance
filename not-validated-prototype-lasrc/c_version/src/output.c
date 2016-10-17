@@ -10,6 +10,11 @@ at the USGS EROS
 LICENSE TYPE:  NASA Open Source Agreement Version 1.3
 
 NOTES:
+1. Pre-collection products have two QA bands.  The cloud QA contains some cloud
+   related (as well as fill) information in an 8-bit bit-packed format.  The
+   ipflag QA band contains aerosol information in an 8-bit bit-packed format.
+2. Collection products have one QA band.  The cloud QA band will contain the
+   cloud, fill, and aerosol QA information in a 16-bit bit-packed band.
 *****************************************************************************/
 
 #include <time.h>
@@ -35,15 +40,17 @@ Output_t *open_output
 (
     Espa_internal_meta_t *in_meta,  /* I: input metadata structure */
     Input_t *input,                 /* I: input band data structure */
-    bool toa                        /* I: set this structure up for the TOA
+    bool toa,                       /* I: set this structure up for the TOA
                                           bands vs. the SR bands */
+    bool process_collection         /* I: should this scene be processed as a
+                                          collection product, which affects
+                                          the output of QA bands */
 )
 {
     Output_t *this = NULL;
     char FUNC_NAME[] = "open_output";   /* function name */
     char errmsg[STR_SIZE];       /* error message */
     char *upper_str = NULL;      /* upper case version of the SI short name */
-    char *mychar = NULL;         /* pointer to '_' */
     char scene_name[STR_SIZE];   /* scene name for the current scene */
     char production_date[MAX_DATE_LEN+1]; /* current date/time for production */
     time_t tp;                   /* time structure */
@@ -53,8 +60,7 @@ Output_t *open_output
                                     band */
     Espa_band_meta_t *bmeta = NULL;  /* pointer to the band metadata array
                                         within the output structure */
-
-    int nband = NBAND_TTL_OUT;   /* number of output bands to be created */
+    int nband;                   /* number of output bands to be created */
 
     /* Create the Output data structure */
     this = (Output_t *) malloc (sizeof (Output_t));
@@ -94,6 +100,12 @@ Output_t *open_output
     /* Copy the instrument type */
     this->inst = input->meta.inst;
 
+    /* If processing collection products, there is one less QA band */
+    nband = NBAND_TTL_OUT;
+    if (process_collection)
+        nband--;
+    this->process_collection = process_collection;
+
     /* Allocate memory for the total bands */
     if (allocate_band_metadata (&this->metadata, nband) != SUCCESS)
     {
@@ -103,11 +115,8 @@ Output_t *open_output
     }
     bmeta = this->metadata.band;
 
-    /* Determine the scene name */
-    strcpy (scene_name, in_meta->band[refl_indx].file_name);
-    mychar = strrchr (scene_name, '_');
-    if (mychar != NULL)
-      *mychar = '\0';
+    /* Pull the scene name from the metadata */
+    strcpy (scene_name, in_meta->global.product_id);
   
     /* Get the current date/time (UTC) for the production date of each band */
     if (time (&tp) == -1)
@@ -178,33 +187,66 @@ Output_t *open_output
             continue;
         else if (ib == SR_CLOUD)
         {
-            bmeta[ib].data_type = ESPA_UINT8;
+            /* Common QA band fields */
             bmeta[ib].fill_value = CLOUD_FILL_VALUE;
             strcpy (bmeta[ib].name, "sr_cloud");
             strcpy (bmeta[ib].long_name, "surface reflectance cloud mask");
             strcpy (bmeta[ib].category, "qa");
             strcpy (bmeta[ib].data_units, "quality/feature classification");
 
-            /* Set up cloud bitmap information */
-            if (allocate_bitmap_metadata (&bmeta[ib], 8) != SUCCESS)
-            {
-                sprintf (errmsg, "Allocating cloud bitmap.");
-                error_handler (true, FUNC_NAME, errmsg);
-                return (NULL);
+            /* If processing pre-collection handle as a cloud QA. If processing
+               as a collection product, handle as the overall QA. */
+            if (!process_collection)
+            {  /* Pre-collection: cloud QA as an 8-bit band */
+                bmeta[ib].data_type = ESPA_UINT8;
+    
+                /* Set up cloud bitmap information */
+                if (allocate_bitmap_metadata (&bmeta[ib], 8) != SUCCESS)
+                {
+                    sprintf (errmsg, "Allocating cloud bitmap.");
+                    error_handler (true, FUNC_NAME, errmsg);
+                    return (NULL);
+                }
+    
+                /* Identify the bitmap values for the mask */
+                strcpy (bmeta[ib].bitmap_description[0], "cirrus cloud");
+                strcpy (bmeta[ib].bitmap_description[1], "cloud");
+                strcpy (bmeta[ib].bitmap_description[2], "adjacent to cloud");
+                strcpy (bmeta[ib].bitmap_description[3], "cloud shadow");
+                strcpy (bmeta[ib].bitmap_description[4], "aerosol");
+                strcpy (bmeta[ib].bitmap_description[5], "aerosol");
+                strcpy (bmeta[ib].bitmap_description[6], "unused");
+                strcpy (bmeta[ib].bitmap_description[7], "internal test");
             }
-
-            /* Identify the bitmap values for the mask */
-            strcpy (bmeta[ib].bitmap_description[0], "cirrus cloud");
-            strcpy (bmeta[ib].bitmap_description[1], "cloud");
-            strcpy (bmeta[ib].bitmap_description[2], "adjacent to cloud");
-            strcpy (bmeta[ib].bitmap_description[3], "cloud shadow");
-            strcpy (bmeta[ib].bitmap_description[4], "aerosol");
-            strcpy (bmeta[ib].bitmap_description[5], "aerosol");
-            strcpy (bmeta[ib].bitmap_description[6], "unused");
-            strcpy (bmeta[ib].bitmap_description[7], "internal test");
+            else
+            {  /* Collection: full QA as a 16-bit band */
+                bmeta[ib].data_type = ESPA_UINT16;
+    
+                /* Set up cloud bitmap information */
+                if (allocate_bitmap_metadata (&bmeta[ib], 11) != SUCCESS)
+                {
+                    sprintf (errmsg, "Allocating cloud bitmap.");
+                    error_handler (true, FUNC_NAME, errmsg);
+                    return (NULL);
+                }
+    
+                /* Identify the bitmap values for the mask */
+                strcpy (bmeta[ib].bitmap_description[0], "cirrus cloud");
+                strcpy (bmeta[ib].bitmap_description[1], "cloud");
+                strcpy (bmeta[ib].bitmap_description[2], "adjacent to cloud");
+                strcpy (bmeta[ib].bitmap_description[3], "cloud shadow");
+                strcpy (bmeta[ib].bitmap_description[4], "aerosol");
+                strcpy (bmeta[ib].bitmap_description[5], "aerosol");
+                strcpy (bmeta[ib].bitmap_description[6], "reserved for snow");
+                strcpy (bmeta[ib].bitmap_description[7], "water");
+                strcpy (bmeta[ib].bitmap_description[8], "aerosol retrieval");
+                strcpy (bmeta[ib].bitmap_description[9], "aerosol retrieval");
+                strcpy (bmeta[ib].bitmap_description[10],
+                    "aerosol interpolation");
+            }
         }
         else if (ib == SR_IPFLAG)
-        {
+        {  /* Not processed for Collection products */
             bmeta[ib].data_type = ESPA_UINT8;
             bmeta[ib].fill_value = IPFLAG_FILL;
             strcpy (bmeta[ib].name, "sr_ipflag");
@@ -232,7 +274,7 @@ Output_t *open_output
             bmeta[ib].class_values[5].class = 5;
             bmeta[ib].class_values[6].class = 6;
             strcpy (bmeta[ib].class_values[0].description,
-                "aerosol retrieval successful");
+                "aerosol retrieval successful (not valid for cirrus pixels)");
             strcpy (bmeta[ib].class_values[1].description,
                 "aerosol retrieval failed, but aerosol was interpolated");
             strcpy (bmeta[ib].class_values[2].description,
@@ -412,13 +454,9 @@ int free_output
             free (this->metadata.band[SR_CLOUD].bitmap_description);
         }
 
-        /* Free the bitmap data for the ipflag band */
-        if (this->metadata.band[SR_IPFLAG].nbits > 0)
-        {
-            for (b = 0; b < this->metadata.band[SR_IPFLAG].nbits; b++)
-                free (this->metadata.band[SR_IPFLAG].bitmap_description[b]);
-            free (this->metadata.band[SR_IPFLAG].bitmap_description);
-        }
+        /* Free the bitmap data for the ipflag band, if it exists */
+        if (!this->process_collection)
+            free (this->metadata.band[SR_IPFLAG].class_values);
 
         /* Free the band data */
         free (this->metadata.band);

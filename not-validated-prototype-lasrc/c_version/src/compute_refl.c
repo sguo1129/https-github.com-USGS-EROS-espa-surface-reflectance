@@ -275,6 +275,11 @@ NOTES:
    the interpolation.
    The last step is to perform the atmospheric correction based on the
    aerosols.  This level of correction is not applied to cirrus or cloud pixels.
+5. Collection products will have different QA bands than the pre-collection
+   products.  The pre-collection products have the original output QA band,
+   plus an additional 'ipflag' band which provides information on the
+   aerosol retrieval and interpolation of flagged aerosols.  The collection
+   products will have all the QA information in a single 8-bit QA band.
 ******************************************************************************/
 int compute_sr_refl
 (
@@ -296,7 +301,9 @@ int compute_sr_refl
     char *spheranm,     /* I: spherical albedo filename */
     char *cmgdemnm,     /* I: climate modeling grid DEM filename */
     char *rationm,      /* I: ratio averages filename */
-    char *auxnm         /* I: auxiliary filename for ozone and water vapor */
+    char *auxnm,        /* I: auxiliary filename for ozone and water vapor */
+    bool process_collection /* I: should this scene be processed as a collection
+                               product, which affects the output of QA bands */
 )
 {
     char errmsg[STR_SIZE];                   /* error message */
@@ -367,13 +374,15 @@ int compute_sr_refl
     float xcmg, ycmg;     /* x/y location for CMG */
     float xndwi;          /* calculated NDWI value */
     int uoz11, uoz21, uoz12, uoz22;  /* ozone at line,samp; line, samp+1;
-                           line+1, samp; and line+1, samp+1 */
+                                        line+1, samp; and line+1, samp+1 */
     float pres11, pres12, pres21, pres22;  /* pressure at line,samp;
-                           line, samp+1; line+1, samp; and line+1, samp+1 */
+                             line, samp+1; line+1, samp; and line+1, samp+1 */
     uint8 *cloud = NULL;  /* bit-packed value that represent clouds,
                              nlines x nsamps */
     uint8 *ipflag = NULL; /* QA flag to assist with aerosol interpolation,
-                              nlines x nsamps */
+                             nlines x nsamps */
+    uint16 *cloud_aero = NULL;  /* bit-packed value that represent the combined
+                             clouds and aerosol QA data, nlines x nsamps */
     float *twvi = NULL;   /* interpolated water vapor value,
                              nlines x nsamps */
     float *tozi = NULL;   /* interpolated ozone value, nlines x nsamps */
@@ -515,12 +524,12 @@ int compute_sr_refl
 
     /* Allocate memory for the many arrays needed to do the surface reflectance
        computations */
-    retval = memory_allocation_sr (nlines, nsamps, &aerob1, &aerob2, &aerob4,
-        &aerob5, &aerob7, &cloud, &ipflag, &twvi, &tozi, &tp, &tresi, &taero,
-        &dem, &andwi, &sndwi, &ratiob1, &ratiob2, &ratiob7, &intratiob1,
-        &intratiob2, &intratiob7, &slpratiob1, &slpratiob2, &slpratiob7, &wv,
-        &oz, &rolutt, &transt, &sphalbt, &normext, &tsmax, &tsmin, &nbfic,
-        &nbfi, &ttv);
+    retval = memory_allocation_sr (nlines, nsamps, process_collection, &aerob1,
+        &aerob2, &aerob4, &aerob5, &aerob7, &cloud, &ipflag, &cloud_aero,
+        &twvi, &tozi, &tp, &tresi, &taero, &dem, &andwi, &sndwi, &ratiob1,
+        &ratiob2, &ratiob7, &intratiob1, &intratiob2, &intratiob7, &slpratiob1,
+        &slpratiob2, &slpratiob7, &wv, &oz, &rolutt, &transt, &sphalbt,
+        &normext, &tsmax, &tsmin, &nbfic, &nbfi, &ttv);
     if (retval != SUCCESS)
     {
         sprintf (errmsg, "Error allocating memory for the data arrays needed "
@@ -789,8 +798,11 @@ int compute_sr_refl
                 pres11 = 1013.0 * exp (-dem[cmg_pix11] * ONE_DIV_8500);
             else
             {
+                /* Fill pixels in the DEM are ocean and deep water pixels */
                 pres11 = 1013.0;
-                cloud[curr_pix] = -128; /* set the water bit in the cloud QA */
+                cloud[curr_pix] |= (1 << WAT_QA);
+                if (process_collection)
+                    cloud_aero[curr_pix] |= (1 << WAT_QA);
             }
 
             if (dem[cmg_pix12] != -9999)
@@ -817,7 +829,9 @@ int compute_sr_refl
             if (sband[SR_BAND9][curr_pix] >
                 (100.0 / (tp[curr_pix] * ONE_DIV_1013)))
             {  /* Set cirrus bit */
-                cloud[curr_pix]++;
+                cloud[curr_pix] |= (1 << CIR_QA);
+                if (process_collection)
+                    cloud_aero[curr_pix] |= (1 << CIR_QA);
             }
             else
             {
@@ -1065,6 +1079,9 @@ int compute_sr_refl
                         taero[curr_pix] = raot;
                         tresi[curr_pix] = residual;
                         ipflag[curr_pix] = IPFLAG_NDVI_FAIL;
+                        if (process_collection)
+                            cloud_aero[curr_pix] |=
+                                (1 << AERO_RETRIEVAL_NDVI_QA);
                     }
                 }
                 else
@@ -1072,6 +1089,8 @@ int compute_sr_refl
                     taero[curr_pix] = raot;
                     tresi[curr_pix] = residual;
                     ipflag[curr_pix] = IPFLAG_RESIDUAL_FAIL;
+                    if (process_collection)
+                        cloud_aero[curr_pix] |= (1 << AERO_RETRIEVAL_RESID_QA);
                 }
             }  /* end if cirrus */
         }  /* end for j */
@@ -1170,7 +1189,9 @@ int compute_sr_refl
             if (((sband[SR_BAND2][i] - sband[SR_BAND4][i] * 0.5) > 500) &&
                 ((sband[SR_BAND10][i] * SCALE_FACTOR_TH) < (mclear - 2.0)))
             {  /* Snow or cloud */
-                cloud[i] += 2;
+                cloud[i] |= (1 << CLD_QA);
+                if (process_collection)
+                    cloud_aero[i] |= (1 << CLD_QA);
             }
         }
     }
@@ -1209,7 +1230,9 @@ int compute_sr_refl
                             !btest (cloud[win_pix], CLDA_QA) &&
                             qaband[win_pix] != 1)
                         {  /* Set the adjacent cloud bit */
-                            cloud[win_pix] += 4;
+                            cloud[win_pix] |= (1 << CLDA_QA);
+                            if (process_collection)
+                                cloud_aero[win_pix] |= (1 << CLDA_QA);
                         }
                     }  /* for l */
                 }  /* for k */
@@ -1280,7 +1303,11 @@ int compute_sr_refl
 
                 /* Set the cloud shadow bit */
                 if (mband5 < 9999)
-                    cloud[mband5k*nsamps + mband5l] += 8;
+                {
+                    cloud[mband5k*nsamps + mband5l] |= (1 << CLDS_QA);
+                    if (process_collection)
+                        cloud_aero[mband5k*nsamps + mband5l] |= (1 << CLDS_QA);
+                }
             }  /* end if btest */
         }  /* end for j */
     }  /* end for i */
@@ -1324,7 +1351,7 @@ int compute_sr_refl
                             {
                                 /* Set the temporary bit */
                                 if (tresi[win_pix] < 0)
-                                    cloud[win_pix] += 16;
+                                    cloud[win_pix] |= (1 << CLDT_QA);
                             }
                         }
                     }  /* end for l */
@@ -1340,9 +1367,11 @@ int compute_sr_refl
         /* If the temporary bit was set in the above loop */
         if (btest (cloud[i], CLDT_QA))
         {
-            /* Remove the temporary bit and set the cloud shadow bit */
-            /* ==> cloud[i] += 8; cloud[i] -= 16; */
-            cloud[i] -= 8;
+            /* Clear the temporary bit and set the cloud shadow bit */
+            cloud[i] &= ~(1 << CLDT_QA);
+            cloud[i] |= (1 << CLDS_QA);
+            if (process_collection)
+                cloud_aero[i] |= (1 << CLDS_QA);
         }
     }  /* end for i */
 
@@ -1370,7 +1399,11 @@ int compute_sr_refl
 
             /* Flag water pixels */
             if (fndvi < 0.01)
+            {
                 ipflag[i] = IPFLAG_WATER;  /* water */
+                if (process_collection)
+                    cloud_aero[i] |= (1 << WAT_QA);
+            }
         }
     }  /* for i */
 
@@ -1439,6 +1472,8 @@ int compute_sr_refl
                             (taero[sup_pix] - taero[inf_pix]) *
                             (k - inf_index) / (sup_index - inf_index);
                         ipflag[win_pix] = IPFLAG_INTERP;
+                        if (process_collection)
+                            cloud_aero[win_pix] |= (1 << AERO_INTERP_QA);
                     }
                 }
             }  /* end if */
@@ -1510,6 +1545,8 @@ int compute_sr_refl
                             (taero[sup_pix] - taero[inf_pix]) *
                             (l - inf_index) / (sup_index - inf_index);
                         ipflag[win_pix] = IPFLAG_INTERP;
+                        if (process_collection)
+                            cloud_aero[win_pix] |= (1 << AERO_INTERP_QA);
                     }
                 }
             }  /* end if */
@@ -1654,18 +1691,28 @@ int compute_sr_refl
                         tmpf = fabs (rsurf - roslamb);
                         if (tmpf <= 0.015)
                         {  /* Set the first aerosol bit (low aerosols) */
-                            cloud[i] += 16;
+                            cloud[i] |= (1 << AERO1_QA);
+                            if (process_collection)
+                                cloud_aero[i] |= (1 << AERO1_QA);
                         }
                         else
                         {
                             if (tmpf < 0.03)
                             {  /* Set the second aerosol bit (average
                                   aerosols) */
-                                cloud[i] += 32;
+                                cloud[i] |= (1 << AERO2_QA);
+                                if (process_collection)
+                                    cloud_aero[i] |= (1 << AERO2_QA);
                             }
                             else
                             {  /* Set both aerosol bits (high aerosols) */
-                                cloud[i] += 48;
+                                cloud[i] |= (1 << AERO1_QA);
+                                cloud[i] |= (1 << AERO2_QA);
+                                if (process_collection)
+                                {
+                                    cloud_aero[i] |= (1 << AERO1_QA);
+                                    cloud_aero[i] |= (1 << AERO2_QA);
+                                }
                             }
                         }
                     }  /* end if this is the coastal aerosol band */
@@ -1698,7 +1745,8 @@ int compute_sr_refl
         "files ...\n");
 
     /* Open the output file */
-    sr_output = open_output (xml_metadata, input, false /*surf refl*/);
+    sr_output = open_output (xml_metadata, input, false /*surf refl*/,
+        process_collection);
     if (sr_output == NULL)
     {   /* error message already printed */
         error_handler (true, FUNC_NAME, errmsg);
@@ -1749,15 +1797,37 @@ int compute_sr_refl
         exit (ERROR);
     }
 
-    /* Write the cloud mask band */
-    printf ("  Band %d: %s\n", SR_CLOUD+1,
-            sr_output->metadata.band[SR_CLOUD].file_name);
-    if (put_output_lines (sr_output, cloud, SR_CLOUD, 0, nlines,
-        sizeof (uint8)) != SUCCESS)
+    /* Determine if this is pre-collection or collection cloud mask */
+    if (!process_collection)
     {
-        sprintf (errmsg, "Writing cloud mask output data");
-        error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        /* Write the cloud mask band, using the cloud mask as-is. This is an
+           8-bit band. */
+        printf ("  Band %d: %s\n", SR_CLOUD+1,
+                sr_output->metadata.band[SR_CLOUD].file_name);
+        if (put_output_lines (sr_output, cloud, SR_CLOUD, 0, nlines,
+            sizeof (uint8)) != SUCCESS)
+        {
+            sprintf (errmsg, "Writing pre-collection cloud mask output data");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+    }
+    else
+    {
+        /* Write the QA band using the cloud mask and the ipflag combined
+           into one. This is a 16-bit band. */
+        printf ("  Band %d: %s\n", SR_CLOUD+1,
+                sr_output->metadata.band[SR_CLOUD].file_name);
+        if (put_output_lines (sr_output, cloud_aero, SR_CLOUD, 0, nlines,
+            sizeof (uint16)) != SUCCESS)
+        {
+            sprintf (errmsg, "Writing collection cloud mask output data");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        /* Free the combined array */
+        free (cloud_aero);
     }
 
     /* Free memory for cloud data */
@@ -1792,48 +1862,51 @@ int compute_sr_refl
         exit (ERROR);
     }
 
-    /* Write the ipflag mask band */
-    printf ("  Band %d: %s\n", SR_IPFLAG+1,
-            sr_output->metadata.band[SR_IPFLAG].file_name);
-    if (put_output_lines (sr_output, ipflag, SR_IPFLAG, 0, nlines,
-        sizeof (uint8)) != SUCCESS)
+    /* If processing pre-collection data, write the ipflag mask band */
+    if (!process_collection)
     {
-        sprintf (errmsg, "Writing ipflag mask output data");
-        error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
+        printf ("  Band %d: %s\n", SR_IPFLAG+1,
+                sr_output->metadata.band[SR_IPFLAG].file_name);
+        if (put_output_lines (sr_output, ipflag, SR_IPFLAG, 0, nlines,
+            sizeof (uint8)) != SUCCESS)
+        {
+            sprintf (errmsg, "Writing ipflag mask output data");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        /* Create the ENVI header for the ipflag mask band */
+        if (create_envi_struct (&sr_output->metadata.band[SR_IPFLAG],
+            &xml_metadata->global, &envi_hdr) != SUCCESS)
+        {
+            sprintf (errmsg, "Creating ENVI header structure.");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        /* Write the ENVI header */
+        strcpy (envi_file, sr_output->metadata.band[SR_IPFLAG].file_name);
+        cptr = strchr (envi_file, '.');
+        strcpy (cptr, ".hdr");
+        if (write_envi_hdr (envi_file, &envi_hdr) != SUCCESS)
+        {
+            sprintf (errmsg, "Writing ENVI header file.");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
+
+        /* Append the ipflag mask band to the XML file */
+        if (append_metadata (1, &sr_output->metadata.band[SR_IPFLAG],
+            xml_infile) != SUCCESS)
+        {
+            sprintf (errmsg, "Appending ipflag mask band to XML file.");
+            error_handler (true, FUNC_NAME, errmsg);
+            exit (ERROR);
+        }
     }
 
     /* Free memory for ipflag data */
     free (ipflag);
-
-    /* Create the ENVI header for the ipflag mask band */
-    if (create_envi_struct (&sr_output->metadata.band[SR_IPFLAG],
-        &xml_metadata->global, &envi_hdr) != SUCCESS)
-    {
-        sprintf (errmsg, "Creating ENVI header structure.");
-        error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    /* Write the ENVI header */
-    strcpy (envi_file, sr_output->metadata.band[SR_IPFLAG].file_name);
-    cptr = strchr (envi_file, '.');
-    strcpy (cptr, ".hdr");
-    if (write_envi_hdr (envi_file, &envi_hdr) != SUCCESS)
-    {
-        sprintf (errmsg, "Writing ENVI header file.");
-        error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
-
-    /* Append the ipflag mask band to the XML file */
-    if (append_metadata (1, &sr_output->metadata.band[SR_IPFLAG],
-        xml_infile) != SUCCESS)
-    {
-        sprintf (errmsg, "Appending ipflag mask band to XML file.");
-        error_handler (true, FUNC_NAME, errmsg);
-        exit (ERROR);
-    }
 
     /* Close the output surface reflectance products */
     close_output (sr_output, false /*sr products*/);

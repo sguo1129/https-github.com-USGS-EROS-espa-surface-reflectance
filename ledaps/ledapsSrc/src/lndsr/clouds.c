@@ -30,7 +30,7 @@ bool cloud_detection_pass1
     bool is_fill;             /* is the current pixel fill */
     float tmpflt;             /* temporary floating point value */
     float rho1, rho3, rho4, rho5, rho7, t6;  /* reflectance and temp values */
-    int C1, C1p, C2=0, C2p, C3, C3p, C4=0, C5=0, water;  /* cloud and water
+    int C1, C2=0, C3, C4=0, C5=0, water;  /* cloud and water
                                                             indicators */
     int cld_row, cld_col;     /* cloud line, sample location */
     float vra, ndvi;          /* NDVI value */
@@ -117,13 +117,10 @@ bool cloud_detection_pass1
                 vra = rho1 - rho3 * 0.5;
                     
                 C1 = (int)(vra > VRA_THRESHOLD);
-                C1p = !C1;
                 C2 = (t6 < (atemp_line[is]-7.));  
-                C2p = (t6 > (atemp_line[is]-7.));
    
                 tmpflt = rho4 / rho3;
                 C3 = ((tmpflt >= 0.9) && (tmpflt <= 1.3));
-                C3p = !C3;
 
                 C4 = (rho7 > 0.03);
                 C5 = ((rho3 > 0.6)||(rho4 > 0.6));
@@ -189,11 +186,11 @@ bool cloud_detection_pass2
     bool thermal_band;        /* is thermal data available */
     float rho1, rho2, rho3, rho4, rho5, rho7;  /* reflectance & temp values */
     float t6 = 0.0;           /* temperature values */
-    int C1, C1p, C2=0, C2p, C3, C3p, C4=0, C5=0, water;  /* cloud and water
+    int C1, C2=0, C4=0, C5=0, water;  /* cloud and water
                                                             indicators */
     int cld_row, cld_col;     /* cloud line, sample location */
     float vra, ndvi, ndsi, temp_snow_thshld; /* NDVI, NDSI, snow threshold */
-    float temp_b6_clear,temp_thshld1,temp_thshld2,avg_b7_clear,atemp_ancillary;
+    float temp_b6_clear,temp_thshld1,temp_thshld2,atemp_ancillary;
     float tmpflt, tmpflt_arr[10];  /* temporary floats */
     Img_coord_int_t loc;      /* line/sample location for current pix */
     atmos_t interpol_atmos_coef; /* interpolated atmospheric coefficients,
@@ -251,8 +248,7 @@ bool cloud_detection_pass2
                     /* Interpolate the cloud diagnostics for current pixel */
                     interpol_clddiags_1pixel (cld_diags, il, is, tmpflt_arr);
                     temp_b6_clear = tmpflt_arr[0];
-                    avg_b7_clear = tmpflt_arr[1];
-                    atemp_ancillary = tmpflt_arr[2];
+                    atemp_ancillary = tmpflt_arr[1];
                     if (temp_b6_clear < 0.) {
                         temp_thshld1 = atemp_ancillary - 20.;
                         temp_thshld2 = atemp_ancillary - 20.;
@@ -356,8 +352,7 @@ bool cloud_detection_pass2
                 /* Interpolate the cloud diagnostics for the current pixel */
                 interpol_clddiags_1pixel (cld_diags, il, is, tmpflt_arr);
                 temp_b6_clear = tmpflt_arr[0];
-                avg_b7_clear = tmpflt_arr[1];
-                atemp_ancillary = tmpflt_arr[2];
+                atemp_ancillary = tmpflt_arr[1];
 
                 if (temp_b6_clear < 0.) {
                     temp_thshld1 = atemp_ancillary - 20.;
@@ -381,13 +376,9 @@ bool cloud_detection_pass2
                     vra = rho1 - rho3 * 0.5;
 
                     C1 = (int)(vra > VRA_THRESHOLD);
-                    C1p = !C1;
                     C2 = (t6 < temp_thshld1);
-                    C2p = (t6 > temp_thshld1);
    
                     tmpflt = rho4 / rho3;
-                    C3 = ((tmpflt >= 0.9) && (tmpflt <= 1.2));
-                    C3p = !C3;
 
                     C4 = (rho7 > 0.03);
                     C5 = (t6 < temp_thshld2) && C1;
@@ -912,8 +903,7 @@ void interpol_clddiags_1pixel
     2 ---- 3   line
 
     inter_value[0] => t6_clear
-    inter_value[1] => b7_clear
-    inter_value[2] => airtemp_2m
+    inter_value[1] => airtemp_2m
 
     Updated by Gail Schmidt, USGS EROS, on 10/20/2014
     We want the airtemp_2m to be calculated regardless of whether the band6
@@ -973,7 +963,7 @@ void interpol_clddiags_1pixel
     n_anc = 0;
     sum_w = 0.0;
     sum_anc_w = 0.0;
-    for (i = 0; i < 3; i++)
+    for (i = 0; i < 2; i++)
         sum[i]=0.;
 
     /* Loop through the four points to be used in the interpolation */
@@ -992,24 +982,22 @@ void interpol_clddiags_1pixel
                 n++;
                 sum_w += w;
                 sum[0] += (cld_diags->avg_t6_clear[p[i].l][p[i].s] * w);
-                sum[1] += (cld_diags->avg_b7_clear[p[i].l][p[i].s] * w);
             }
 
             if (cld_diags->airtemp_2m[p[i].l][p[i].s] != -9999) {
                 n_anc++;
                 sum_anc_w += w;
-                sum[2] += (cld_diags->airtemp_2m[p[i].l][p[i].s] * w);
+                sum[1] += (cld_diags->airtemp_2m[p[i].l][p[i].s] * w);
             }
         }  /* end if points are valid */
     }  /* end for i */
 
     if ((n > 0) && (sum_w > 0)) {
         inter_value[0] = sum[0] / sum_w;
-        inter_value[1] = sum[1] / sum_w;
     }
 
     if ((n_anc > 0) && (sum_anc_w > 0)) {
-        inter_value[2] = sum[2] / sum_anc_w;
+        inter_value[1] = sum[1] / sum_anc_w;
     }
 
     return;

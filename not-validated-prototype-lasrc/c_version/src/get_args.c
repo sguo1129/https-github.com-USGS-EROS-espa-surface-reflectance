@@ -32,6 +32,7 @@ int get_args
                                 water vapor and ozone */
     bool *process_sr,     /* O: process the surface reflectance products */
     bool *write_toa,      /* O: write intermediate TOA products flag */
+    bool *process_collection, /* O: process scene as a collection product */
     bool *verbose         /* O: verbose flag */
 )
 {
@@ -39,12 +40,15 @@ int get_args
     int option_index;                /* index for the command-line option */
     static int verbose_flag=0;       /* verbose flag */
     static int write_toa_flag=0;     /* write TOA flag */
+    static int process_collection_flag=0; /* flag to process this scene as
+                                             a collection product */
     char errmsg[STR_SIZE];           /* error message */
     char FUNC_NAME[] = "get_args";   /* function name */
     static struct option long_options[] =
     {
         {"verbose", no_argument, &verbose_flag, 1},
         {"write_toa", no_argument, &write_toa_flag, 1},
+        {"process_collection", no_argument, &process_collection_flag, 1},
         {"xml", required_argument, 0, 'i'},
         {"aux", required_argument, 0, 'a'},
         {"process_sr", required_argument, 0, 'p'},
@@ -55,6 +59,7 @@ int get_args
     /* Initialize the flags to false */
     *verbose = false;
     *write_toa = false;
+    *process_collection = false;
     *process_sr = true;    /* default is to process SR products */
 
     /* Loop through all the cmd-line options */
@@ -138,6 +143,8 @@ int get_args
         *verbose = true;
     if (write_toa_flag)
         *write_toa = true;
+    if (process_collection_flag)
+        *process_collection = true;
 
     return (SUCCESS);
 }

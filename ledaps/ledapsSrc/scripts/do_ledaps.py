@@ -61,6 +61,12 @@ def isLeapYear(year):
 #   Updated on 11/13/2015 by Gail Schmidt, USGS/EROS
 #   Removed the --usebin command-line option.  All executables for LEDAPS
 #       will be expected in the PATH.
+#   Updated on 9/7/2016 by Gail Schmidt, USGS/EROS
+#   Modified to flag collection scenes for special handling of QA output
+#       in LEDAPS processing. Additional command-line option is passed to
+#       the lndsr executable. Also, collection processing will not include
+#       the lndsrbm post-processing of the QA, since the goal is to represent
+#       the QA which was used for surface reflectance corrections.
 #
 # Usage: do_ledaps.py --help prints the help message
 ############################################################################
@@ -236,6 +242,30 @@ class Ledaps():
                     .format(xmldir))
         os.chdir(xmldir)
 
+        # determine if this scene is pre-collection or a collection scene
+        prefixes_old = ['LT4', 'LT5', 'LE7']
+        prefixes_collection = ['LT04', 'LT05', 'LE07']
+        if base_xmlfile[0:3] in prefixes_old:
+            # Old-style (pre-collection) Level-1 naming convention
+            processing_collection = False
+            logger.debug('Processing pre-collection data')
+        elif base_xmlfile[0:4] in prefixes_collection:
+            # New-style collection naming convention
+            processing_collection = True
+            logger.debug('Processing collection data')
+        else:
+            msg = ('Base XML filename is not recognized as a valid Landsat 4-7 '
+                   'scene name' + base_xmlfile)
+            logger.error (msg)
+            os.chdir (mydir)
+            return ERROR
+
+        # set up the command-line option for lndsr for processing collections
+        # or not
+        process_collection_opt_str = ""
+        if processing_collection:
+            process_collection_opt_str = "--process_collection "
+
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
         cmdstr = "lndpm %s" % base_xmlfile
@@ -259,8 +289,9 @@ class Ledaps():
             return ERROR
 
         if process_sr == "True":
-            cmdstr = "lndsr lndsr.%s.txt" % xml
-            # logger.debug('lndsr command: {0}'.format(cmdstr))
+            cmdstr = "lndsr --pfile lndsr.%s.txt %s" % (xml,
+                process_collection_opt_str)
+            logger.debug('lndsr command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
             logger.info(output)
             exit_code = status >> 8
@@ -270,16 +301,17 @@ class Ledaps():
                 os.chdir(mydir)
                 return ERROR
 
-            cmdstr = "lndsrbm.ksh lndsr.%s.txt" % xml
-            # logger.debug('lndsrbm command: {0}'.format(cmdstr))
-            (status, output) = commands.getstatusoutput(cmdstr)
-            logger.info(output)
-            exit_code = status >> 8
-            if exit_code != 0:
-                logger.error('Error running lndsrbm.'
-                            '  Processing will terminate.')
-                os.chdir(mydir)
-                return ERROR
+            if not processing_collection:
+                cmdstr = "lndsrbm.py -f lndsr.%s.txt" % xml
+                # logger.debug('lndsrbm command: {0}'.format(cmdstr))
+                (status, output) = commands.getstatusoutput(cmdstr)
+                logger.info(output)
+                exit_code = status >> 8
+                if exit_code != 0:
+                    logger.error('Error running lndsrbm.'
+                                '  Processing will terminate.')
+                    os.chdir(mydir)
+                    return ERROR
 
         # successful completion.  return to the original directory.
         os.chdir(mydir)
@@ -295,5 +327,5 @@ if __name__ == "__main__":
                                 ' %(filename)s:%(lineno)d:'
                                 '%(funcName)s -- %(message)s'),
                         datefmt='%Y-%m-%d %H:%M:%S',
-                        level=logging.INFO)
+                        level=logging.DEBUG)
     sys.exit(Ledaps().runLedaps())

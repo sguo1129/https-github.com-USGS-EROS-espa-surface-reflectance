@@ -67,7 +67,6 @@
 #include "sixs_runs.h"
 
 #define AERO_NB_BANDS 3
-#define AERO_STATS_NB_BANDS 3
 #define SP_INDEX    0
 #define WV_INDEX    1
 #define ATEMP_INDEX 2
@@ -127,7 +126,7 @@ int write_6S_results_to_file(char *filename,sixs_tables_t *sixs_tables);
 void sun_angles (short jday,float gmt,float flat,float flon,float *ts,float *fs);
 /* Functions */
 
-int main (int argc, const char **argv) {
+int main (int argc, char *argv[]) {
     Param_t *param = NULL;
     Input_t *input = NULL, *input_b6 = NULL;
     InputPrwv_t *prwv_input = NULL;
@@ -144,9 +143,6 @@ int main (int argc, const char **argv) {
     int ***line_ar = NULL;
     int **line_ar_band_buf = NULL;
     int *line_ar_buf = NULL;
-    int ***line_ar_stats = NULL;
-    int **line_ar_stats_band_buf = NULL;
-    int *line_ar_stats_buf = NULL;
     int16** b6_line = NULL;
     int16* b6_line_buf = NULL;
     float *atemp_line = NULL;
@@ -172,7 +168,7 @@ int main (int argc, const char **argv) {
                                   flipped */
   
     int nbpts;
-    int inter_aot[3];
+    int inter_aot;            /* atmospheric opacity */
     float scene_gmt;
 
     Geoloc_t *space = NULL;
@@ -224,7 +220,7 @@ int main (int argc, const char **argv) {
   
     set_sixs_path_from(argv[0]);
 
-    /* Read the parameters from the input parameter file */
+    /* Read the parameters from the command-line and input parameter file */
     param = GetParam(argc, argv);
     if (param == NULL) EXIT_ERROR("getting runtime parameters", "main");
 
@@ -506,29 +502,6 @@ int main (int argc, const char **argv) {
         for (ib = 0; ib < AERO_NB_BANDS; ib++) {
             line_ar[il][ib] = line_ar_buf;
             line_ar_buf += lut->ar_size.s;
-        }
-    }
-
-    line_ar_stats = calloc(lut->ar_size.l, sizeof(int **));
-    if (line_ar_stats == NULL) 
-        EXIT_ERROR("allocating aerosol stats line buffer (a)", "main");
-
-    line_ar_stats_band_buf = calloc(lut->ar_size.l * AERO_STATS_NB_BANDS,
-        sizeof(int *));
-    if (line_ar_stats_band_buf == NULL) 
-        EXIT_ERROR("allocating aerosol stats line buffer (b)", "main");
-
-    line_ar_stats_buf = calloc(lut->ar_size.l * lut->ar_size.s *
-        AERO_STATS_NB_BANDS, sizeof(int));
-    if (line_ar_stats_buf == NULL) 
-        EXIT_ERROR("allocating aerosol stats line buffer (c)", "main");
-
-    for (il = 0; il < lut->ar_size.l; il++) {
-        line_ar_stats[il] = line_ar_stats_band_buf;
-        line_ar_stats_band_buf += AERO_STATS_NB_BANDS;
-        for (ib = 0; ib < AERO_STATS_NB_BANDS; ib++) {
-            line_ar_stats[il][ib] = line_ar_stats_buf;
-            line_ar_stats_buf += lut->ar_size.s;
         }
     }
 
@@ -930,6 +903,9 @@ int main (int argc, const char **argv) {
 
         img.is_fill = false;
         img.l = il;
+#ifdef _OPENMP
+        #pragma omp parallel for private (is, geo, flat, flon, tmpflt_arr) firstprivate (img, atemp_line)
+#endif
         for (is = 0; is < input->size.s; is++) {
             /* Get the geolocation info for this pixel */
             img.s = is;
@@ -1061,8 +1037,8 @@ int main (int argc, const char **argv) {
             il_end = input->size.l - 1;
 
         /* Read each input band for each line in region */
-        for (il = il_start, il_region = 0; il < (il_end + 1);
-            il++, il_region++) {
+        for (il = il_start; il < (il_end + 1); il++) {
+            il_region = il - il_start;
             for (ib = 0; ib < input->nband; ib++) {
                 if (!GetInputLine(input, ib, il, line_in[il_region][ib]))
                     EXIT_ERROR("reading input data for a line (a)", "main");
@@ -1173,7 +1149,7 @@ int main (int argc, const char **argv) {
         diags_il_ar=il_ar;
 #endif
         if (!Ar(il_ar,lut, &input->size, line_in, ddv_line, line_ar[il_ar],
-            line_ar_stats[il_ar], &ar_stats, &ar_gridcell, &sixs_tables))
+            &ar_stats, &ar_gridcell, &sixs_tables))
             EXIT_ERROR("computing aerosol", "main");
 
         /***
@@ -1244,6 +1220,8 @@ int main (int argc, const char **argv) {
 
         loc.l=il;
         i_aot=il/lut->ar_region_size.l;
+        t6s_seuil=280.+(1000.*0.01);
+
         for (is=0;is<input->size.s;is++) {
             loc.s=is;
             j_aot=is/lut->ar_region_size.s;
@@ -1267,74 +1245,104 @@ int main (int argc, const char **argv) {
             }
 
             /* Process QA for each pixel */
-            if (!refl_is_fill) {  /* AOT / opacity */
-                ArInterp(lut, &loc, line_ar, inter_aot); 
-                line_out[lut->nband][is] = inter_aot[0];
+            if (!refl_is_fill) {
+                /* AOT / opacity */
+                ArInterp(lut, &loc, line_ar, &inter_aot); 
+                line_out[lut->nband][is] = inter_aot;
 
-                /**
-                Set bits for internal cloud mask
-                bit 0: fill
-                bit 6: dense dark vegetation (DDV)
-                bit 8: SR-based cloud
-                bit 9: SR-based cloud shadow
-                bit 10: SR-based snow
-                bit 11: Spectral test-based land/water mask
-                bit 12: SR-based adjacent cloud
-                **/
-                if (ddv_line[0][is]&0x01)  /* dark target bit */
-                    line_out[lut->nband+DDV][is] = QA_ON;
+                if (!param->process_collection) {
+                    /* Pre-collection processing */
+                    /**
+                    Set bits for internal cloud mask.  This is written as
+                    separate bands for each QA.
+                    bit 0: fill
+                    bit 6: dense dark vegetation (DDV)
+                    bit 8: SR-based cloud
+                    bit 9: SR-based cloud shadow
+                    bit 10: SR-based snow
+                    bit 11: Spectral test-based land/water mask
+                    bit 12: SR-based adjacent cloud
+                    **/
+                    if (ddv_line[0][is]&0x01)  /* dark target bit */
+                        line_out[lut->nband+DDV][is] = QA_ON;
+    
+                    if (ddv_line[0][is]&0x10)  /* land */
+                        line_out[lut->nband+LAND_WATER][is] = QA_OFF;
+                    else  /* water */
+                        line_out[lut->nband+LAND_WATER][is] = QA_ON;
+    
+                    if (ddv_line[0][is]&0x20)   /* internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] = QA_ON;
+    
+                    if (ddv_line[0][is]&0x80)   /* internal snow mask bit */
+                        line_out[lut->nband+SNOW][is] = QA_ON;
+    
+                    /* try to redo the cloud mask Vermote May 29 2007 */
+                    /* reset cloud shadow and cloud adjacent bits - these are
+                       set again in lndsrbm */
+                    line_out[lut->nband+CLOUD_SHADOW][is] = QA_OFF;
+                    line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
+                    
+                    anom=line_out[0][is]-line_out[2][is]/2.;
+                    t6=b6_line[0][is]*0.1;
+                    if (((anom > 300) && (line_out[4][is] > 300) &&
+                         (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
+                         (t6 < t6s_seuil)))   /* internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] = QA_ON;
+                    else  /* reset internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] = QA_OFF;
+    
+                }
+                else {
+                    /* Processing Collection products. QA is written out in the
+                       cloud band as a bit-packed product (16-bit). We will use
+                       QA values as-is (versus resetting them for pre-collection
+                       products) because lndsrbm will not be called as a
+                       post-processing QA step. */
+                    if (ddv_line[0][is]&0x01)
+                        line_out[lut->nband+CLOUD][is] |= (1 << DDV_BIT);
 
-                if (ddv_line[0][is]&0x10)  /* land */
-                    line_out[lut->nband+LAND_WATER][is] = QA_OFF;
-                else  /* water */
-                    line_out[lut->nband+LAND_WATER][is] = QA_ON;
+                    if (ddv_line[0][is]&0x04)
+                        line_out[lut->nband+CLOUD][is] |= (1 << ADJ_CLOUD_BIT);
 
-                if (ddv_line[0][is]&0x20)   /* internal cloud mask bit */
-                    line_out[lut->nband+CLOUD][is] = QA_ON;
+                    if (!(ddv_line[0][is]&0x10))  /* if water, turn on */
+                        line_out[lut->nband+CLOUD][is] |= (1 << LAND_WATER_BIT);
 
-                if (ddv_line[0][is]&0x80)   /* internal snow mask bit */
-                    line_out[lut->nband+SNOW][is] = QA_ON;
+                    if (ddv_line[0][is]&0x20)
+                        line_out[lut->nband+CLOUD][is] |= (1 << CLOUD_BIT);
 
-                /* try to redo the cloud mask Vermote May 29 2007 */
-                /* reset cloud shadow and cloud adjacent bits - these are set
-                   again in lndsrbm */
-                line_out[lut->nband+CLOUD_SHADOW][is] = QA_OFF;
-                line_out[lut->nband+ADJ_CLOUD][is] = QA_OFF;
-                
-                anom=line_out[0][is]-line_out[2][is]/2.;
-                t6=b6_line[0][is]*0.1;
-                t6s_seuil=280.+(1000.*0.01);
-                if (((anom > 300) && (line_out[4][is] > 300) &&
-                     (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
-                     (t6 < t6s_seuil)))   /* internal cloud mask bit */
-                    line_out[lut->nband+CLOUD][is] = QA_ON;
-                else  /* reset internal cloud mask bit */
-                    line_out[lut->nband+CLOUD][is] = QA_OFF;
+                    if (ddv_line[0][is]&0x40)
+                        line_out[lut->nband+CLOUD][is] |=
+                            (1 << CLOUD_SHADOW_BIT);
 
-                line_out[lut->nband+NB_DARK][is]=line_ar_stats[i_aot][0][j_aot];
-                line_out[lut->nband+AVG_DARK][is]=
-                    line_ar_stats[i_aot][1][j_aot];
-                line_out[lut->nband+STD_DARK][is]=
-                    line_ar_stats[i_aot][2][j_aot];
+                    if (ddv_line[0][is]&0x80)
+                        line_out[lut->nband+CLOUD][is] |= (1 << SNOW_BIT);
+
+                    anom=line_out[0][is]-line_out[2][is]/2.;
+                    t6=b6_line[0][is]*0.1;
+                    if (((anom > 300) && (line_out[4][is] > 300) &&
+                         (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
+                         (t6 < t6s_seuil)))   /* internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] |= (1 << CLOUD_BIT);
+                    else  /* reset internal cloud mask bit */
+                        line_out[lut->nband+CLOUD][is] &= ~(1 << CLOUD_BIT);
+                }
             }
             else {
                 line_out[lut->nband][is]=lut->aerosol_fill;
                 line_out[lut->nband+FILL][is] = QA_ON;  /* set fill bit */
-                line_out[lut->nband+NB_DARK][is]=0;
-                line_out[lut->nband+AVG_DARK][is]=lut->in_fill;
-                line_out[lut->nband+STD_DARK][is]=lut->in_fill;
             }
         } /* for is */
 
         /* Write each output band */
         for (ib = 0; ib < output->nband_out; ib++) {
-            if (ib >= lut->nband+FILL && ib <= lut->nband+ADJ_CLOUD) {
+            if (ib >= lut->nband+FILL) {  /* QA bands */
                 /* fill, DDV, cloud, cloud shadow, snow, land/water,
                    and adjacent cloud QA bands are all 8-bit products */
                 if (!PutOutputLine(output, ib, il, line_out[ib]))
-                    EXIT_ERROR("writing output data for a line", "main");
+                    EXIT_ERROR("writing output QA data for a line", "main");
             }
-            else {
+            else {  /* image bands */
                 if (!PutOutputLine(output, ib, il, line_out[ib]))
                     EXIT_ERROR("writing output data for a line", "main");
             }
@@ -1405,9 +1413,6 @@ int main (int argc, const char **argv) {
     free(line_ar[0][0]);
     free(line_ar[0]);
     free(line_ar);
-    free(line_ar_stats[0][0]);
-    free(line_ar_stats[0]);
-    free(line_ar_stats);
     free(line_in[0][0]);
     free(line_in[0]);
     free(line_in);

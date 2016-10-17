@@ -1,5 +1,5 @@
-## Ledaps Version 2.7.0 Release Notes
-Release Date: August 2016
+## Ledaps Version 2.8.0 Release Notes
+Release Date: October 2016
 
 ### Downloads
 Ledaps source code
@@ -10,7 +10,7 @@ Ledaps auxiliary files
 
     http://edclpdsftp.cr.usgs.gov/downloads/auxiliaries/ledaps_auxiliary/ledaps_aux.1978-2014.tar.gz
 
-See git tag [ledaps-version_2.7.0]
+See git tag [ledaps-version_2.8.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -92,9 +92,7 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Updated the valid_range to be a floating point versus long to match the
-     new data type in the XML schema.
-  2. Change scene_id to product_id in the output XML to match the new schema.
-  3. Verified the code supports Albers for CONUS, Hawaii, and Alaska.
-  4. Verified the code support the new 4-character product type collection
-     filenames.
+  1. Updated lndsrbm.ksh with lndsrbm.py to provide better script handling and error checking.
+  2. Added multithreading for lndsr, including a few other minor changes to improve performance.
+  3. The number dark (NB_DARK), average dark (AVG_DARK), and standard deviation dark (STD_DARK) QA bands are not output and therefore have been removed since they are not used within the source code. line_ar_stats was used to feed these QA bands and that has been removed as well.
+  4. Added support for the new QA band for Collection products, which is a bit-packed band.

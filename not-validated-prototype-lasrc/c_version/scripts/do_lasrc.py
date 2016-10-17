@@ -29,6 +29,11 @@ SUCCESS = 0
 #   Updated on 1/13/2016 by Gail Schmidt, USGS/EROS
 #   Modified to support the new collection filenaming convention
 #
+#   Updated on 8/24/2016 by Gail Schmidt, USGS/EROS
+#   Modified to flag collection scenes for special handling of QA output
+#       in LaSRC processing. Additional command-line option is passed to
+#       the lasrc executable.
+#
 # Usage: do_lasrc.py --help prints the help message
 ############################################################################
 class SurfaceReflectance():
@@ -140,13 +145,17 @@ class SurfaceReflectance():
         if base_xmlfile[0:3] in l8_prefixes_old:
             # Old-style Level-1 naming convention. Just pull the year and DOY
             # from the XML filename.
+            processing_collection = False
             aux_file = 'L8ANC' + base_xmlfile[9:16] + '.hdf_fused'
         elif base_xmlfile[0:4] in l8_prefixes_collection:
             # New-style collection naming convention. Pull the year, month,
-            # day from the XML filename. Then convert month, day to DOY.
-            aux_year = base_xmlfile[16:20]
-            aux_month = base_xmlfile[20:22]
-            aux_day = base_xmlfile[22:24]
+            # day from the XML filename. It should be the 4th group, separated
+            # by underscores. Then convert month, day to DOY.
+            processing_collection = True
+            aux_date = base_xmlfile.split('_')[3]
+            aux_year = aux_date[0:4]
+            aux_month = aux_date[4:6]
+            aux_day = aux_date[6:8]
             myday = datetime.date(int(aux_year), int(aux_month), int(aux_day))
             aux_doy = myday.strftime("%j")
             aux_file = 'L8ANC' + aux_year + aux_doy + '.hdf_fused'
@@ -161,14 +170,18 @@ class SurfaceReflectance():
         # if any errors occur.
         process_sr_opt_str = "--process_sr=true "
         write_toa_opt_str = ""
+        process_collection_opt_str = ""
 
         if process_sr == "False":
             process_sr_opt_str = "--process_sr=false "
         if write_toa:
             write_toa_opt_str = "--write_toa "
+        if processing_collection:
+            process_collection_opt_str = "--process_collection "
 
-        cmdstr = "lasrc --xml=%s --aux=%s %s%s--verbose" % \
-            (xml_infile, aux_file, process_sr_opt_str, write_toa_opt_str)
+        cmdstr = "lasrc --xml=%s --aux=%s %s%s%s--verbose" % \
+            (xml_infile, aux_file, process_sr_opt_str, write_toa_opt_str,
+             process_collection_opt_str)
         msg = 'Executing lasrc command: %s' % cmdstr
         logger.info (msg)
         (status, output) = commands.getstatusoutput (cmdstr)

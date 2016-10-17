@@ -67,16 +67,27 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
   struct tm *tm;      /* time structure for UTC time */
   Espa_band_meta_t *bmeta = NULL;  /* pointer to the band metadata array
                          within the output structure */
-  char *band_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity", "fill_qa", "ddv_qa",
-    "cloud_qa", "cloud_shadow_qa", "snow_qa", "land_water_qa",
-    "adjacent_cloud_qa", "nb_dark_pixels", "avg_dark_sr_b7", "std_dark_sr_b7"};
+  char *band_name_extra[NBAND_SR_EXTRA] = {"atmos_opacity", "cloud_qa",
+    "fill_qa", "ddv_qa", "cloud_shadow_qa", "snow_qa", "land_water_qa",
+    "adjacent_cloud_qa"};
+    /* The atmospheric opacity and cloud bands are the only ones used for
+       Collections.  The others are used for pre-collections. */
 
   /* Determine the number of output bands. Don't plan to write the last 3 QA
      bands (nb_dark_pixels, avg_dark_sr_b7, or std_dark_sr_b7) */
   nband = input->nband;
-  nband_tot = nband + NBAND_SR_EXTRA;
-  nband_out = nband + NBAND_SR_EXTRA - 3;
-  nband_out_extra = nband_out - nband;
+  if (!param->process_collection)
+  { /* Use all QA bands */
+    nband_tot = nband + NBAND_SR_EXTRA;
+    nband_out = nband_tot;
+    nband_out_extra = nband_out - nband;
+  }
+  else
+  { /* Only QA bands are the atmospheric opacity and cloud QA */
+    nband_tot = nband + NBAND_SR_EXTRA;
+    nband_out = nband_tot - 6;
+    nband_out_extra = nband_out - nband;
+  }
 
   /* Check parameters */
   if (input->size.l < 1)
@@ -181,51 +192,78 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
     }
     else  /* QA bands */
     {
-      bmeta[ib].data_type = ESPA_UINT8;
-      strcpy (bmeta[ib].category, "qa");
-      sprintf (bmeta[ib].name, "sr_%s", band_name_extra[ib-nband]);
-      strcpy (bmeta[ib].long_name, band_name_extra[ib-nband]);
-      strcpy (bmeta[ib].data_units, "quality/feature classification");
-      bmeta[ib].valid_range[0] = 0.0;
-      bmeta[ib].valid_range[1] = 255.0;
+      if (!param->process_collection) {
+        /* Processing pre-collection with all the QA bands as individual */
+        bmeta[ib].data_type = ESPA_UINT8;
+        strcpy (bmeta[ib].category, "qa");
+        sprintf (bmeta[ib].name, "sr_%s", band_name_extra[ib-nband]);
+        strcpy (bmeta[ib].long_name, band_name_extra[ib-nband]);
+        strcpy (bmeta[ib].data_units, "quality/feature classification");
+        bmeta[ib].valid_range[0] = 0.0;
+        bmeta[ib].valid_range[1] = 255.0;
+  
+        /* Set up QA bitmap information */
+        if (allocate_class_metadata (&bmeta[ib], 2) != SUCCESS)
+          RETURN_ERROR("allocating 2 classes", "OpenOutput", NULL); 
+  
+        bmeta[ib].class_values[0].class = 0;     /* off */
+        bmeta[ib].class_values[1].class = 255;   /* on */
+        switch (ib - nband_out_extra + 2) {
+          case (FILL):
+            strcpy (bmeta[ib].class_values[0].description, "not fill");
+            strcpy (bmeta[ib].class_values[1].description, "fill");
+            break;
+          case (DDV):
+            strcpy (bmeta[ib].class_values[0].description,
+              "not dark dense vegetation");
+            strcpy (bmeta[ib].class_values[1].description,
+              "dark dense vegetation");
+            break;
+          case (CLOUD):
+            strcpy (bmeta[ib].class_values[0].description, "not cloud");
+            strcpy (bmeta[ib].class_values[1].description, "cloud");
+            break;
+          case (CLOUD_SHADOW):
+            strcpy (bmeta[ib].class_values[0].description, "not cloud shadow");
+            strcpy (bmeta[ib].class_values[1].description, "cloud shadow");
+            break;
+          case (SNOW):
+            strcpy (bmeta[ib].class_values[0].description, "not snow");
+            strcpy (bmeta[ib].class_values[1].description, "snow");
+            break;
+          case (LAND_WATER):
+            strcpy (bmeta[ib].class_values[0].description, "land");
+            strcpy (bmeta[ib].class_values[1].description, "water");
+            break;
+          case (ADJ_CLOUD):
+            strcpy (bmeta[ib].class_values[0].description,
+              "not adjacent cloud");
+            strcpy (bmeta[ib].class_values[1].description, "adjacent cloud");
+            break;
+        }
+      }
+      else {
+        /* Processing collection data with a single bit-packed QA band */
+        bmeta[ib].data_type = ESPA_UINT8;
+        strcpy (bmeta[ib].category, "qa");
+        sprintf (bmeta[ib].name, "sr_%s", band_name_extra[ib-nband]);
+        strcpy (bmeta[ib].long_name, band_name_extra[ib-nband]);
+        strcpy (bmeta[ib].data_units, "quality/feature classification");
+        bmeta[ib].valid_range[0] = 0.0;
+        bmeta[ib].valid_range[1] = 255.0;
 
-      /* Set up QA bitmap information */
-      if (allocate_class_metadata (&bmeta[ib], 2) != SUCCESS)
-        RETURN_ERROR("allocating 2 classes", "OpenOutput", NULL); 
+        /* Set up cloud bitmap information */
+        if (allocate_bitmap_metadata (&bmeta[ib], 6) != SUCCESS)
+          RETURN_ERROR("Allocating cloud bitmap", "OpenOutput", NULL);
 
-      bmeta[ib].class_values[0].class = 0;     /* off */
-      bmeta[ib].class_values[1].class = 255;   /* on */
-      switch (ib - nband_out_extra + 2) {
-        case (FILL):
-          strcpy (bmeta[ib].class_values[0].description, "not fill");
-          strcpy (bmeta[ib].class_values[1].description, "fill");
-          break;
-        case (DDV):
-          strcpy (bmeta[ib].class_values[0].description,
-            "not dark dense vegetation");
-          strcpy (bmeta[ib].class_values[1].description,
-            "dark dense vegetation");
-          break;
-        case (CLOUD):
-          strcpy (bmeta[ib].class_values[0].description, "not cloud");
-          strcpy (bmeta[ib].class_values[1].description, "cloud");
-          break;
-        case (CLOUD_SHADOW):
-          strcpy (bmeta[ib].class_values[0].description, "not cloud shadow");
-          strcpy (bmeta[ib].class_values[1].description, "cloud shadow");
-          break;
-        case (SNOW):
-          strcpy (bmeta[ib].class_values[0].description, "not snow");
-          strcpy (bmeta[ib].class_values[1].description, "snow");
-          break;
-        case (LAND_WATER):
-          strcpy (bmeta[ib].class_values[0].description, "land");
-          strcpy (bmeta[ib].class_values[1].description, "water");
-          break;
-        case (ADJ_CLOUD):
-          strcpy (bmeta[ib].class_values[0].description, "not adjacent cloud");
-          strcpy (bmeta[ib].class_values[1].description, "adjacent cloud");
-          break;
+        /* Identify the bitmap values for the mask */
+        strcpy (bmeta[ib].bitmap_description[0], "dark dense vegetation");
+        strcpy (bmeta[ib].bitmap_description[1], "cloud");
+        strcpy (bmeta[ib].bitmap_description[2], "cloud shadow");
+        strcpy (bmeta[ib].bitmap_description[3], "adjacent to cloud");
+        strcpy (bmeta[ib].bitmap_description[4], "snow");
+        strcpy (bmeta[ib].bitmap_description[5], "land/water");
+
       }
     }
 
@@ -344,7 +382,11 @@ bool PutOutputLine(Output_t *this, int iband, int iline, int16 *line)
   /* Write the data, only the current line (i.e. one line at a time). If the
      output band is UINT8, then convert the input line to UINT8 before
      writing. */
-  if (bmeta[iband].data_type == ESPA_INT16) {
+  if (bmeta[iband].data_type == ESPA_INT16 ||
+      bmeta[iband].data_type == ESPA_UINT16) {
+    /* INT16 and UINT16 can be handled with the same pointer, because we are
+       just copying bytes and not really using the data directly as signed or
+       unsigned */
     nbytes = sizeof (int16);
     void_buf = line;
   }

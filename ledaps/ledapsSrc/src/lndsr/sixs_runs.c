@@ -71,14 +71,18 @@ int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
     sprintf(local_granule_id, "%s.a%4s%3s.w%1sp%03dr%03d",
         short_name, acq_date_string, &acq_date_string[5],
         wrs_names[meta->wrs_sys], meta->ipath, meta->irow);
-    sprintf (sixs_cmd_filename, "sixs_cmd_%s", local_granule_id);
-    sprintf (sixs_out_filename, "sixs_output_%s", local_granule_id);
 	
 	/* Run 6s */
+#ifdef _OPENMP
+        #pragma omp parallel for private (i, j, k, sixs_cmd_filename, sixs_out_filename, fd, cmd, line_in, tgoz, tgco2, tgo2, tgno2, tgch4, tgco)
+#endif
 	for (i=0;i<SIXS_NB_BANDS;i++) {
 		for (j=0;j<SIXS_NB_AOT;j++) {
-			printf("Processing 6s for band %d  AOT %2d\r",i+1,j+1);
-            fflush(stdout);
+
+                   sprintf (sixs_cmd_filename, "sixs_cmd_%s_%d_%d", local_granule_id, i+1, j+1);
+                   sprintf (sixs_out_filename, "sixs_output_%s_%d_%d", local_granule_id, i+1, j+1);
+			printf("Processing 6S for band %d  AOT %2d\r",i+1,j+1);
+                        fflush(stdout);
 			if ((fd=fopen(sixs_cmd_filename,"w"))==NULL) {
 				fprintf(stderr,"ERROR: creating temporary file %s\n",sixs_cmd_filename);
 				exit(-1);
@@ -122,13 +126,13 @@ int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
 			fprintf(fd,"+\n");
 			fclose(fd);
 	
-            /* Modified 9/26/2014 to run bash shell vs. sh */
-			sprintf(cmd,"bash %s",sixs_cmd_filename);
-			if (system(cmd)) {
-				fprintf(stderr,"ERROR: Can't run 6S \n");
-				exit(-1);
-			}
-	
+                        /* Modified 9/26/2014 to run bash shell vs. sh */
+		        sprintf(cmd,"bash %s",sixs_cmd_filename);
+		        if (system(cmd)) {
+		           fprintf(stderr,"ERROR: Can't run 6S \n");
+		           exit(-1);
+		        }
+
 			if ((fd=fopen(sixs_out_filename,"r"))==NULL) {
 				fprintf(stderr,"ERROR: reading temporary file %s\n",sixs_out_filename);
 				exit(-1);
@@ -337,11 +341,11 @@ int create_6S_tables(sixs_tables_t *sixs_tables, Input_meta_t *meta) {
             sprintf (cmd_string, "cp %s %s", sixs_out_filename, tmp_file);
             system (cmd_string);
 */
+	        unlink(sixs_cmd_filename);
+	        unlink(sixs_out_filename);
 		}  /* for j */
 	}  /* for i */
 	printf ("\n");
-	unlink(sixs_cmd_filename);
-	unlink(sixs_out_filename);
 	return 0;
 }
 
