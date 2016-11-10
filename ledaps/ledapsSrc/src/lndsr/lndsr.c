@@ -1298,7 +1298,11 @@ int main (int argc, char *argv[]) {
                        cloud band as a bit-packed product (16-bit). We will use
                        QA values as-is (versus resetting them for pre-collection
                        products) because lndsrbm will not be called as a
-                       post-processing QA step. */
+                       post-processing QA step. We want the QA to reflect the
+                       cloud, etc. status that was used in the aerosol and
+                       surface reflectance computations. We are not interested
+                       in post-processing of the QA information, as there are
+                       better QA products available. */
                     if (ddv_line[0][is]&0x01)
                         line_out[lut->nband+CLOUD][is] |= (1 << DDV_BIT);
 
@@ -1317,15 +1321,6 @@ int main (int argc, char *argv[]) {
 
                     if (ddv_line[0][is]&0x80)
                         line_out[lut->nband+CLOUD][is] |= (1 << SNOW_BIT);
-
-                    anom=line_out[0][is]-line_out[2][is]/2.;
-                    t6=b6_line[0][is]*0.1;
-                    if (((anom > 300) && (line_out[4][is] > 300) &&
-                         (t6 < t6s_seuil)) || ((line_out[2][is] > 5000) &&
-                         (t6 < t6s_seuil)))   /* internal cloud mask bit */
-                        line_out[lut->nband+CLOUD][is] |= (1 << CLOUD_BIT);
-                    else  /* reset internal cloud mask bit */
-                        line_out[lut->nband+CLOUD][is] &= ~(1 << CLOUD_BIT);
                 }
             }
             else {
