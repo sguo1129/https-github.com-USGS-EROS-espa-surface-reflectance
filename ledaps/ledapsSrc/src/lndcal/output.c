@@ -96,12 +96,12 @@ Output_t *OpenOutput(Espa_internal_meta_t *in_meta, Input_t *input,
   if (this == NULL) 
     RETURN_ERROR("allocating Output data structure", "OpenOutput", NULL);
 
-  /* Find the representative band for metadata information. Reflective - band1.
-     Thermal - band2. */
+  /* Find the representative band for metadata information. Reflective - band 1.
+     Thermal - band 6. */
   if (!thermal)
-    strcpy (rep_band, "band1");
+    strcpy (rep_band, "b1");
   else
-    strcpy (rep_band, "band6");
+    strcpy (rep_band, "b6");
   for (ib = 0; ib < in_meta->nbands; ib++)
   {
     if (!strcmp (in_meta->band[ib].name, rep_band) &&

@@ -342,7 +342,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     char acq_time[TIME_STRING_LEN + 1];
     char temp[MAX_STR_LEN + 1];
     int i;               /* looping variable */
-    int refl_indx=0;     /* band index in XML file for the reflectance band */
+    int refl_indx=-99;   /* band index in XML file for the reflectance band */
     int th_indx=5;       /* band index in XML file for the thermal band */
     Espa_global_meta_t *gmeta = &metadata->global; /* pointer to global meta */
 
@@ -474,7 +474,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     this->meta.use_toa_refl_consts = false;
     for (i = 0; i < metadata->nbands; i++)
     {
-        if (!strcmp (metadata->band[i].name, "band1") &&
+        if (!strcmp (metadata->band[i].name, "b1") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* this is the index we'll use for reflectance band info */
@@ -497,7 +497,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
                 this->meta.refl_bias[0] = metadata->band[i].refl_bias;
             }
         }
-        else if (!strcmp (metadata->band[i].name, "band2") &&
+        else if (!strcmp (metadata->band[i].name, "b2") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band2 info */
@@ -511,7 +511,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
                 this->meta.refl_bias[1] = metadata->band[i].refl_bias;
             }
         }
-        else if (!strcmp (metadata->band[i].name, "band3") &&
+        else if (!strcmp (metadata->band[i].name, "b3") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band3 info */
@@ -525,7 +525,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
                 this->meta.refl_bias[2] = metadata->band[i].refl_bias;
             }
         }
-        else if (!strcmp (metadata->band[i].name, "band4") &&
+        else if (!strcmp (metadata->band[i].name, "b4") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band4 info */
@@ -539,7 +539,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
                 this->meta.refl_bias[3] = metadata->band[i].refl_bias;
             }
         }
-        else if (!strcmp (metadata->band[i].name, "band5") &&
+        else if (!strcmp (metadata->band[i].name, "b5") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band5 info */
@@ -553,7 +553,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
                 this->meta.refl_bias[4] = metadata->band[i].refl_bias;
             }
         }
-        else if (!strcmp (metadata->band[i].name, "band7") &&
+        else if (!strcmp (metadata->band[i].name, "b7") &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
             /* get the band7 info */
@@ -568,7 +568,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             }
         }
 
-        if (!strcmp (metadata->band[i].name, "band6") &&
+        if (!strcmp (metadata->band[i].name, "b6") &&
             this->meta.inst == INST_TM &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
@@ -586,7 +586,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
                 this->meta.k2_const = metadata->band[i].k2_const;
             }
         }
-        else if (!strcmp (metadata->band[i].name, "band61") &&
+        else if (!strcmp (metadata->band[i].name, "b61") &&
             this->meta.inst == INST_ETM &&
             !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
         {
@@ -605,6 +605,12 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
             }
         }
     }  /* for i */
+
+    if (refl_indx == -99)
+    {
+        sprintf (temp, "band 1 (b1) was not found in the XML file");
+        RETURN_ERROR (temp, "GetXMLInput", true);
+    }
 
     /* Let the user know if the XML params are being used or the LUT params */
     if (this->meta.use_toa_refl_consts)

@@ -74,7 +74,7 @@ Output_t *open_output
     /* Find the representative band for metadata information.  Use band 1. */
     for (ib = 0; ib < in_meta->nbands; ib++)
     {
-        if (!strcmp (in_meta->band[ib].name, "band1") &&
+        if (!strcmp (in_meta->band[ib].name, "b1") &&
             !strncmp (in_meta->band[ib].product, "L1", 2))
         {
             /* this is the index we'll use for reflectance band info */

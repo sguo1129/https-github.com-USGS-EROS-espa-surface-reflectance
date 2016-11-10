@@ -764,7 +764,7 @@ int get_xml_input
        band-related information for the reflectance, thermal, and pan bands */
     for (i = 0; i < metadata->nbands; i++)
     {
-        if (!strcmp (metadata->band[i].name, "band1"))
+        if (!strcmp (metadata->band[i].name, "b1"))
         {
             /* this is the index we'll use for reflectance band info */
             refl_indx = i;
@@ -779,49 +779,49 @@ int get_xml_input
             strncpy (prod_date, metadata->band[i].production_date, 10);
             prod_date[10] = '\0';
         }
-        else if (!strcmp (metadata->band[i].name, "band2"))
+        else if (!strcmp (metadata->band[i].name, "b2"))
         {
             /* get the band2 info */
             this->meta.gain[1] = metadata->band[i].refl_gain;
             this->meta.bias[1] = metadata->band[i].refl_bias;
             this->file_name[1] = strdup (metadata->band[i].file_name);
         }
-        else if (!strcmp (metadata->band[i].name, "band3"))
+        else if (!strcmp (metadata->band[i].name, "b3"))
         {
             /* get the band3 info */
             this->meta.gain[2] = metadata->band[i].refl_gain;
             this->meta.bias[2] = metadata->band[i].refl_bias;
             this->file_name[2] = strdup (metadata->band[i].file_name);
         }
-        else if (!strcmp (metadata->band[i].name, "band4"))
+        else if (!strcmp (metadata->band[i].name, "b4"))
         {
             /* get the band4 info */
             this->meta.gain[3] = metadata->band[i].refl_gain;
             this->meta.bias[3] = metadata->band[i].refl_bias;
             this->file_name[3] = strdup (metadata->band[i].file_name);
         }
-        else if (!strcmp (metadata->band[i].name, "band5"))
+        else if (!strcmp (metadata->band[i].name, "b5"))
         {
             /* get the band5 info */
             this->meta.gain[4] = metadata->band[i].refl_gain;
             this->meta.bias[4] = metadata->band[i].refl_bias;
             this->file_name[4] = strdup (metadata->band[i].file_name);
         }
-        else if (!strcmp (metadata->band[i].name, "band6"))
+        else if (!strcmp (metadata->band[i].name, "b6"))
         {
             /* get the band6 info */
             this->meta.gain[5] = metadata->band[i].refl_gain;
             this->meta.bias[5] = metadata->band[i].refl_bias;
             this->file_name[5] = strdup (metadata->band[i].file_name);
         }
-        else if (!strcmp (metadata->band[i].name, "band7"))
+        else if (!strcmp (metadata->band[i].name, "b7"))
         {
             /* get the band7 info */
             this->meta.gain[6] = metadata->band[i].refl_gain;
             this->meta.bias[6] = metadata->band[i].refl_bias;
             this->file_name[6] = strdup (metadata->band[i].file_name);
         }
-        else if (!strcmp (metadata->band[i].name, "band9"))
+        else if (!strcmp (metadata->band[i].name, "b9"))
         {
             /* get the band9 info */
             this->meta.gain[7] = metadata->band[i].refl_gain;
@@ -829,7 +829,7 @@ int get_xml_input
             this->file_name[7] = strdup (metadata->band[i].file_name);
         }
 
-        else if (!strcmp (metadata->band[i].name, "band8"))
+        else if (!strcmp (metadata->band[i].name, "b8"))
         {
             /* this is the index we'll use for pan band info */
             pan_indx = i;
@@ -842,7 +842,7 @@ int get_xml_input
 
         /* NOTE: band10 and band11 won't exist in the input XML file
            for OLI-only products */
-        else if (!strcmp (metadata->band[i].name, "band10"))
+        else if (!strcmp (metadata->band[i].name, "b10"))
         {
             /* this is the index we'll use for thermal band info */
             th_indx = i;
@@ -854,7 +854,7 @@ int get_xml_input
             this->meta.k2_const[0] = metadata->band[i].k2_const;
             this->file_name_th[0] = strdup (metadata->band[i].file_name);
         }
-        else if (!strcmp (metadata->band[i].name, "band11"))
+        else if (!strcmp (metadata->band[i].name, "b11"))
         {
             /* get the band11 info */
             this->meta.gain_th[1] = metadata->band[i].rad_gain;
@@ -864,7 +864,7 @@ int get_xml_input
             this->file_name_th[1] = strdup (metadata->band[i].file_name);
         }
 
-        else if (!strcmp (metadata->band[i].name, "qa"))
+        else if (!strcmp (metadata->band[i].name, "bqa"))
         {
             /* this is the index we'll use for qa band info */
             qa_indx = i;
@@ -877,28 +877,28 @@ int get_xml_input
     /* Make sure the bands were found in the XML file */
     if (refl_indx == -9)
     {
-        sprintf (errmsg, "Band 1 (band1) was not found in the XML file");
+        sprintf (errmsg, "Band 1 (b1) was not found in the XML file");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
 
     if (this->meta.inst == INST_OLI_TIRS && th_indx == -9)
     {
-        sprintf (errmsg, "Band 10 (band10) was not found in the XML file");
+        sprintf (errmsg, "Band 10 (b10) was not found in the XML file");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
 
     if (pan_indx == -9)
     {
-        sprintf (errmsg, "Band 8 (band8) was not found in the XML file");
+        sprintf (errmsg, "Band 8 (b8) was not found in the XML file");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }
 
     if (qa_indx == -9)
     {
-        sprintf (errmsg, "QA band (qa) was not found in the XML file");
+        sprintf (errmsg, "QA band (bqa) was not found in the XML file");
         error_handler (true, FUNC_NAME, errmsg);
         return (ERROR);
     }

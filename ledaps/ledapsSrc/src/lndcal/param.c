@@ -310,21 +310,24 @@ conversion exist and were set from the input XML file.
 !END****************************************************************************
 */
 {
-  int refl_indx = 0;  /* index of band1 in the input file */
-  int i;              /* looping variable */
+  int refl_indx = -99;  /* index of band 1 in the input file */
+  int i;                /* looping variable */
 
   /* Find band1 in the input XML file */
   for (i = 0; i < metadata->nbands; i++)
   {
-    if (!strcmp (metadata->band[i].name, "band1") &&
+    if (!strcmp (metadata->band[i].name, "b1") &&
         !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
     {
       /* this is the index we'll use for reflectance band info */
       refl_indx = i;
     }
   }
+  if (refl_indx == -99)
+    RETURN_ERROR("band 1 (b1) was not found in the XML file", "existRadGB",
+      false);
 
-  /* If the gain or bias for band1 in the input file is not set, then assume
+  /* If the gain or bias for band 1 in the input file is not set, then assume
      none are set and therefore need to be manually set before continuing. */
   if (fabs (metadata->band[refl_indx].rad_gain - ESPA_FLOAT_META_FILL) <
         ESPA_EPSILON ||
@@ -357,21 +360,24 @@ constants were set as well.
 !END****************************************************************************
 */
 {
-  int refl_indx = 0;  /* index of band1 in the input file */
-  int i;              /* looping variable */
+  int refl_indx = -99;  /* index of band 1 in the input file */
+  int i;                /* looping variable */
 
   /* Find band1 in the input XML file */
   for (i = 0; i < metadata->nbands; i++)
   {
-    if (!strcmp (metadata->band[i].name, "band1") &&
+    if (!strcmp (metadata->band[i].name, "b1") &&
         !strncmp (metadata->band[i].product, "L1", 2))  /* Level-1 */
     {
       /* this is the index we'll use for reflectance band info */
       refl_indx = i;
     }
   }
+  if (refl_indx == -99)
+    RETURN_ERROR("band 1 (b1) was not found in the XML file", "existReflGB",
+      false);
 
-  /* If the gain or bias for band1 in the input file is not set, then assume
+  /* If the gain or bias for band 1 in the input file is not set, then assume
      none are set and therefore need to be manually set before continuing. */
   if (fabs (metadata->band[refl_indx].refl_gain - ESPA_FLOAT_META_FILL) <
         ESPA_EPSILON ||
