@@ -566,9 +566,17 @@ void cast_cloud_shadow
                                 shd_buf_ind++;
                                 shd_y -= lut->ar_region_size.l;
                             }
+                            /* Mask as cloud shadow */
                             if (shd_y >= 0 && shd_y < lut->ar_region_size.l) {
-                                if ((cloud_buf[shd_buf_ind][shd_y][shd_x]&0x20)
-                                    == 0x00) /* if clear observation */
+                                /* if not cloud, adjacent cloud or cloud
+                                   shadow */
+                                if (!((cloud_buf[shd_buf_ind][shd_y][shd_x] &
+                                       0x20) ||
+                                      (cloud_buf[shd_buf_ind][shd_y][shd_x] &
+                                       0x04) ||
+                                      (cloud_buf[shd_buf_ind][shd_y][shd_x] &
+                                       0x40)))
+                                    /* set cloud shadow bit */
                                    cloud_buf[shd_buf_ind][shd_y][shd_x] |= 0x40;
                             }
                         }
