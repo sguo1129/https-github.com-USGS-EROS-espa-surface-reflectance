@@ -47,7 +47,7 @@
 #define INPUT_FILL (0)
 
 /* Functions */
-Input_t *OpenInput(Espa_internal_meta_t *metadata)
+Input_t *OpenInput(Espa_internal_meta_t *metadata, bool process_collection)
 /* 
 !C******************************************************************************
 
@@ -75,7 +75,7 @@ Input_t *OpenInput(Espa_internal_meta_t *metadata)
     RETURN_ERROR("allocating Input data structure", "OpenInput", NULL);
 
   /* Initialize and get input from header file */
-  if (!GetXMLInput (this, metadata)) {
+  if (!GetXMLInput (this, metadata, process_collection)) {
     free(this);
     this = NULL;
     RETURN_ERROR("getting input from header file", "OpenInput", NULL);
@@ -97,6 +97,13 @@ Input_t *OpenInput(Espa_internal_meta_t *metadata)
         error_string = "opening thermal binary file";
       else
         this->open_th = true;
+    }
+    if (process_collection) {
+      this->fp_bin_sun_zen = fopen(this->file_name_sun_zen, "r");
+      if (this->fp_bin_sun_zen == NULL) 
+        error_string = "opening solar zenith representative band binary file";
+      else
+        this->open_sun_zen = true;
     }
   } else 
     error_string = "invalid file type";
@@ -158,22 +165,47 @@ bool GetInputLineTh(Input_t *this, int iline, unsigned char *line)
   void *buf_void = NULL;
 
   if (this == NULL) 
-    RETURN_ERROR("invalid input structure", "GetInputLine", false);
+    RETURN_ERROR("invalid input structure", "GetInputLineTh", false);
   if ( this->nband_th < 1 ) 
-    RETURN_ERROR("no thermal input band", "GetInputLine", false);
+    RETURN_ERROR("no thermal input band", "GetInputLineTh", false);
   if (iline < 0  ||  iline >= this->size_th.l) 
-    RETURN_ERROR("line index out of range", "GetInputLine", false);
+    RETURN_ERROR("line index out of range", "GetInputLineTh", false);
   if (!this->open_th)
-    RETURN_ERROR("band not open", "GetInputLine", false);
+    RETURN_ERROR("band not open", "GetInputLineTh", false);
 
   buf_void = (void *)line;
   if (this->file_type == INPUT_TYPE_BINARY) {
     loc = (long) (iline * this->size_th.s * sizeof(uint8));
     if (fseek(this->fp_bin_th, loc, SEEK_SET))
-      RETURN_ERROR("error seeking line (binary)", "GetInputLine", false);
+      RETURN_ERROR("error seeking line (binary)", "GetInputLineTh", false);
     if (fread(buf_void, sizeof(uint8), (size_t)this->size_th.s, 
               this->fp_bin_th) != (size_t)this->size_th.s)
-      RETURN_ERROR("error reading line (binary)", "GetInputLine", false);
+      RETURN_ERROR("error reading line (binary)", "GetInputLineTh", false);
+  }
+
+  return true;
+}
+
+bool GetInputLineSunZen(Input_t *this, int iline, int16 *line)
+{
+  long loc;
+  void *buf_void = NULL;
+
+  if (this == NULL)
+    RETURN_ERROR("invalid input structure", "GetInputLineSunZen", false);
+  if (iline < 0  ||  iline >= this->size.l)
+    RETURN_ERROR("line index out of range", "GetInputLineSunZen", false);
+  if (!this->open_sun_zen)
+    RETURN_ERROR("band not open", "GetInputLineSunZen", false);
+
+  buf_void = (void *)line;
+  if (this->file_type == INPUT_TYPE_BINARY) {
+    loc = (long) (iline * this->size.s * sizeof(int16));
+    if (fseek(this->fp_bin_sun_zen, loc, SEEK_SET))
+      RETURN_ERROR("error seeking line (binary)", "GetInputLineSunZen", false);
+    if (fread(buf_void, sizeof(int16), (size_t)this->size.s,
+              this->fp_bin_sun_zen) != (size_t)this->size.s)
+      RETURN_ERROR("error reading line (binary)", "GetInputLineSunZen", false);
   }
 
   return true;
@@ -218,11 +250,16 @@ bool CloseInput(Input_t *this)
   }
 
   /*** now close the thermal file ***/
-  if (this->open_th) 
-  {
+  if (this->open_th) {
     if (this->file_type == INPUT_TYPE_BINARY)
       fclose(this->fp_bin_th);
     this->open_th = false;
+  }
+
+  if (this->open_sun_zen) {
+    if (this->file_type == INPUT_TYPE_BINARY)
+      fclose(this->fp_bin_sun_zen);
+    this->open_sun_zen = false;
   }
 
   if (none_open)
@@ -257,8 +294,12 @@ bool FreeInput(Input_t *this)
       free(this->file_name[ib]);
       this->file_name[ib] = NULL;
     }
+
     free(this->file_name_th);
     this->file_name_th = NULL;
+
+    free(this->file_name_sun_zen);
+    this->file_name_sun_zen = NULL;
 
     free(this);
     this = NULL;
@@ -309,7 +350,8 @@ bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy)
 #define DATE_STRING_LEN (50)
 #define TIME_STRING_LEN (50)
 
-bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
+bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata,
+                 bool process_collection)
 /* 
 !C******************************************************************************
 
@@ -361,7 +403,6 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     this->meta.irow = -1;
     this->meta.fill = INPUT_FILL;
     this->nband = 0;
-    this->nband_th = 0;
     this->size.s = this->size.l = -1;
     for (ib = 0; ib < NBAND_REFL_MAX; ib++)
     {
@@ -382,6 +423,10 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
     this->meta.k2_const = GAIN_BIAS_FILL;
     this->file_name_th = NULL;
     this->fp_bin_th = NULL;
+
+    this->open_sun_zen = false;
+    this->file_name_sun_zen = NULL;
+    this->fp_bin_sun_zen = NULL;
 
     /* Pull the appropriate data from the XML file */
     acq_date[0] = acq_time[0] = '\0';
@@ -604,11 +649,26 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata)
                 this->meta.k2_const = metadata->band[i].k2_const;
             }
         }
+        else if (process_collection &&
+            !strcmp (metadata->band[i].name, "solar_zenith_band4") &&
+            !strcmp (metadata->band[i].product, "intermediate_data"))
+        {
+            /* get the solar zenith representative band info */
+            this->file_name_sun_zen = strdup (metadata->band[i].file_name);
+        }
     }  /* for i */
 
     if (refl_indx == -99)
     {
         sprintf (temp, "band 1 (b1) was not found in the XML file");
+        RETURN_ERROR (temp, "GetXMLInput", true);
+    }
+
+    /* Make sure the solar zenith band was found if processing Collections */
+    if (process_collection && this->file_name_sun_zen == NULL)
+    {
+        sprintf (temp, "Representative band for the solar zenith data was "
+            "not found in the XML file.  It is required for Collections.");
         RETURN_ERROR (temp, "GetXMLInput", true);
     }
 

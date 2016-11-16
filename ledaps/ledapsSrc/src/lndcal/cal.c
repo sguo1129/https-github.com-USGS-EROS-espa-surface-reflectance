@@ -15,9 +15,9 @@
  *    still need to account for the solar angle.
  */
 
-bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in, 
-         int16 *line_out, unsigned char *line_out_qa, Cal_stats_t *cal_stats,
-         int iy) {
+bool Cal(Param_t *param, Lut_t *lut, int iband, Input_t *input,
+         unsigned char *line_in, int16 *line_in_sun_zen, int16 *line_out,
+         unsigned char *line_out_qa, Cal_stats_t *cal_stats, int iy) {
   int is,val;
   float rad_gain, rad_bias;           /* TOA radiance gain/bias */
   float refl_gain = 0.0,
@@ -26,6 +26,9 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
   float ref_conv = 0.0;               /* TOA reflectance conversion value */
   float ref;                          /* TOA reflectance value */
   float fval;                         /* temporary float value */
+  float sun_zen;                      /* solar zenith angle for the current
+                                         pixel (vs. scene center) to be used
+                                         with Collection products (radians) */
   int nsamp= input->size.s;
   int ifill= (int)lut->in_fill;
 
@@ -36,12 +39,14 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
   /* Get the TOA reflectance gain/bias if they are available, otherwise use
      the TOA reflectance equation from the Landsat handbook. */
   if (input->meta.use_toa_refl_consts) {
+    /* Collections and some pre-Collections */
     refl_gain = lut->meta.refl_gain[iband];
     refl_bias = lut->meta.refl_bias[iband];
 
     if ( iy==0 ) {
-      printf("*** band=%1d refl gain=%f refl bias=%f cos_sun_zen=%f\n", iband+1,
-             refl_gain, refl_bias, lut->cos_sun_zen);
+      printf("*** band=%1d refl gain=%f refl bias=%f "
+            "cos_sun_zen(scene center)=%f\n", iband+1, refl_gain, refl_bias,
+            lut->cos_sun_zen);
       fflush(stdout);
     }
   }
@@ -77,7 +82,14 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
        Otherwise compute the TOA radiance then reflectance, per the Landsat
        handbook equations. */
     rad = (rad_gain * fval) + rad_bias;
-    if (input->meta.use_toa_refl_consts) {
+    if (input->meta.use_toa_refl_consts && param->process_collection) {
+      /* processing Collections; use per-pixel angles - convert the degree
+         values to radians and then unscale */
+      sun_zen = line_in_sun_zen[is] * 0.01 * RAD;
+      ref = ((refl_gain * fval) + refl_bias) / cos (sun_zen);
+    }
+    else if (input->meta.use_toa_refl_consts) {
+      /* not processing Collections so don't use per-pixel angles */
       ref = ((refl_gain * fval) + refl_bias) / lut->cos_sun_zen;
     }
     else {
@@ -138,8 +150,8 @@ bool Cal(Lut_t *lut, int iband, Input_t *input, unsigned char *line_in,
   return true;
 }
 
-bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int16 *line_out, 
-         unsigned char *line_out_qa, Cal_stats6_t *cal_stats, int iy) {
+bool Cal6(Lut_t *lut, Input_t *input, unsigned char *line_in, int16 *line_out,
+          unsigned char *line_out_qa, Cal_stats6_t *cal_stats, int iy) {
   int is, val;
   float rad_gain, rad_bias, rad, temp;
   int nsamp= input->size_th.s;

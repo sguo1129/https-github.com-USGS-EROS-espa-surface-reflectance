@@ -48,6 +48,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+#include <getopt.h>
 
 #include "lndcal.h"
 #include "param.h"
@@ -72,7 +73,7 @@ Key_string_t Param_string[PARAM_MAX] = {
 
 /* Functions */
 
-Param_t *GetParam(int argc, const char **argv)
+Param_t *GetParam(int argc, char *argv[])
 /* 
 !C******************************************************************************
 
@@ -91,24 +92,71 @@ Param_t *GetParam(int argc, const char **argv)
 !END****************************************************************************
 */
 {
-  Param_t *this;
-  char *error_string = NULL;
-  FILE *fp;
+  Param_t *this = NULL;
+  char *error_string = (char *)NULL;
+  FILE *fp = NULL;
   Key_t key;
   int len;
   char line[MAX_STR_LEN + 1];
   char temp[MAX_STR_LEN + 1];
   Param_key_t param_key;
-  char *param_file_name;
+  char *param_file_name = NULL;
   bool got_start, got_end;
 
-  if (argc < 2) 
-    RETURN_ERROR("no command line parameter", "GetParam", NULL);
-  if (argc > 3) 
-    RETURN_ERROR("too many command line parameters", "GetParam", NULL);
-  if (strlen(argv[1]) < 1)
-    RETURN_ERROR("no parameter file name", "GetParam", NULL);
-  param_file_name = (char *)argv[1];
+  int c;                           /* current argument index */
+  int option_index;                /* index for the command-line option */
+  static int process_collection_flag=0; /* flag to process this scene as a
+                                           collection product */
+  static struct option long_options[] =
+  {
+      {"process_collection", no_argument, &process_collection_flag, 1},
+      {"pfile", required_argument, 0, 'p'},
+      {"help", no_argument, 0, 'h'},
+      {0, 0, 0, 0}
+  };
+
+  /* Loop through all the cmd-line options */
+  opterr = 0;   /* turn off getopt_long error msgs as we'll print our own */
+  while (1)
+  {
+    /* optstring in call to getopt_long is empty since we will only
+       support the long options */
+    c = getopt_long (argc, argv, "", long_options, &option_index);
+    if (c == -1)
+    {   /* Out of cmd-line options */
+      break;
+    }
+
+    switch (c)
+    {
+      case 0:
+        /* If this option set a flag, do nothing else now. */
+        if (long_options[option_index].flag != 0)
+          break;
+
+      case 'h':  /* help */
+        RETURN_ERROR("Runs the top-of-atmosphere corrections for the input "
+          "Landsat scene", "GetParam", NULL);
+        break;
+
+      case 'p':  /* input parameter file */
+        param_file_name = strdup (optarg);
+        break;
+
+      case '?':
+      default:
+        sprintf (temp, "Unknown option %s", argv[optind-1]);
+        RETURN_ERROR(temp, "GetParam", NULL);
+        break;
+    }
+  }
+
+  /* Make sure the parameter file was specified */
+  if (param_file_name == NULL)
+  {
+    RETURN_ERROR("Input parameter file is a required argument", "GetParam",
+      NULL);
+  }
 
   /* Open the parameter file */
   if ((fp = fopen(param_file_name, "r")) == NULL)
@@ -125,6 +173,11 @@ Param_t *GetParam(int argc, const char **argv)
   this->param_file_name         = NULL;
   this->input_xml_file_name     = NULL;
   this->LEDAPSVersion           = NULL;
+  this->process_collection = false;      /* are we processing a collection */
+
+  /* Check the command-line flags */
+  if (process_collection_flag)
+    this->process_collection = true;
 
   /* Populate the data structure */
   this->param_file_name = DupString(param_file_name);

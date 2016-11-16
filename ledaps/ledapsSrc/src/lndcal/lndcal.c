@@ -25,7 +25,7 @@
 
 /* Functions */
 
-int main (int argc, const char **argv) {
+int main (int argc, char *argv[]) {
   Param_t *param = NULL;
   Input_t *input = NULL;
   Lut_t *lut = NULL;
@@ -34,6 +34,7 @@ int main (int argc, const char **argv) {
   int iline, isamp, ib, jb, val;
   int my_pix;
   unsigned char *line_in = NULL;
+  int16 *line_in_sun_zen = NULL;     /* solar zenith representative band */
   unsigned char *line_out_qa = NULL;
   int16 *line_out = NULL;
   int16 *line_out_th = NULL;
@@ -85,8 +86,8 @@ int main (int argc, const char **argv) {
       "MTL file for conversion to the ESPA internal raw binary format as the "
       "gains and biases should be in that file.", "main");
   
-  /* Open input file */
-  input = OpenInput (&xml_metadata);
+  /* Open input files */
+  input = OpenInput (&xml_metadata, param->process_collection);
   if (input == (Input_t *)NULL)
     EXIT_ERROR("setting up input from XML structure", "main");
 
@@ -114,6 +115,13 @@ int main (int argc, const char **argv) {
   line_in = calloc (input->size.s * nband_refl, input_psize);
    if (line_in == NULL) 
      EXIT_ERROR("allocating input line buffer", "main");
+
+  /* Allocate memory for the input solar zenith representative band buffer, if
+     processing Collections */
+  input_psize = sizeof(int16);
+  line_in_sun_zen = calloc (input->size.s, input_psize);
+   if (line_in_sun_zen == NULL) 
+     EXIT_ERROR("allocating input line buffer for solar zenith band", "main");
 
   /* Create and open output thermal band, if one exists */
   if ( input->nband_th > 0 ) {
@@ -192,11 +200,18 @@ int main (int argc, const char **argv) {
 
     memset(line_out_qa, 0, input->size.s*sizeof(unsigned char));
     
+    /* Read the input reflectance data */
     for (ib = 0; ib < input->nband; ib++) {
       if (!GetInputLine(input, ib, iline, &line_in[ib*nps]))
         EXIT_ERROR("reading input data for a line", "main");
     }
     
+    /* Read input representative solar zenith band, if processing Collections */
+    if (param->process_collection) {
+      if (!GetInputLineSunZen(input, iline, line_in_sun_zen))
+        EXIT_ERROR("reading input solar zenith data for a line", "main");
+    }
+
     for (isamp = 0; isamp < input->size.s; isamp++){
       num_zero=0;
       my_pix = isamp;
@@ -211,13 +226,15 @@ int main (int argc, const char **argv) {
     }
 
     for (ib = 0; ib < input->nband; ib++) {
-      if (!Cal(lut, ib, input, &line_in[ib*nps], line_out, line_out_qa,
-        &cal_stats,iline))
+if (iline == 4865) printf ("***ib: %d\n", ib);
+      if (!Cal(param, lut, ib, input, &line_in[ib*nps], line_in_sun_zen,
+        line_out, line_out_qa, &cal_stats,iline))
         EXIT_ERROR("doing calibraton for a line", "main");
 
       if (!PutOutputLine(output, ib, iline, line_out))
         EXIT_ERROR("reading input data for a line", "main");
     } /* End loop for each band */
+if (iline == 4865) exit (SUCCESS);
         
     if (input->meta.inst != INST_MSS) 
       if (!PutOutputLine(output, qa_band, iline, line_out_qa))
@@ -305,6 +322,8 @@ int main (int argc, const char **argv) {
   line_out = NULL;
   free(line_in);
   line_in = NULL;
+  free(line_in_sun_zen);
+  line_in_sun_zen = NULL;
   free(line_out_qa);
   line_out_qa = NULL;
   free(line_out_th);

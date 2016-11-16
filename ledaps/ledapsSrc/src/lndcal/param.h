@@ -68,14 +68,15 @@
 /* Parameter data structure type definition */
 
 typedef struct {
-  char *param_file_name;         /* Parameter file name                */
-  char *input_xml_file_name;     /* Input XML metadata file name       */
-  char *LEDAPSVersion;           /* LEDAPS Version                     */
+  char *param_file_name;         /* Parameter file name */
+  char *input_xml_file_name;     /* Input XML metadata file name */
+  bool process_collection;       /* Process scene as a collection product */
+  char *LEDAPSVersion;           /* LEDAPS Version */
 } Param_t;
 
 /* Prototypes */
 
-Param_t *GetParam(int argc, const char **argv);
+Param_t *GetParam(int argc, char *argv[]);
 bool FreeParam(Param_t *this);
 bool existRadGB(Espa_internal_meta_t *metadata);
 bool existReflGB(Espa_internal_meta_t *metadata);

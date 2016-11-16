@@ -102,23 +102,29 @@ typedef struct {
   char *file_name[NBAND_REFL_MAX];  
                            /* Name of the input image files */
   char *file_name_th;      /* Name of the thermal input image files */
+  char *file_name_sun_zen; /* Name of the represetative per-pixel solar zenith
+                              file */
   bool open[NBAND_REFL_MAX]; 
                            /* Flag to indicate whether the specific input file 
 			      is open for access; 'true' = open, 
 			     'false' = not open */
   bool open_th;            /* thermal open flag */
+  bool open_sun_zen;       /* solar zenith open flag */
   FILE *fp_bin[NBAND_REFL_MAX];  /* File pointer for binary files */
   FILE *fp_bin_th;         /* File pointer for thermal binary file */
+  FILE *fp_bin_sun_zen;    /* File pointer for the representative per-pixel
+                              array solar zenith band */
 } Input_t;
 
 /* Prototypes */
 
-Input_t *OpenInput(Espa_internal_meta_t *metadata);
+Input_t *OpenInput(Espa_internal_meta_t *metadata, bool process_collection);
 bool GetInputLine(Input_t *this, int iband, int iline, unsigned char *line);
 bool GetInputLineTh(Input_t *this, int iline, unsigned char *line);
+bool GetInputLineSunZen(Input_t *this, int iline, int16 *line);
 bool CloseInput(Input_t *this);
 bool FreeInput(Input_t *this);
 bool InputMetaCopy(Input_meta_t *this, int nband, Input_meta_t *copy);
-bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata);
+bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata, bool process_collection);
 
 #endif
