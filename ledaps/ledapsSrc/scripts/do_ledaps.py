@@ -260,11 +260,23 @@ class Ledaps():
             os.chdir (mydir)
             return ERROR
 
-        # set up the command-line option for lndsr for processing collections
-        # or not
+        # set up the command-line option for lndsr for processing collections.
+        # if processing collections, then the per-pixel angle bands need to
+        # be generated for band 4 (representative band) and the thermal band(s)
         process_collection_opt_str = ""
         if processing_collection:
-            process_collection_opt_str = "--process_collection "
+            process_collection_opt_str = "--process_collection"
+
+            cmdstr = "create_landsat_angle_bands --xml %s" % (base_xmlfile)
+#            logger.debug('per-pixel angles command: {0}'.format(cmdstr))
+            (status, output) = commands.getstatusoutput(cmdstr)
+            logger.info(output)
+            exit_code = status >> 8
+            if exit_code != 0:
+                logger.error('Error running create_landsat_angle_bands.'
+                             '  Processing will terminate.')
+                os.chdir(mydir)
+                return ERROR
 
         # run LEDAPS modules, checking the return status of each module.
         # exit if any errors occur.
@@ -278,7 +290,8 @@ class Ledaps():
             os.chdir(mydir)
             return ERROR
 
-        cmdstr = "lndcal lndcal.%s.txt" % xml
+        cmdstr = "lndcal --pfile lndcal.%s.txt %s" % (xml,
+            process_collection_opt_str)
         # logger.debug('lndcal command: {0}'.format(cmdstr))
         (status, output) = commands.getstatusoutput(cmdstr)
         logger.info(output)
@@ -291,7 +304,7 @@ class Ledaps():
         if process_sr == "True":
             cmdstr = "lndsr --pfile lndsr.%s.txt %s" % (xml,
                 process_collection_opt_str)
-            logger.debug('lndsr command: {0}'.format(cmdstr))
+#            logger.debug('lndsr command: {0}'.format(cmdstr))
             (status, output) = commands.getstatusoutput(cmdstr)
             logger.info(output)
             exit_code = status >> 8
