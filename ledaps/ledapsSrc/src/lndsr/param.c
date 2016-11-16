@@ -1,5 +1,3 @@
-#include <getopt.h>
-
 /*
 !C****************************************************************************
 
@@ -49,6 +47,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <getopt.h>
 
 #include "param.h"
 #include "mystring.h"
@@ -99,9 +98,9 @@ Param_t *GetParam(int argc, char *argv[])
 !END****************************************************************************
 */
 {
-  Param_t *this;
+  Param_t *this = NULL;
   char *error_string = (char *)NULL;
-  FILE *fp;
+  FILE *fp = NULL;
   Key_t key;
   int i,len;
   char line[MAX_STR_LEN + 1];
