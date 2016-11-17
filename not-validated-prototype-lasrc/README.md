@@ -1,4 +1,4 @@
-## LaSRC Version 0.9.0 Release Notes
+## LaSRC Version 0.10.0 Release Notes
 Release Date: October 2016
 
 ### Downloads
@@ -10,7 +10,7 @@ LaSRC auxiliary files
 
     http://edclpdsftp.cr.usgs.gov/downloads/auxiliaries/l8sr_auxiliary/l8sr_auxiliary.tar.gz
 
-See git tag [lasrc-version_0.9.0]
+See git tag [lasrc-version_0.10.0]
 
 ### Installation
   * Install dependent libraries - ESPA product formatter (https://github.com/USGS-EROS/espa-product-formatter)
@@ -80,11 +80,4 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 ### Product Guide
 
 ## Release Notes
-  1. Modified the cloud QA to contain the cloud and aerosol information in one
-     16-bit band for Collection products.  Pre-collection products will continue
-     to have two 8-bit QA bands, one for the cloud band and the other for the
-     aerosol band.
-  2. Fixed a bug in the do_lasrc.py script to correctly handle the new
-     Collection naming convention.
-  3. Modified how the bits are set in the cloud masks by using a bit shift and
-     an OR with the existing bits.
+  1. Updated to utilize the new Level-1 band names which were changed in espa-product-formatter to be more consistent with the Level-1 naming convention.
