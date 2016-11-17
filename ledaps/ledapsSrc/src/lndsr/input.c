@@ -541,7 +541,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata, bool thermal)
 
     if (error_string != NULL)
     {
-        RETURN_ERROR (error_string, "GetHeaderInput", true);
+        RETURN_ERROR (error_string, "GetXMLInput", true);
     }
 
     /* Check satellite/instrument combination */
@@ -570,7 +570,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata, bool thermal)
 
     if (error_string != NULL)
     {
-        RETURN_ERROR (error_string, "GetHeaderInput", true);
+        RETURN_ERROR (error_string, "GetXMLInput", true);
     }
 
     /* Convert the acquisition date/time values */
@@ -578,7 +578,7 @@ bool GetXMLInput(Input_t *this, Espa_internal_meta_t *metadata, bool thermal)
     if (!DateInit (&this->meta.acq_date, temp, DATE_FORMAT_DATEA_TIME))
     {
         error_string = "converting acquisition date/time";
-        RETURN_ERROR (error_string, "GetHeaderInput", false);
+        RETURN_ERROR (error_string, "GetXMLInput", false);
     }
 
     return true;

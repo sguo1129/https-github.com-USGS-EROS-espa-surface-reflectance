@@ -226,7 +226,6 @@ int main (int argc, char *argv[]) {
     }
 
     for (ib = 0; ib < input->nband; ib++) {
-if (iline == 4865) printf ("***ib: %d\n", ib);
       if (!Cal(param, lut, ib, input, &line_in[ib*nps], line_in_sun_zen,
         line_out, line_out_qa, &cal_stats,iline))
         EXIT_ERROR("doing calibraton for a line", "main");
@@ -234,7 +233,6 @@ if (iline == 4865) printf ("***ib: %d\n", ib);
       if (!PutOutputLine(output, ib, iline, line_out))
         EXIT_ERROR("reading input data for a line", "main");
     } /* End loop for each band */
-if (iline == 4865) exit (SUCCESS);
         
     if (input->meta.inst != INST_MSS) 
       if (!PutOutputLine(output, qa_band, iline, line_out_qa))
