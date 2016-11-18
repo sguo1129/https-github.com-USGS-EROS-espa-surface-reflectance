@@ -81,3 +81,4 @@ After compiling the product-formatter raw\_binary libraries and tools, the conve
 
 ## Release Notes
   1. Updated to utilize the new Level-1 band names which were changed in espa-product-formatter to be more consistent with the Level-1 naming convention.
+  2. Modified the ancillary code to remove libcrypto in the linking and also switched the include hdf_netcdf.h to netcdf.h.

@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 #include <ctype.h>
-#include "hdf4_netcdf.h"
+#include "netcdf.h"
 #include "hdf.h"
 #include "mfhdf.h"
 
