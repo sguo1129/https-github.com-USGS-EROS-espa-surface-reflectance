@@ -99,20 +99,20 @@ class Ledaps():
     #######################################################################
     def findAncillary(self, year, doy=-99):
         logger = logging.getLogger(__name__)
-        # determine the ancillary directory to store the data
+        # Determine the ancillary directory to store the data
         ancdir = os.environ.get('ANC_PATH')
         if ancdir is None:
             logger.error('ANC_PATH environment variable not set... exiting')
             return None
 
-        # initialize the doyList to empty and the number of days to 1
+        # Initialize the doyList to empty and the number of days to 1
         doyList = []
         ndays = 1
 
-        # if doy wasn't specified, then determine the number of days in the
-        # specified year. if the specified year is the current year, only
+        # If doy wasn't specified, then determine the number of days in the
+        # specified year. If the specified year is the current year, only
         # process up through today otherwise process through all the days
-        # in the year
+        # in the year.
         if doy == -99:
             now = datetime.datetime.now()
             if year == now.year:
@@ -123,15 +123,15 @@ class Ledaps():
                 else:
                     ndays = 365
 
-        # loop through the number of days and determine if the required
+        # Loop through the number of days and determine if the required
         # ancillary data exists
         for currdoy in range(1, ndays+1):
-            # if the DOY was specified then use that value otherwise use
+            # If the DOY was specified then use that value otherwise use
             # the current DOY based on the number of days to be processed
             if doy != -99:
                 currdoy = doy
 
-            # pad the DOY with 0s if needed
+            # Pad the DOY with 0s if needed
             if currdoy < 10:
                 dayofyear = '00' + str(currdoy)
             elif 9 < currdoy < 100:
@@ -140,18 +140,18 @@ class Ledaps():
                 dayofyear = str(currdoy)
 
             # NCEP REANALYSIS file
-            ncepFile = ("%s/REANALYSIS/RE_%d/REANALYSIS_%d%s.hdf"
-                        % (ancdir, year, year, dayofyear))
+            ncepFile = ('{}/REANALYSIS/RE_{}/REANALYSIS_{}{}.hdf'
+                        .format(ancdir, year, year, dayofyear))
 
             # EP/TOMS file
-            tomsFile = ("%s/EP_TOMS/ozone_%d/TOMS_%d%s.hdf"
-                        % (ancdir, year, year, dayofyear))
+            tomsFile = ('{}/EP_TOMS/ozone_{}/TOMS_{}{}.hdf'
+                        .format(ancdir, year, year, dayofyear))
             if os.path.isfile(ncepFile) and os.path.isfile(tomsFile):
                 doyList.append(True)
             else:
                 doyList.append(False)
 
-        # return the True/False list
+        # Return the True/False list
         return doyList
 
     ########################################################################
@@ -179,10 +179,9 @@ class Ledaps():
     #      an error.
     #######################################################################
     def runLedaps(self, xmlfile=None, process_sr="True"):
-        # if no parameters were passed then get the info from the
-        # command line
+        # If no parameters were passed then get the info from the command line
         if xmlfile is None:
-            # get the command line argument for the XML file
+            # Get the command line argument for the XML file
             parser = OptionParser()
             parser.add_option("-f", "--xml",
                               type="string", dest="xmlfile",
@@ -199,7 +198,7 @@ class Ledaps():
                                     " use process_sr=False)"))
             (options, args) = parser.parse_args()
 
-            # validate the command-line options
+            # Validate the command-line options
             xmlfile = options.xmlfile  # name of the XML file
             if xmlfile is None:
                 parser.error("missing xmlfile command-line argument")
@@ -210,23 +209,23 @@ class Ledaps():
 
         # Obtain logger from logging using the module's name
         logger = logging.getLogger(__name__)
-        logger.info('LEDAPS processing of Landsat XML file: {0}'
+        logger.info('LEDAPS processing of Landsat XML file: {}'
                     .format(xmlfile))
 
-        # make sure the XML file exists
+        # Make sure the XML file exists
         if not os.path.isfile(xmlfile):
-            logger.error('XML file does not exist or is not accessible'
-                         ': {0}'.format(xmlfile))
+            logger.error('XML file does not exist or is not accessible: {}'
+                         .format(xmlfile))
             return ERROR
 
-        # parse the XML filename, strip off the .xml
-        # use the base XML filename and not the full path.
+        # Parse the XML filename, strip off the .xml. Use the base XML filename
+        # and not the full path.
         base_xmlfile = os.path.basename(xmlfile)
         xml = re.sub('\.xml$', '', base_xmlfile)
-        logger.info('Processing XML basefile: {0}'.format(xml))
+        logger.info('Processing XML basefile: {}'.format(xml))
 
-        # get the path of the XML file and change directory to that location
-        # for running this script.  save the current working directory for
+        # Get the path of the XML file and change directory to that location
+        # for running this script.  Save the current working directory for
         # return to upon error or when processing is complete.  Note: use
         # abspath to handle the case when the filepath is just the filename
         # and doesn't really include a file path (i.e. the current working
@@ -234,111 +233,107 @@ class Ledaps():
         mydir = os.getcwd()
         xmldir = os.path.dirname(os.path.abspath(xmlfile))
         if not os.access(xmldir, os.W_OK):
-            logger.error('Path of XML file is not writable: {0}.'
-                         '  LEDAPS needs write access to the XML directory.'
+            logger.error('Path of XML file is not writable: {}. '
+                         'LEDAPS needs write access to the XML directory.'
                          .format(xmldir))
             return ERROR
-        logger.info('Changing directories for LEDAPS processing: {0}'
+        logger.info('Changing directories for LEDAPS processing: {}'
                     .format(xmldir))
         os.chdir(xmldir)
 
-        # determine if this scene is pre-collection or a collection scene
-        prefixes_old = ['LT4', 'LT5', 'LE7']
-        prefixes_collection = ['LT04', 'LT05', 'LE07']
-        if base_xmlfile[0:3] in prefixes_old:
-            # Old-style (pre-collection) Level-1 naming convention
-            processing_collection = False
-            logger.debug('Processing pre-collection data')
-        elif base_xmlfile[0:4] in prefixes_collection:
-            # New-style collection naming convention
-            processing_collection = True
-            logger.debug('Processing collection data')
-        else:
-            msg = ('Base XML filename is not recognized as a valid Landsat 4-7 '
-                   'scene name' + base_xmlfile)
-            logger.error (msg)
-            os.chdir (mydir)
-            return ERROR
-
-        # set up the command-line option for lndsr for processing collections.
-        # if processing collections, then the per-pixel angle bands need to
-        # be generated for band 4 (representative band) and the thermal band(s)
-        process_collection_opt_str = ""
-        if processing_collection:
-            process_collection_opt_str = "--process_collection"
-
-            cmdstr = "create_landsat_angle_bands --xml %s" % (base_xmlfile)
-#            logger.debug('per-pixel angles command: {0}'.format(cmdstr))
-            (status, output) = commands.getstatusoutput(cmdstr)
-            logger.info(output)
-            exit_code = status >> 8
-            if exit_code != 0:
-                logger.error('Error running create_landsat_angle_bands.'
-                             '  Processing will terminate.')
-                os.chdir(mydir)
+        # Processing down in the XML file directory itself, but always return
+        # to the original directory after processing or error
+        try:
+            # Determine if this scene is pre-collection or a collection scene
+            prefixes_old = ['LT4', 'LT5', 'LE7']
+            prefixes_collection = ['LT04', 'LT05', 'LE07']
+            if base_xmlfile[0:3] in prefixes_old:
+                # Old-style (pre-collection) Level-1 naming convention
+                processing_collection = False
+                logger.debug('Processing pre-collection data')
+            elif base_xmlfile[0:4] in prefixes_collection:
+                # New-style collection naming convention
+                processing_collection = True
+                logger.debug('Processing collection data')
+            else:
+                msg = ('Base XML filename is not recognized as a valid Landsat '
+                       '4-7 scene name: {}'.format(base_xmlfile))
+                logger.error (msg)
                 return ERROR
 
-        # run LEDAPS modules, checking the return status of each module.
-        # exit if any errors occur.
-        cmdstr = "lndpm %s" % base_xmlfile
-        # logger.debug('lndpm command: {0}'.format(cmdstr))
-        (status, output) = commands.getstatusoutput(cmdstr)
-        logger.info(output)
-        exit_code = status >> 8
-        if exit_code != 0:
-            logger.error('Error running lndpm.  Processing will terminate.')
-            os.chdir(mydir)
-            return ERROR
-
-        cmdstr = "lndcal --pfile lndcal.%s.txt %s" % (xml,
-            process_collection_opt_str)
-        # logger.debug('lndcal command: {0}'.format(cmdstr))
-        (status, output) = commands.getstatusoutput(cmdstr)
-        logger.info(output)
-        exit_code = status >> 8
-        if exit_code != 0:
-            logger.error('Error running lndcal.  Processing will terminate.')
-            os.chdir(mydir)
-            return ERROR
-
-        if process_sr == "True":
-            cmdstr = "lndsr --pfile lndsr.%s.txt %s" % (xml,
-                process_collection_opt_str)
-#            logger.debug('lndsr command: {0}'.format(cmdstr))
-            (status, output) = commands.getstatusoutput(cmdstr)
-            logger.info(output)
-            exit_code = status >> 8
-            if exit_code != 0:
-                logger.error('Error running lndsr.'
-                             '  Processing will terminate.')
-                os.chdir(mydir)
-                return ERROR
-
-            if not processing_collection:
-                cmdstr = "lndsrbm.py -f lndsr.%s.txt" % xml
-                # logger.debug('lndsrbm command: {0}'.format(cmdstr))
+            # Set up the command-line option for lndsr for processing
+            # collections. If processing collections, then the per-pixel angle
+            # bands need to be generated for band 4 (representative band) and
+            # the thermal band(s)
+            process_collection_opt_str = ''
+            if processing_collection:
+                process_collection_opt_str = '--process_collection'
+                cmdstr = ('create_landsat_angle_bands --xml {}'
+                          .format(base_xmlfile))
                 (status, output) = commands.getstatusoutput(cmdstr)
                 logger.info(output)
                 exit_code = status >> 8
                 if exit_code != 0:
-                    logger.error('Error running lndsrbm.'
-                                '  Processing will terminate.')
-                    os.chdir(mydir)
+                    logger.error('Error running create_landsat_angle_bands. '
+                                 'Processing will terminate.')
                     return ERROR
 
-        # successful completion.  return to the original directory.
-        os.chdir(mydir)
+            # Run LEDAPS modules, checking the return status of each module.
+            # Exit if any errors occur.
+            cmdstr = 'lndpm {}'.format(base_xmlfile)
+            (status, output) = commands.getstatusoutput(cmdstr)
+            logger.info(output)
+            exit_code = status >> 8
+            if exit_code != 0:
+                logger.error('Error running lndpm.  Processing will terminate.')
+                return ERROR
+
+            cmdstr = ('lndcal --pfile lndcal.{}.txt {}'
+                      .format(xml, process_collection_opt_str))
+            (status, output) = commands.getstatusoutput(cmdstr)
+            logger.info(output)
+            exit_code = status >> 8
+            if exit_code != 0:
+                logger.error('Error running lndcal. Processing will terminate.')
+                return ERROR
+
+            if process_sr == 'True':
+                cmdstr = ('lndsr --pfile lndsr.{}.txt {}'
+                          .format(xml, process_collection_opt_str))
+                (status, output) = commands.getstatusoutput(cmdstr)
+                logger.info(output)
+                exit_code = status >> 8
+                if exit_code != 0:
+                    logger.error('Error running lndsr. Processing will '
+                                 'terminate.')
+                    return ERROR
+
+                if not processing_collection:
+                    cmdstr = 'lndsrbm.py -f lndsr.{}.txt'.format(xml)
+                    (status, output) = commands.getstatusoutput(cmdstr)
+                    logger.info(output)
+                    exit_code = status >> 8
+                    if exit_code != 0:
+                        logger.error('Error running lndsrbm. Processing will '
+                                     'terminate.')
+                        return ERROR
+
+        finally:
+            # Return to the original directory
+            os.chdir(mydir)
+
+        # Successful completion
         logger.info('Completion of LEDAPS.')
         return SUCCESS
 
 # ##### end of Ledaps class #####
 
 if __name__ == "__main__":
-    # setup the default logger format and level. log to STDOUT.
+    # Setup the default logger format and level. Log to STDOUT.
     logging.basicConfig(format=('%(asctime)s.%(msecs)03d %(process)d'
                                 ' %(levelname)-8s'
                                 ' %(filename)s:%(lineno)d:'
                                 '%(funcName)s -- %(message)s'),
                         datefmt='%Y-%m-%d %H:%M:%S',
-                        level=logging.DEBUG)
+                        level=logging.INFO)
     sys.exit(Ledaps().runLedaps())
