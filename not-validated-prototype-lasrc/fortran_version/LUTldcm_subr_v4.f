@@ -386,13 +386,13 @@ C  New, 07-JUL-05 from atmcorlamb2:
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
      s	     rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
+     s       err_msg,retval,eps)
 C
 C  07-JUL-05: this routine returns variables for calculating roslamb.
 C     
        parameter (fac = 0.017453293)
        real xts,xtv,xfi
-       real aot550nm(22),raot550nm
+       real aot550nm(22),raot550nm,mraot550nm
        integer ib
        real rolutt(16,7,22,8000),nbfi(22,20),tsmax(22,20),tsmin(22,20)
        real transt(16,7,22,22),sphalbt(16,7,22),normext(16,7,22)
@@ -405,6 +405,7 @@ C
        real ogtransb0(16),ogtransb1(16)
        real ogtransc0(16),ogtransc1(16)
        real tauray(16)
+       real lambda(16)
        real roslamb,roatm,rotoa,next
 C       real fac,pi
        integer indts(22)
@@ -412,11 +413,24 @@ C       real fac,pi
        real tpres(7),pres
        character*80 err_msg
        integer retval
+       data lambda/0.443,0.480,0.585,0.655,0.865,1.61,2.2,
+     s  4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0,4.0/ 
+        real eps
 C       pi=acos(0.)*2.
 C       fac=pi/180.
        
+c       eps=1.
+       if  (eps.lt.0.) then
+       mraot550nm=raot550nm
+       else
+       if (ib.le.7) then
+       mraot550nm=(raot550nm/normext(ib,1,4))*((lambda(ib)/0.55)**(-eps))
+       else
+       mraot550nm=raot550nm
+       endif
+       endif
        retval=0
-       call comproatm(xts,xtv,xfi,raot550nm,ib,pres,tpres,
+       call comproatm(xts,xtv,xfi,mraot550nm,ib,pres,tpres,
      s      aot550nm,rolutt,
      s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
      s			roatm,err_msg,retval)
@@ -426,7 +440,7 @@ C       fac=pi/180.
        endif
      
        retval=0
-       call comptrans(xts,raot550nm,ib,pres,tpres,aot550nm,transt,
+       call comptrans(xts,mraot550nm,ib,pres,tpres,aot550nm,transt,
      s             xtsstep,xtsmin,tts,  
      s                      xtts,err_msg,retval)
        if (retval .ne. 0) then
@@ -434,7 +448,7 @@ C       fac=pi/180.
        endif
        
        retval=0
-       call comptrans(xtv,raot550nm,ib,pres,tpres,aot550nm,transt,
+       call comptrans(xtv,mraot550nm,ib,pres,tpres,aot550nm,transt,
      s             xtvstep,xtvmin,tts,  
      s                      xttv,err_msg,retval)
        if (retval .ne. 0) then

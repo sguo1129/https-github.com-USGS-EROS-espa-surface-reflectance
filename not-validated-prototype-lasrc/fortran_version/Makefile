@@ -4,7 +4,7 @@
 # cc -O0 -c setprojinfo.c
 # cc -O0 -c qa_index_routine.c
 #
-#gfortran -ffixed-line-length-132  -O -o $1 $1.f sub_deg2utm.f sub_utm2deg.f LUTldcm_subr_v2.f subaeroret.f qa_index_routine.o setprojinfo.o -I /usr/local/HDF/include -L /usr/local/HDF/lib -lmfhdf -ldf -ljpeg -lz -ldl -lm -lsz
+#gfortran -ffixed-line-length-132  -O -o $1 $1.f possolp.f sub_deg2utm.f sub_utm2deg.f LUTldcm_subr_v4.f subaeroretwat.f  subaeroretv4.f qa_index_routine.o setprojinfo.o -I /usr/local/HDF/include -L /usr/local/HDF/lib -lmfhdf -ldf -ljpeg -lz -ldl -lm -lsz
 ##############################################################################
 
 CC = cc
@@ -20,9 +20,9 @@ F_EXTRA   = -Wall -O2 -ffixed-line-length-132
 
 C_OBJECTS = qa_index_routine.o setprojinfo.o
 
-F_OBJECTS = sub_deg2utm.o sub_utm2deg.o subaeroret.o LUTldcm_subr_v2.o LDCMSR-v3.0.o
+F_OBJECTS = possolp.o sub_deg2utm.o sub_utm2deg.o subaeroretwat.o subaeroretv4.o LUTldcm_subr_v4.o LDCMSR-v3.5.2.o
 
-TARGET = LDCMSR-v3.0
+TARGET = LDCMSR-v3.5.2
 
 all: $(TARGET)
 

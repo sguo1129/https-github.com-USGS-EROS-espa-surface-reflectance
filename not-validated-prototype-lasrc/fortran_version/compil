@@ -1,0 +1,5 @@
+cc -O0 -c setprojinfo.c
+cc -O0 -c qa_index_routine.c
+#cc -g -c qa_index_routine.c
+#gfortran -ffixed-line-length-132  -O -o $1 $1.f possolp.f sub_deg2utm.f sub_utm2deg.f LUTldcm_subr_v4.f subaeroretwat.f  subaeroretv4.f qa_index_routine.o setprojinfo.o -I /usr/local/TOOLKIT/SDPToolkit_gfortran44-5.2.17/hdf/linux/hdf-4.2.5/include -L /usr/local/TOOLKIT/SDPToolkit_gfortran44-5.2.17/hdf/linux/hdf-4.2.5/lib -lmfhdf -ldf -ljpeg -lz -ldl -lm -lsz
+gfortran -ffixed-line-length-132  -O -o $1 $1.f possolp.f sub_deg2utm.f sub_utm2deg.f LUTldcm_subr_v4.f subaeroretwat.f  subaeroretv4.f qa_index_routine.o setprojinfo.o -I /usr/local/HDF/include -L /usr/local/HDF/lib -lmfhdf -ldf -ljpeg -lz -ldl -lm -lsz

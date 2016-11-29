@@ -4,8 +4,10 @@
         integer(2), allocatable :: band(:,:)
         integer(2), allocatable :: aerob1(:,:)
         integer(2), allocatable :: aerob2(:,:)
+        integer(2), allocatable :: aerob3(:,:)
         integer(2), allocatable :: aerob4(:,:)
         integer(2), allocatable :: aerob5(:,:)
+        integer(2), allocatable :: aerob6(:,:)
         integer(2), allocatable :: aerob7(:,:)
         integer(2), allocatable :: pband(:,:)
         integer(2), allocatable :: sband(:,:,:)
@@ -28,7 +30,12 @@
 	real, allocatable :: tycmg(:,:)
 	real, allocatable :: tp(:,:)
 	real, allocatable :: taero(:,:)
+	real, allocatable :: taeros(:,:)
+	real, allocatable :: teps(:,:)
+	real, allocatable :: tclears(:,:)
+	real, allocatable :: taerost(:,:)
 	real, allocatable :: taero3(:,:)
+	real, allocatable :: tepss(:,:)
 	real, allocatable :: tresi(:,:)
 	real, allocatable :: slprb1(:,:)
 	real, allocatable :: intrb1(:,:)
@@ -36,6 +43,9 @@
 	real, allocatable :: intrb2(:,:)
 	real, allocatable :: slprb7(:,:)
 	real, allocatable :: intrb7(:,:)
+	integer (2), allocatable :: ttts(:,:)
+	integer (2), allocatable :: tttv(:,:)
+	integer (2), allocatable :: ttfi(:,:)
 	integer (2), allocatable :: tratiob1(:,:)
 	integer (2), allocatable :: tratiob2(:,:)
 	integer (2), allocatable :: tratiob7(:,:)
@@ -44,6 +54,8 @@
 	BYTE, allocatable :: oz(:,:)
 	BYTE, allocatable :: cloud(:,:)
 	BYTE, allocatable :: ipflag(:,:)
+	BYTE, allocatable :: aerimp(:,:)
+	BYTE, allocatable :: smflag(:,:)
 	integer(2), allocatable :: dem(:,:)
 	integer(2), allocatable :: ratiob1(:,:)
 	integer(2), allocatable :: ratiob2(:,:)
@@ -61,14 +73,17 @@
 	integer nit
 	integer jj
 	
-	character(100) filename(12),fname,filenameanc,filenamehdf
+	character(200) filename(12),fname,filenameanc,filenamehdf
 	
 	character(2) suffix(12)
-	integer*8 padding
+	character*8 padding1
+	character padding2(552)
+	integer*2 pad1,pad2
+	integer*2 pad3,pad4
+	integer offsettiff
 	integer sdsind(12)
 	data sdsind /0,1,2,3,4,5,6,-1,7,8,9,10/
-        data suffix /"01","02","03","04","05","06",
-     &      "07","08","09","10","11","QA"/
+	data suffix /"01","02","03","04","05","06","07","08","09","10","11","QA"/
 	integer ii,nr,nc,ib,als,i,j,nrp,ncp,ierr
 	integer nrcmg,nccmg,icmg,jcmg
 	real u,v
@@ -144,8 +159,8 @@ C The following arguments are all names of the LUTs to look up.
 !	integer ib
         integer retval
 	real roslamb
-       data (sbandname(i),i=1,8)/"ldcmb1","ldcmb2","ldcmb3","ldcmb4",
-     &"ldcmb5","ldcmb6","ldcmb7","ldcmb8"/
+       data (sbandname(i),i=1,8)/"ldcmb1","ldcmb2","ldcmb3","ldcmb4","ldcmb5","ldcmb6",
+     s  "ldcmb7","ldcmb8"/
         real tgo,roatm,ttatmg,satm,xrorayp,next
 c       integer ldcmind(9)
 c       data ldcmind /9,10,4,1,2,6,7,4,6/ 
@@ -161,9 +176,10 @@ c       data ldcmind /9,10,4,1,2,6,7,4,6/
        
        real erelc(8),troatm(16)
        real btgo(8),broatm(8),bttatmg(8),bsatm(8)
+       real tbtgo(16,22),tbroatm(16,22),tbttatmg(16,22),tbsatm(16,22)
        integer iband1,iband3
        real raot,residual,rsurf
-       real fac,xmus,corf
+       real fac,xmus,corf,corfb
        integer k,l
        real xcals,xcalo,k1b10,k2b10,k1b11,k2b11,tmpf
        data xcals/3.3420E-04/
@@ -212,8 +228,38 @@ c bit location of weight for cloudmask QA
 	character*200 pfileout,fileout
 	character*22 sstr
 	integer iout
+	integer iaot,ifast,iaots
+	real eps
+	integer ieps
+	real epsres(-1:1)
+	real epsaot(-1:1)
+	real epsval(-1:1)
+	real xa,xb,xc,xdp,xe,xf,coefa,coefb,epsopt
+	real taeroavg,tepsavg
+	integer nbaeroavg
+	real tclearavg
+	integer nbclearavg
+	real dist,sumdist,smaot
+	integer ic,jc,ip1,im1,jp1,jm1
+	integer nbpixnf,ipass,iwind
+	real xndsi
+	real eps1,eps2,eps3,residual1,residual2,residual3,epsmin
+	real sraot1,sraot2,sraot3
+	real rosband1
+	real c1i,c1j,c2i,c2j,c3i,c3j,c4i,c4j,sci,scj,rotang
+	integer flag
+	real hour,xmin,sec
+	integer doy
+	real dt,xtu,tu
+        integer(2) vza(6366),vaa(6366)
+	real saa,sza,viewzenith,viewazimuth
+	integer ri,rj
+	integer wind,nbpixtot
 
 !initialisation for look up table
+	eps=1.
+        iaots=1
+  	ifast=0
        iverbose=0
        xtv=0.
        xfi=0.
@@ -255,6 +301,10 @@ c read the DEM
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,dem)
        write(6,*) "status", status
+       if (status.eq.-1) then
+       write(6,*) "Error reading CMGDEM.hdf "
+       stop
+       endif
        status = sfendacc(sds_id)
        write(6,*) "status sfendacc ",status
 c close HDF file
@@ -285,15 +335,20 @@ c read the RATIOFILE
        stride(1) = 1
        stride(2) = 1
 
-       sds_index = 0
+       sds_index = 3
        sds_id    = sfselect(sd_id, sds_index)
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,ratiob2)
        write(6,*) "status", status
+       if (status.eq.-1) then
+       write(6,*) " Error reading ratiomapndwiexp.hdf"
+       stop
+       endif
+       
        status = sfendacc(sds_id)
        write(6,*) "status sfendacc ",status
        
-       sds_index = 1
+       sds_index = 2
        sds_id    = sfselect(sd_id, sds_index)
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,ratiob1)
@@ -317,14 +372,14 @@ c read the RATIOFILE
        status = sfendacc(sds_id)
        write(6,*) "status sfendacc ",status
        
-       sds_index = 18
+       sds_index = 21
        sds_id    = sfselect(sd_id, sds_index)
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,slpratiob1)
        write(6,*) "status", status
        status = sfendacc(sds_id)
        write(6,*) "status sfendacc ",status
-       sds_index = 19
+       sds_index = 22
        sds_id    = sfselect(sd_id, sds_index)
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,intratiob1)
@@ -339,14 +394,14 @@ c read the RATIOFILE
 
 
 
-       sds_index = 15
+       sds_index = 24
        sds_id    = sfselect(sd_id, sds_index)
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,slpratiob2)
        write(6,*) "status", status
        status = sfendacc(sds_id)
        write(6,*) "status sfendacc ",status
-       sds_index = 16
+       sds_index = 25
        sds_id    = sfselect(sd_id, sds_index)
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,intratiob2)
@@ -406,23 +461,64 @@ C Read ozone and water vapor
 	pi=atan(1.)*4.
 	cpi=pi
 	read(5,*) ihdf
-	if (ihdf.ne.0) then
-	read(5,'(A100)') filenamehdf
-	read(5,'(A100)') filenameanc
+	if (ihdf.eq.2) then
+	read(5,'(A200)') filenamehdf
+	read(5,'(A200)') filenameanc
 	read(5,*) xts,xfs
 	read(5,*) utmzone,row0,col0,y0,x0
+	frln=1
+	frcl=1
+	write(fileout,'(A200)') "correcteddata.hdf"
+c
 	else
 c the input format is tiff
+c read the geometry file
+        sd_id= sfstart("l8geom.hdf",DFACC_READ)
+        write(6,*) "sd_id",sd_id
+	nr=1
+	nc=6366
+        start(1)=0
+        start(2) = 0
+        edges(1) = nc
+        edges(2) = nr
+        stride(1) = 1
+        stride(2) = 1
+        sds_index = 0
+        sds_id    = sfselect(sd_id, sds_index)
+        status = sfrdata(sds_id, start, stride, edges,vza)
+        write(6,*) "status", status
+	if (status.ne.0) then
+	write(6,*) "error reading l8geom.hdf"
+	stop
+	endif
+        status=sfendacc(sds_id)
+ 	write(6,*) "status sfendacc ",status
+        sds_index = 1
+        sds_id    = sfselect(sd_id, sds_index)
+        status = sfrdata(sds_id, start, stride, edges,vaa)
+        write(6,*) "status", status
+        status=sfendacc(sds_id)
+ 	write(6,*) "status sfendacc ",status
+        status = sfend(sd_id)
+c read the input files	
 	do i=1,12
-	read(5,'(A100)') filename(i)
+	read(5,'(A200)') filename(i)
 	enddo
 	read(5,'(A100)') filenameanc
 	read(5,*) nr,nc,nrp,ncp
 	read(5,*) xts,xfs
 	read(5,*) utmzone,row0,col0,y0,x0
+	read(5,*) doy,hour,xmin,sec
+	tu=hour+(xmin/60.)+(sec/60./60.)
 	read(5,'(A200)') pfileout
+	if (ihdf.eq.3) then
+	read(5,*) frln,lrln,frcl,lrcl
+	read(5,*) c1i,c1j,c2i,c2j,c3i,c3j,c4i,c4j
+	else
 	read(5,*,end=19) frln,lrln,frcl,lrcl
+	endif
  19     continue
+ 
         if (frln.eq.0) then
 	write(fileout,'(A200)') pfileout
 	frln=1
@@ -469,6 +565,10 @@ c	stop
        write(6,*) "sds_id", sds_id
        status = sfrdata(sds_id, start, stride, edges,oz)
        write(6,*) "status", status
+       if (status.eq.-1) Then
+       write(6,*) "Error reading ",fname
+       stop
+       endif
        status = sfendacc(sds_id)
        write(6,*) "status sfendacc ",status
        sds_index = 2
@@ -508,7 +608,7 @@ C update to get the parameter of the scene center
 	write(6,*) xts,xtv,xfi
        
 c open HDF subset
-        if  (ihdf.ne.0) then
+        if  (ihdf.eq.2) then
         ii=index(filenamehdf," ")-1
         fname=filenamehdf(1:ii)
         sd_id= sfstart(fname,DFACC_READ)
@@ -523,11 +623,22 @@ c open HDF subset
        write(6,*) dim_sizes(1),dim_sizes(2)
        nc= dim_sizes(1)
        nr=dim_sizes(2)
+	frln=1
+	lrln=nr
+	frcl=1
+	lrcl=nc
+	row0=row0-nr/2
+	col0=col0-nc/2
        endif 
        
-       
+       if (ihdf.eq.3) then
+       nci=lrcl-frcl+1
+       nri=lrln-frln+1
+       else
        nci=nc
        nri=nr
+       endif
+       
        allocate(band(nci,nri),STAT=als)
        write(6,*) "allocate status ",als
 c change nc,nr to subset size
@@ -538,9 +649,13 @@ c change nc,nr to subset size
        write(6,*) "allocate status ",als
        allocate(aerob2(nc,nr),STAT=als)
        write(6,*) "allocate status ",als
+       allocate(aerob3(nc,nr),STAT=als)
+       write(6,*) "allocate status ",als
        allocate(aerob4(nc,nr),STAT=als)
        write(6,*) "allocate status ",als
        allocate(aerob5(nc,nr),STAT=als)
+       write(6,*) "allocate status ",als
+       allocate(aerob6(nc,nr),STAT=als)
        write(6,*) "allocate status ",als
        allocate(aerob7(nc,nr),STAT=als)
        write(6,*) "allocate status ",als
@@ -558,7 +673,12 @@ c change nc,nr to subset size
        allocate(tozi(nc,nr),STAT=als)
        allocate(tp(nc,nr),STAT=als)
        allocate(taero(nc,nr),STAT=als)
+       allocate(taeros(nc,nr),STAT=als)
+       allocate(tepss(nc,nr),STAT=als)
+       allocate(tclears(nc,nr),STAT=als)
+       allocate(taerost(nc,nr),STAT=als)
        allocate(taero3(nc,nr),STAT=als)
+       allocate(teps(nc,nr),STAT=als)
        allocate(tresi(nc,nr),STAT=als)
        allocate(tratiob1(nc,nr),STAT=als)
        allocate(tratiob2(nc,nr),STAT=als)
@@ -566,12 +686,20 @@ c change nc,nr to subset size
        allocate(tnit(nc,nr),STAT=als)
        allocate(cloud(nc,nr),STAT=als)
        allocate(ipflag(nc,nr),STAT=als)
+       allocate(aerimp(nc,nr),STAT=als)
+       allocate(smflag(nc,nr),STAT=als)
        allocate(slprb1(nc,nr),STAT=als)
        allocate(intrb1(nc,nr),STAT=als)
        allocate(slprb2(nc,nr),STAT=als)
        allocate(intrb2(nc,nr),STAT=als)
        allocate(slprb7(nc,nr),STAT=als)
        allocate(intrb7(nc,nr),STAT=als)
+c saving angles if subset or validation mode (ihdf=3) 
+      if ((ihdf.eq.3).or.(frln.ne.0)) then
+       allocate(ttts(nc,nr),STAT=als)
+       allocate(tttv(nc,nr),STAT=als)
+       allocate(ttfi(nc,nr),STAT=als)
+       endif   
 c initialize cloud mask
       do i=1,nc
       do j=1,nr
@@ -579,7 +707,7 @@ c initialize cloud mask
       enddo
       enddo
        
-       if (ihdf.ne.0) then     
+       if (ihdf.eq.2) then     
        start(1)=0
        start(2) = 0
        edges(1) = nci
@@ -600,30 +728,134 @@ c read band 12 first
 	 ib=12
 	 ii=index(filename(ib)," ")-1
 	 write(6,*) "reading ",filename(ib)(1:ii)
+c compute the offset	 
+          if (ihdf.eq.3) then
+	  open(1,file=filename(ib)(1:ii),form='UNFORMATTED',action='READ',access='DIRECT',recl=2*nci*nri+552)
+	  read(1,rec=1) padding2,((band(i,j),i=1,nci),j=1,nri)
+	  close(1)
+	  write(6,*) "QA BAND  150,150",band(150,150)
+	  else
 	  open(1,file=filename(ib)(1:ii),form='UNFORMATTED',action='READ',access='DIRECT',recl=2*nci*nri+8)
-	  read(1,rec=1) padding,((band(i,j),i=1,nci),j=1,nri)
+	  read(1,rec=1) padding1,((band(i,j),i=1,nci),j=1,nri)
 	  close(1)
 	 endif
-	 
+	 endif
+c	 
+c look for the 4 corners of the image 
+       if (ihdf.eq.3) goto 561
+       if (ihdf.eq.2) goto 561
+       
+c read band 5 to determine image rotation
+          ib=5
+	  open(1,file=filename(ib)(1:ii),form='UNFORMATTED',action='READ',access='DIRECT',recl=2*nci*nri+8)
+	  read(1,rec=1) padding1,((band(i,j),i=1,nci),j=1,nri)
+	  close(1)
+       
+       flag=0
+       j=1
+       i=1
+       do while ((flag.eq.0).and.(j.le.nri)) 
+       if (band(i,j).ne.0) then
+       write(6,*) "first corner row,col",j,i
+       c1j=j
+       c1i=i
+       flag=1
+       endif
+       i=i+1
+       if (i.gt.nci) then
+       i=1
+       j=j+1
+       endif
+       enddo
+       
+       flag=0
+       j=1
+       i=nci
+       do while ((flag.eq.0).and.(i.ge.1)) 
+       if (band(i,j).ne.0) then
+       write(6,*) "second corner row,col",j,i
+       c2j=j
+       c2i=i
+       flag=1
+       endif
+       j=j+1
+       if (j.gt.nri) then
+       j=1
+       i=i-1
+       endif
+       enddo
+       
+       flag=0
+       j=nri
+       i=1
+       do while ((flag.eq.0).and.(j.ge.1)) 
+       if (band(i,j).ne.0) then
+       write(6,*) "third corner row,col",j,i
+       c3j=j
+       c3i=i
+       flag=1
+       endif
+       i=i+1
+       if (i.gt.nci) then
+       i=1
+       j=j-1
+       endif
+       enddo
+                  
+       flag=0
+       j=nri
+       i=1
+       do while ((flag.eq.0).and.(i.le.nci)) 
+       if (band(i,j).ne.0) then
+       write(6,*) "fourth corner row,col",j,i
+       c4j=j
+       c4i=i
+       flag=1
+       endif
+       j=j-1
+       if (j.le.1) then
+       j=nri
+       i=i+1
+       endif
+       enddo
+c restore band12        
+          ib=12
+	  open(1,file=filename(ib)(1:ii),form='UNFORMATTED',action='READ',access='DIRECT',recl=2*nci*nri+8)
+	  read(1,rec=1) padding1,((band(i,j),i=1,nci),j=1,nri)
+	  close(1)
+       
+  561  continue
+c
+C compute scene center and image rotation
+       sci=(c1i+c2i+c3i+c4i)/4.
+       scj=(c1j+c2j+c3j+c4j)/4.
+       write(6,*) "scene center row,col",scj,sci
+       rotang=atan((c2j-c1j)/(c2i-c1i))*180./pi
+       write(6,*) "scene rotation degree",rotang
+
+
+         if (ihdf.eq.3) then
+         do i=1,nci
+	 do j=1,nri
+	 sband(ib,i,j)=band(i,j)
+	 enddo
+	 enddo
+	 else
          do i=frcl,lrcl
 	 do j=frln,lrln
 	 k=i-frcl+1
 	 l=j-frln+1
 	 sband(ib,k,l)=band(i,j)
-c	 if ((.NOT.btest(band(i,j),4)).and.(btest(band(i,j),5))) then
-c	 write(6,*) " could be water "
-c	 cloud(i,j)=-128
-c	 endif
 	 enddo
 	 enddo
-	 
+	 endif
 	 
 c using scene center to compute atmospheric parameter
-	 row=frln+nr/2
-	 col=frcl+nc/2
+	 row=frln+nr/2+row0
+	 col=frcl+nc/2+col0
+c 
+     	 
 	 call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
-	 tlat(i,j)=lat
-	 tlon(i,j)=lon
 	 ycmg=(89.975-lat)/0.05+1.
 	 xcmg=(179.975+lon)/0.05+1
 	 icmg=int(ycmg+0.5)
@@ -650,7 +882,10 @@ c using scene center to compute atmospheric parameter
 	do ib=1,11
 	if (ib.lt.9) then
 	iband=ib
-	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
+         do iaot=1,22
+	 raot550nm=aot550nm(iaot)
+	 eps=2.5
+	 call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
      s       aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
      s       sphalbt,normext,
@@ -660,26 +895,66 @@ c using scene center to compute atmospheric parameter
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
      s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
-          
+     s       err_msg,retval,eps)
+	 
+	     tbtgo(ib,iaot)=tgo
+	     tbroatm(ib,iaot)=roatm
+	     tbttatmg(ib,iaot)=ttatmg
+	     tbsatm(ib,iaot)=satm
+         enddo
+	  tgo=tbtgo(ib,2)
+	  roatm=tbroatm(ib,2)
+	  ttatmg=tbttatmg(ib,2)
+	  satm=tbsatm(ib,2)
          endif
 !computing parameter for atmospheric correction	
 	if (ib.ne.8) then
-	   if (ihdf.ne.0) then
+	   if (ihdf.eq.2) then
 	   sds_index=sdsind(ib)
            sds_id =sfselect(sd_id, sds_index)
            write(6,*) "sds_id", sds_id
-           status = sfrdata(sds_id, start, stride, edges,band)
+           status = sfrdata(sds_id, start, stride, edges,tpband)
            write(6,*) "status", status
            status=sfendacc(sds_id)
            write(6,*) "status sfendacc ",status
            else
  	  ii=index(filename(ib)," ")-1
 	  write(6,*) "reading ",filename(ib)(1:ii)
-	  open(1,file=filename(ib)(1:ii),form='UNFORMATTED',action='READ',access='DIRECT',recl=2*nci*nri+8)
-	  read(1,rec=1) padding,((band(i,j),i=1,nci),j=1,nri)
+	  if (ihdf.eq.3) then
+	  open(1,file=filename(ib)(1:ii),form='UNFORMATTED',action='READ',access='DIRECT',recl=2*nci*nri+552)
+	  read(1,rec=1) padding2,((band(i,j),i=1,nci),j=1,nri)
 	  close(1)
+	  else
+	  open(1,file=filename(ib)(1:ii),form='UNFORMATTED',action='READ',access='DIRECT',recl=2*nci*nri+8)
+	  read(1,rec=1) padding1,((band(i,j),i=1,nci),j=1,nri)
+	  close(1)
+          endif
 c calibrate band 1 to 9 except 8
+          if (ihdf.eq.3) then
+          if (ib.le.9) then
+             do i=1,nci
+	     do j=1,nri
+ 	     if (band(i,j).ge.0) then
+             rotoa=(band(i,j)*2.0000E-05)-0.1
+	     else
+	     rotoa=((65536+band(i,j))*2.0000E-05)-0.1
+	     endif
+	     row=j+row0-1+frln
+	     col=i+col0-1+frcl
+	     call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
+             ri=int(6366/2+(col-sci)*cos(-rotang*pi/180.)-(row-scj)*sin(-rotang*pi/180.))
+             rj=int((col-sci)*sin(-rotang*pi/180.)+(row-scj)*cos(-rotang*pi/180.))
+             dt=-(rj*32./6524.)/60./60.
+             xtu=tu+dt
+             call possolp(doy,xtu,lon,lat,sza,saa)
+             xmus=cos(sza*pi/180.)
+	     tpband(i,j)=int(rotoa*10000./xmus)
+	     enddo
+	     enddo
+	     endif
+c (ib.eq.9)	       
+	  else
+c (ihdf eq 3)	  
           if (ib.le.9) then
              do i=frcl,lrcl
 	     do j=frln,lrln
@@ -687,49 +962,81 @@ c calibrate band 1 to 9 except 8
              rotoa=(band(i,j)*2.0000E-05)-0.1
 	     else
 	     rotoa=((65536+band(i,j))*2.0000E-05)-0.1
-	      endif
+	     endif
      	     k=i-frcl+1
 	     l=j-frln+1
+             row=j+row0-1
+	     col=i+col0-1
+	     call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
+             ri=int(6366/2+(col-sci)*cos(-rotang*pi/180.)-(row-scj)*sin(-rotang*pi/180.))
+             rj=int((col-sci)*sin(-rotang*pi/180.)+(row-scj)*cos(-rotang*pi/180.))
+             dt=-(rj*32./6524.)/60./60.
+             xtu=tu+dt
+             call possolp(doy,xtu,lon,lat,sza,saa)
+             xmus=cos(sza*pi/180.)
 	     tpband(k,l)=int(rotoa*10000./xmus)
 	     enddo
 	     enddo
-	     endif  
+	     endif
+c ib.eq.9	       
           endif
-	  
+c ihdf eq 3	  
+	  endif
+c ib ne 8	  
 	  
 c call the atmospheric correction
              if (ib.lt.9) then	  
-	     do i=1,nc
-	     do j=1,nr
-	     if (sband(12,i,j).ne.1) then
-             rotoa=tpband(i,j)/10000.
-	     if (ib.eq.1) aerob1(i,j)=tpband(i,j)
-	     if (ib.eq.2) aerob2(i,j)=tpband(i,j)
-	     if (ib.eq.4) aerob4(i,j)=tpband(i,j)
-	     if (ib.eq.5) aerob5(i,j)=tpband(i,j)
-	     if (ib.eq.7) aerob7(i,j)=tpband(i,j)
-             roslamb=rotoa/tgo
- 	     roslamb=roslamb-roatm
- 	     roslamb=roslamb/ttatmg
- 	     roslamb=roslamb/(1.+satm*roslamb)
-	     sband(ib,i,j)=int(roslamb*10000.)
-	     btgo(ib)=tgo
-	     broatm(ib)=roatm
-	     bttatmg(ib)=ttatmg
-	     bsatm(ib)=satm
+	     	do i=1,nc
+	     	do j=1,nr
+	     	if (sband(12,i,j).ne.1) then
+             	   rotoa=tpband(i,j)/10000.
+	           if (ib.eq.1) aerob1(i,j)=tpband(i,j)
+	           if (ib.eq.2) aerob2(i,j)=tpband(i,j)
+	           if (ib.eq.3) aerob3(i,j)=tpband(i,j)
+	           if (ib.eq.4) aerob4(i,j)=tpband(i,j)
+	           if (ib.eq.5) aerob5(i,j)=tpband(i,j)
+	           if (ib.eq.6) aerob6(i,j)=tpband(i,j)
+	           if (ib.eq.7) aerob7(i,j)=tpband(i,j)
+                   roslamb=rotoa/tgo
+ 	           roslamb=roslamb-roatm
+ 	           roslamb=roslamb/ttatmg
+ 	           roslamb=roslamb/(1.+satm*roslamb)
+	           sband(ib,i,j)=int(roslamb*10000.)
+	           btgo(ib)=tgo
+	           broatm(ib)=roatm
+	           bttatmg(ib)=ttatmg
+     	           bsatm(ib)=satm
+	       else
+	           sband(ib,i,j)=-1000
+	       endif
+	       enddo
+	       enddo
 	     else
-	     sband(ib,i,j)=-1000
-	     endif
-	     enddo
-	     enddo
-	     else
-             do i=frcl,lrcl
-	     do j=frln,lrln
-     	     k=i-frcl+1
-	     l=j-frln+1
-	     sband(ib,k,l)=band(i,j)
-	     enddo
-	     enddo
+	        if (ihdf.eq.2) then
+                   do i=frcl,lrcl
+	           do j=frln,lrln
+     	           k=i-frcl+1
+	           l=j-frln+1
+	           sband(ib,k,l)=tpband(i,j)
+	           enddo
+	           enddo
+	        else
+		   if (ihdf.eq.3) then
+                      do i=1,nc
+	              do j=1,nr
+  	              sband(ib,i,j)=band(i,j)
+	              enddo
+	              enddo
+		   else
+                      do i=frcl,lrcl
+	              do j=frln,lrln
+     	              k=i-frcl+1
+	              l=j-frln+1
+	              sband(ib,k,l)=band(i,j)
+	              enddo
+	              enddo
+		   endif
+	         endif
 	   endif
 	   
 	   if (ib.eq.9) then
@@ -776,59 +1083,14 @@ c calibrate thermal bands
 	 enddo
 	 enddo
          write(6,*) "Finished calibrating Thermal"	 
+	 
 c compute lat,lon,rowcmg,colcmg,ozone,water vapor,pressure
 c skipping reading the aerosol product goto 111
-         goto 111
-         write(6,*) "reading aerosol data"
-         sd_id= sfstart('aerosoldata.hdf',DFACC_READ)
-	 dim_length(1)=nc
-	 dim_length(2)=nr
-	 comp_type=4
-	 comp_prm(1)=8
-	 rank=2
-	 dim_sizes(1)=nc
-	 dim_sizes(2)=nr
-         start(1) = 0
-         start(2) = 0
-          edges(1) = nc
-         edges(2) = nr
-         stride(1) = 1
-         stride(2) = 1
-       sds_index = 0
-       sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,taero3)
-       write(6,*) "status", status
-       status = sfendacc(sds_id)
-       write(6,*) "status sfendacc ",status
-       sds_index = 1
-       sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,taero)
-       write(6,*) "status", status
-       status = sfendacc(sds_id)
-       write(6,*) "status sfendacc ",status
-       sds_index = 2
-       sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,tresi)
-       write(6,*) "status", status
-       status = sfendacc(sds_id)
-       write(6,*) "status sfendacc ",status
-       sds_index = 3
-       sds_id    = sfselect(sd_id, sds_index)
-       write(6,*) "sds_id", sds_id
-       status = sfrdata(sds_id, start, stride, edges,ipflag)
-       write(6,*) "status", status
-       status = sfendacc(sds_id)
-       write(6,*) "status sfendacc ",status
-       status = sfend(sd_id)
-       write(6,*) "status sfend ",status
-111    continue
          do i=1,nc
 c	 write(6,*) " Processing column ",i
 	 if ((i-int(i/rstep)*rstep).eq.0) then
-	 write(6,*) " processing collumn ",i
+	 write(6,*) " processing collumn ",i 
+	 write(6,*) " iaots ",iaots
 	 endif
 	 do j=1,nr
 c	 goto 11
@@ -836,12 +1098,12 @@ c	 goto 11
 	 ipflag(i,j)=5
 	 goto 11
 	 endif
-c	 if ((j.eq.673).and.(i.eq.709)) then
-c	 write(6,*) "J'en tiens un"
-c	 endif
+	 if ((j.eq.673).and.(i.eq.709)) then
+	 write(6,*) "J'en tiens un"
+	 endif
 	 
-	 row=frln+(j-1)
-	 col=frcl+(i-1)
+	 row=frln+(j-1)+row0
+	 col=frcl+(i-1)+col0
 	 call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
 	 tlat(i,j)=lat
 	 tlon(i,j)=lon
@@ -849,8 +1111,8 @@ c	 endif
 	 xcmg=(179.975+lon)/0.05+1
 	 txcmg(i,j)=xcmg
 	 tycmg(i,j)=ycmg
-	 icmg=int(ycmg+0.5)
-	 jcmg=int(xcmg+0.5)
+c	 icmg=int(ycmg+0.5)
+c	 jcmg=int(xcmg+0.5)
 c         twv(i,j)=wv(jcmg,icmg)
 	 icmg=int(ycmg)
 	 jcmg=int(xcmg)
@@ -923,25 +1185,19 @@ c	 tresi(i,j)=-1.
 	 endif
 	 tp(i,j)=pres11*(1.-u)*(1.-v)+pres12*(1.-u)*v
      s	      +pres21*(1.-v)*u+pres22*u*v
-c testing for water     
-        if (1.eq.1) then
-c inverting aerosols	
-c filter cirrus 
-        if (sband(9,i,j).gt.(100./(tp(i,j)/1013.))) then
-	cloud(i,j)=cloud(i,j)+1
-	else
+
 c inverting aerosol	       
 	do ib=1,8
 	erelc(ib)=-1.
 	enddo
 	rb1=ratiob1(jcmg,icmg)/1000.
 	rb2=ratiob2(jcmg,icmg)/1000.
-	if ((abs((rb1-0.454878*rb2*rb2-0.459559*rb2)).gt.0.15).or.(ratiob7(jcmg,icmg).lt.1000)) then
+	if ((rb2.gt.0.6).or.(rb1.gt.0.55).or.(rb2.lt.0.1).or.(rb1.lt.0.1)) then
 	slpratiob1(jcmg,icmg)=0
 	slpratiob2(jcmg,icmg)=0
 	slpratiob7(jcmg,icmg)=0
-	intratiob1(jcmg,icmg)=327
-	intratiob2(jcmg,icmg)=482
+	intratiob1(jcmg,icmg)=550
+	intratiob2(jcmg,icmg)=600
 	intratiob7(jcmg,icmg)=2000
 	else
 	if (sndwi(jcmg,icmg).lt.200) then
@@ -956,12 +1212,12 @@ c inverting aerosol
 	
 	rb1=ratiob1(jcmg+1,icmg)/1000.
 	rb2=ratiob2(jcmg+1,icmg)/1000.
-	if ((abs((rb1-0.454878*rb2*rb2-0.459559*rb2)).gt.0.15).or.(ratiob7(jcmg+1,icmg).lt.1000)) then
+	if ((rb2.gt.0.6).or.(rb1.gt.0.55).or.(rb2.lt.0.1).or.(rb1.lt.0.1)) then
 	slpratiob1(jcmg+1,icmg)=0
 	slpratiob2(jcmg+1,icmg)=0
 	slpratiob7(jcmg+1,icmg)=0
-	intratiob1(jcmg+1,icmg)=327
-	intratiob2(jcmg+1,icmg)=482
+	intratiob1(jcmg+1,icmg)=550
+	intratiob2(jcmg+1,icmg)=600
 	intratiob7(jcmg+1,icmg)=2000
 	else
 	if (sndwi(jcmg+1,icmg).lt.200) then
@@ -976,12 +1232,12 @@ c inverting aerosol
 	
 	rb1=ratiob1(jcmg,icmg+1)/1000.
 	rb2=ratiob2(jcmg,icmg+1)/1000.
-	if ((abs((rb1-0.454878*rb2*rb2-0.459559*rb2)).gt.0.15).or.(ratiob7(jcmg,icmg+1).lt.1000)) then
+	if ((rb2.gt.0.6).or.(rb1.gt.0.55).or.(rb2.lt.0.1).or.(rb1.lt.0.1)) then
 	slpratiob1(jcmg,icmg+1)=0
 	slpratiob2(jcmg,icmg+1)=0
 	slpratiob7(jcmg,icmg+1)=0
-	intratiob1(jcmg,icmg+1)=327
-	intratiob2(jcmg,icmg+1)=482
+	intratiob1(jcmg,icmg+1)=550
+	intratiob2(jcmg,icmg+1)=600
 	intratiob7(jcmg,icmg+1)=2000
 	else
 	if (sndwi(jcmg,icmg+1).lt.200) then
@@ -996,12 +1252,13 @@ c inverting aerosol
 
 	rb1=ratiob1(jcmg+1,icmg+1)/1000.
 	rb2=ratiob2(jcmg+1,icmg+1)/1000.
-	if ((abs((rb1-0.454878*rb2*rb2-0.459559*rb2)).gt.0.15).or.(ratiob7(jcmg+1,icmg+1).lt.1000)) then
+
+	if ((rb2.gt.0.6).or.(rb1.gt.0.55).or.(rb2.lt.0.1).or.(rb1.lt.0.1)) then
 	slpratiob1(jcmg+1,icmg+1)=0
 	slpratiob2(jcmg+1,icmg+1)=0
 	slpratiob7(jcmg+1,icmg+1)=0
-	intratiob1(jcmg+1,icmg+1)=327
-	intratiob2(jcmg+1,icmg+1)=482
+	intratiob1(jcmg+1,icmg+1)=550
+	intratiob2(jcmg+1,icmg+1)=600
 	intratiob7(jcmg+1,icmg+1)=2000
 	else
 	if (sndwi(jcmg+1,icmg+1).lt.200) then
@@ -1077,24 +1334,42 @@ c inverting aerosol
 	troatm(7)=aerob7(i,j)/10000.
 	iband1=4
 	iband3=1 
-	if ((i.eq.238).and.(j.eq.69)) then
+	pres=tp(i,j)
+	uoz=tozi(i,j)
+	uwv=twvi(i,j)
+	if (((i.eq.2).and.(j.eq.1)).or.((i.eq.10000).and.(j.eq.10000))) then
 	write(6,*) "aeroband1 ",aerob1(i,j)
        write(6,*) i,j,xts,xtv,xfi,pres,uoz,uwv,erelc(1),erelc(2),erelc(7),
      s	troatm(1),troatm(2),troatm(4),troatm(7),iband1,iband3,tratiob1(i,j)
+        iverbose=1
+	else
+	iverbose=0
         endif
-c skipping the aerosol inversion goto 11
-c       goto 11
 
-c       if (btest(cloud(i,j),wat)) then
-c       fndvi=dble(sband(5,i,j)-sband(4,i,j))/dble(sband(5,i,j)+sband(4,i,j))
-c       if (fndvi.lt.0.1) then
-c       taero(i,j)=0.05
-c       tresi(i,j)=0.0
-c       ipflag(i,j)=4
-c       goto 11
-c       endif
-c       endif
-       call subaeroret(iband1,iband3,xts,xtv,xfi,pres,uoz,uwv,erelc,troatm,
+       ifast=0
+       eps=1.0
+       iaots=1
+	 row=frln+(j-1)+row0
+	 col=frcl+(i-1)+col0
+	 call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
+       ri=int(6366/2+(col-sci)*cos(-rotang*pi/180.)-(row-scj)*sin(-rotang*pi/180.))
+       rj=int((col-sci)*sin(-rotang*pi/180.)+(row-scj)*cos(-rotang*pi/180.))
+       dt=-(rj*32./6524.)/60./60.
+       if (ri.lt.1) ri=1
+       if (ri.gt.6366) ri=6366
+       viewzenith=vza(ri)
+       viewazimuth=vaa(ri)
+       xtu=tu+dt
+       call possolp(doy,xtu,lon,lat,sza,saa)
+       xtv=viewzenith/100.
+       xts=sza
+       xfi=saa-(viewazimuth/100.)
+       if ((ihdf.eq.3).or.(frln.ne.0)) then
+       ttts(i,j)=int(xts*100.)
+       tttv(i,j)=int(xtv*100.)
+       ttfi(i,j)=int(xfi*100.)
+       endif
+       call subaeroretv3(iband1,iband3,xts,xtv,xfi,pres,uoz,uwv,erelc,troatm,
      c       tpres,aot550nm,rolutt,
      s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
      s       sphalbt,normext,
@@ -1102,16 +1377,112 @@ c       endif
      s       tauray,
      s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
      s       ogtransc0,ogtransc1,
-     s       wvtransa,wvtransb,wvtransc,oztransa,iverbose,raot,residual,nit,next)
-     
-c         write(6,*) "aero retrieved " ,i,j,raot,residual
+     s       wvtransa,wvtransb,wvtransc,oztransa,iverbose,raot,residual,nit,next,ierr,
+     s       ifast,tbtgo,tbroatm,tbttatmg,tbsatm,iaots,eps)
+     	 if (iverbose.eq.1) then
+         write(6,*) "aero retrieved i,j,raot,eps,residual" ,i,j,raot,eps,residual
+	 endif
+	 eps1=eps
+	 residual1=residual
+	 sraot1=raot
+	 
+       eps=1.75
+       call subaeroretv3(iband1,iband3,xts,xtv,xfi,pres,uoz,uwv,erelc,troatm,
+     c       tpres,aot550nm,rolutt,
+     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
+     s       sphalbt,normext,
+     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
+     s       tauray,
+     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
+     s       ogtransc0,ogtransc1,
+     s       wvtransa,wvtransb,wvtransc,oztransa,iverbose,raot,residual,nit,next,ierr,
+     s       ifast,tbtgo,tbroatm,tbttatmg,tbsatm,iaots,eps)
+     	 if (iverbose.eq.1) then
+         write(6,*) "aero retrieved i,j,raot,eps,residual" ,i,j,raot,eps,residual
+	 endif
+	 eps2=eps
+	 residual2=residual
+	 sraot2=raot
+	 
+       eps=2.5
+       call subaeroretv3(iband1,iband3,xts,xtv,xfi,pres,uoz,uwv,erelc,troatm,
+     c       tpres,aot550nm,rolutt,
+     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
+     s       sphalbt,normext,
+     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
+     s       tauray,
+     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
+     s       ogtransc0,ogtransc1,
+     s       wvtransa,wvtransb,wvtransc,oztransa,iverbose,raot,residual,nit,next,ierr,
+     s       ifast,tbtgo,tbroatm,tbttatmg,tbsatm,iaots,eps)
+     	 if (iverbose.eq.1) then
+         write(6,*) "aero retrieved i,j,raot,eps,residual" ,i,j,raot,eps,residual
+	 endif
+	 eps3=eps
+	 residual3=residual
+	 sraot3=raot
+	 
+c find eps that minimize the residual	 
+	xa=(eps1*eps1)-(eps3*eps3)
+	xd=(eps2*eps2)-(eps3*eps3)
+    	xb=(eps1-eps3)
+	xe=(eps2-eps3)
+	xc=residual1-residual3
+	xf=residual2-residual3
+	coefa=(xc*xe-xb*xf)/(xa*xe-xb*xd)
+	coefb=(xa*xf-xc*xd)/(xa*xe-xb*xd)
+	epsmin=-coefb/(2*coefa)
+       eps=epsmin
+       if ((epsmin.ge.1.0).and.(epsmin.le.2.5)) then
+       eps=epsmin
+       call subaeroretv3(iband1,iband3,xts,xtv,xfi,pres,uoz,uwv,erelc,troatm,
+     c       tpres,aot550nm,rolutt,
+     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
+     s       sphalbt,normext,
+     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
+     s       tauray,
+     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
+     s       ogtransc0,ogtransc1,
+     s       wvtransa,wvtransb,wvtransc,oztransa,iverbose,raot,residual,nit,next,ierr,
+     s       ifast,tbtgo,tbroatm,tbttatmg,tbsatm,iaots,eps)
+         else
+	 if (epsmin.le.1.0) then
+	 eps=eps1
+	 residual=residual1
+	 raot=sraot1
+	 endif
+	 if (epsmin.ge.2.5) then
+	 eps=eps3
+	 residual=residual3
+	 raot=sraot3
+	 endif
+	 endif
+	 
+     	 if (iverbose.eq.1) then
+         write(6,*) "aero retrieved i,j,raot,eps,residual" ,i,j,raot,eps,residual
+	 endif
+	
+	 
 c	 endif
+         if (ierr.eq.1) then
+	 write(6,*) "problem in subaeroretv3 at i,j ",i,j
+	 endif
          
          tnit(i,j)=nit
 	 taero3(i,j)=next*raot
+	 teps(i,j)=eps
          corf=raot/xmus
+	 taero(i,j)=raot
+	 
+	 
+	 
 c         if (residual.lt.((0.015+0.005*corf)*aerob7(i,j)/300.)) then
-         if (residual.lt.((0.010+0.005*corf)*1.)) then
+c         if (troatm(7).gt.0.05) then
+c	 corfb=troatm(7)/0.05
+c	 else
+	 corfb=1.
+c	 endif
+         if (residual.lt.((0.015+0.005*corf+0.10*troatm(7))*corfb)) then
 c test if band5 makes sense
 	 
 	iband=5
@@ -1127,7 +1498,7 @@ c test if band5 makes sense
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
      s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
+     s       err_msg,retval,eps)
         ros5=roslamb
 	iband=4
 	rotoa=aerob4(i,j)/10000.
@@ -1142,130 +1513,490 @@ c test if band5 makes sense
      s       ogtransc0,ogtransc1,
      s       wvtransa,wvtransb,wvtransc,oztransa,     
      s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
+     s       err_msg,retval,eps)
          ros4=roslamb
          if ((ros5.gt.0.1).and.((ros5-ros4)/(ros4+ros5).gt.0)) then
 	 taero(i,j)=raot
 	 tresi(i,j)=residual
+	 ipflag(i,j)=0
 	 else
+c this is water the retrieval needs to be redone
 	 taero(i,j)=raot
+
 	 tresi(i,j)=residual
-	 ipflag(i,j)=2
+	 ipflag(i,j)=-1
 	 endif
 	 
 	 else
 	 taero(i,j)=raot
 	 tresi(i,j)=residual
-	 ipflag(i,j)=3
+	 ipflag(i,j)=-1
 	 endif
-c endif of else cirrus.	 
+	 
+c redo the retrieval if water 	 
+        if (ipflag(i,j).eq.-1) then
+	do ib=1,8
+	erelc(ib)=-1.
+	enddo
+	troatm(1)=aerob1(i,j)/10000.
+	troatm(4)=aerob4(i,j)/10000.
+	troatm(5)=aerob5(i,j)/10000.
+	troatm(7)=aerob7(i,j)/10000.
+	iband1=4
+        erelc(7)=1.0
+        erelc(5)=1.0
+        erelc(4)=1.0
+        erelc(1)=1.0
+	
+	pres=tp(i,j)
+	uoz=tozi(i,j)
+	uwv=twvi(i,j)
+	if (((i.eq.408).and.(j.eq.254))) then
+	write(6,*) "aeroband1 ",aerob1(i,j)
+       write(6,*) i,j,xts,xtv,xfi,pres,uoz,uwv,erelc(1),erelc(2),erelc(7),
+     s	troatm(1),troatm(2),troatm(4),troatm(7),iband1,iband3,tratiob1(i,j)
+        iverbose=1
+	else
+	iverbose=0
+        endif
+
+       ifast=0
+	 
+       eps=1.5
+       iaots=1
+       call subaeroretwat(iband1,iband3,xts,xtv,xfi,pres,uoz,uwv,erelc,troatm,
+     c       tpres,aot550nm,rolutt,
+     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
+     s       sphalbt,normext,
+     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
+     s       tauray,
+     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
+     s       ogtransc0,ogtransc1,
+     s       wvtransa,wvtransb,wvtransc,oztransa,iverbose,raot,residual,nit,next,ierr,
+     s       ifast,tbtgo,tbroatm,tbttatmg,tbsatm,iaots,eps)
+     	 if (iverbose.eq.1) then
+         write(6,*) "aero retrieved i,j,raot,eps,residual" ,i,j,raot,eps,residual
 	 endif
-c endif not water pixel	 
+	 
+     	 if (iverbose.eq.1) then
+         write(6,*) "aero retrieved i,j,raot,eps,residual" ,i,j,raot,eps,residual
 	 endif
-c here to skip fill value
+	
+	 
+c	 endif
+         tnit(i,j)=nit
+	 taero3(i,j)=next*raot
+	 teps(i,j)=eps
+         corf=raot/xmus
+	 taero(i,j)=raot
+	 tresi(i,j)=residual
+c test band 1 reflectance eliminate negative	 
+	iband=1
+	rotoa=aerob1(i,j)/10000.
+	raot550nm=raot
+	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
+     s       aot550nm,rolutt,
+     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
+     s       sphalbt,normext,
+     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
+     s       uoz,uwv,tauray,
+     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
+     s       ogtransc0,ogtransc1,
+     s       wvtransa,wvtransb,wvtransc,oztransa,     
+     s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
+     s       err_msg,retval,eps)
+        rosband1=roslamb
+	 
+	 
+	 
+         if ((residual.gt.((0.010+0.005*corf))).or.(rosband1.lt.0)) then
+c 	 write(6,*) "problem in subaeroretwat at i,j ",i,j
+         ipflag(i,j)=2
+          else         
+         tnit(i,j)=nit
+	 taero3(i,j)=next*raot
+	 teps(i,j)=eps
+         corf=raot/xmus
+	 taero(i,j)=raot
+	 tresi(i,j)=residual
+	 endif
+  	 endif 
+	 
+
 
  11      continue	 
 	 enddo
 	 enddo
-c saved the aerosol product,residual and ipflag for future debugging	
-         goto 777 
-         write(6,*) "saving aerosol data"
-         sd_id= sfstart('aerosoldata.hdf',DFACC_CREATE)
-	 dim_length(1)=nc
-	 dim_length(2)=nr
-	 comp_type=4
-	 comp_prm(1)=8
-	 rank=2
-	 dim_sizes(1)=nc
-	 dim_sizes(2)=nr
-         start(1) = 0
-         start(2) = 0
-          edges(1) = nc
-         edges(2) = nr
-         stride(1) = 1
-         stride(2) = 1
-	 write(sds_name,'(A11)') "taero-band1"
-	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-	 status=sfwdata(sds_id,start,stride,edges,taero3)
-	write(6,*) "status sfwdata ",status
-	 status = sfendacc(sds_id)
-	 write(sds_name,'(A5)') "taero"
-	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-	 status=sfwdata(sds_id,start,stride,edges,taero)
-	write(6,*) "status sfwdata ",status
-	 status = sfendacc(sds_id)
-	 write(sds_name,'(A5)') "tresi"
-	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-	 status=sfwdata(sds_id,start,stride,edges,tresi)
-	write(6,*) "status sfwdata ",status
-	 status = sfendacc(sds_id)
-         write(sds_name,'(A6)') "IPFLAG"
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_UINT8,rank,dim_sizes)
-         status=sfwdata(sds_id,start,stride,edges,ipflag)
-	 write(6,*) "status sfwdata ",status
-         status = sfendacc(sds_id)
-         status = sfend(sd_id) 	 
-	 write(6,*) "status sfend ",status
- 777     continue	 
-	 
-	 
-	 
-c refine the cloud mask 	
-c compute the average temperature of the clear non water non filled data
+
+c before interpolation increase the interpolation to neighbourring pixels (3x3?)
+c not sure this is needed
+c       goto 1001
+       do j=1,nr
+       do i=1,nc
+       if ((ipflag(i,j).gt.1).and.(ipflag(i,j).lt.5)) then
+       do k=i-2,i+2
+       do l=j-2,j+2
+       if ((k.ge.1).and.(l.ge.1).and.(k.le.nc).and.(l.le.nr)) then
+       if (ipflag(k,l).eq.0) ipflag(k,l)=9
+       endif
+       enddo
+       enddo
+       endif
+       enddo
+       enddo
+       
+       do j=1,nr
+       do i=1,nc
+       if (ipflag(i,j).eq.9) ipflag(i,j)=2
+       enddo
+       enddo
+c
+c average the aerosol 10x10 for valid value
+       nbpixnf=0
+       nbpixtot=0
+       do j=1,nr
+       do i=1,nc
+       smflag(i,j)=0
+       if(sband(12,i,j).ne.1) then
+       nbpixtot=nbpixtot+1
+       taeroavg=0.
+       tepsavg=0.
+       nbaeroavg=0
+       do k=max(j-5,1),min(j+5,nr)
+       do l=max(i-5,1),min(i+5,nc)
+c       if (j.le.5) write(6,*) "i,j,k ",i,j,k
+       if ((ipflag(l,k).eq.0).or.(ipflag(l,k).eq.-1)) then
+       nbaeroavg=nbaeroavg+1
+       taeroavg=taero(l,k)+taeroavg
+       tepsavg=teps(l,k)+tepsavg
+       endif
+       enddo
+       enddo
+c       if (j.le.5) write(6,*) "i,j,nbaeroavg",i,j,nbaeroavg
+       if (nbaeroavg.gt.20) then
+       taeroavg=taeroavg/nbaeroavg
+       tepsavg=tepsavg/nbaeroavg
+       taeros(i,j)=taeroavg
+       tepss(i,j)=tepsavg
+       smflag(i,j)=1
+       else
+c       write(6,*) "Pixels at i,j not filled",i,j
+       nbpixnf=nbpixnf+1
+       endif
+       endif
+       enddo
+       enddo       
+       
+       if (nbpixnf.eq.nbpixtot) then
+        do j=1,nr
+       do i=1,nc
+       if(sband(12,i,j).ne.1) then
+       taeros(i,j)=0.05
+       tepss(i,j)=1.5
+       smflag(i,j)=1
+       endif
+       enddo
+       enddo
+       goto 121
+       endif
+       
+       
+       write(6,*) "Second Pass"
+c while nbpixnf.ne.0  
+       ipass=2
+       wind=5
+       do while (nbpixnf.ne.0) 
+       write(6,*) " Pass number ",ipass, "nbpixnf ",nbpixnf     
+       nbpixnf=0
+       do j=1,nr
+       do i=1,nc
+       if((sband(12,i,j).ne.1).and.(smflag(i,j).eq.0)) then
+       tepsavg=0.
+       taeroavg=0.
+       nbaeroavg=0
+       do k=max(j-wind,1),min(j+wind,nr)
+       do l=max(i-wind,1),min(i+wind,nc)
+       if (smflag(l,k).eq.1) then
+       nbaeroavg=nbaeroavg+1
+       taeroavg=taeros(l,k)+taeroavg
+       tepsavg=tepss(l,k)+tepsavg
+      endif
+       enddo
+       enddo
+       if (nbaeroavg.gt.0) then
+       taeroavg=taeroavg/nbaeroavg
+       tepsavg=tepsavg/nbaeroavg
+       taeros(i,j)=taeroavg
+       tepss(i,j)=tepsavg
+       smflag(i,j)=1
+       else
+c       write(6,*) "Second pass Pixels at i,j not filled",i,j
+       nbpixnf=nbpixnf+1
+       endif
+       endif
+       enddo
+       enddo   
+       ipass=ipass+1
+c       wind=wind+10
+       enddo    
+       
+       
+c end of averaging 
+
+c
+ 121   continue
+       do j=1,nr
+       do i=1,nc
+       if ((i.eq.408).and.(j.eq.254)) then
+       write(6,*) "verbose on in interpolation ",i,j,ipflag(i,j)
+       iverbose=1
+       else
+       iverbose=0
+       endif
+       
+        if ((ipflag(i,j).gt.1).and.(.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))
+     s    .and.(ipflag(i,j).lt.5)) then
+       taero(i,j)=taeros(i,j)
+       teps(i,j)=tepss(i,j)
+       ipflag(i,j)=1
+       endif
+       enddo
+       enddo
+       
+ 2005  continue     
+c
+
+            
+
+
+
+
+           	 
+c perform the correction
+ 1001     continue
+	  rstepc=rstep*5
+          do ib=1,7
+	  do i=1,nc
+	 if ((i-int(i/rstepc)*rstepc).eq.0) then
+	 write(6,*) " atmospheric correction collumn ",i," band ",ib
+	 endif
+	  do j=1,nr
+	 row=frln+(j-1)+row0
+	 col=frcl+(i-1)+col0
+	 call utmtodeg(utmzone,row,col,x0,y0,gsize,lat,lon)
+       ri=int(6366/2+(col-sci)*cos(-rotang*pi/180.)-(row-scj)*sin(-rotang*pi/180.))
+       rj=int((col-sci)*sin(-rotang*pi/180.)+(row-scj)*cos(-rotang*pi/180.))
+       dt=-(rj*32./6524.)/60./60.
+       if (ri.lt.1) ri=1
+       if (ri.gt.6366) ri=6366
+       viewzenith=vza(ri)
+       viewazimuth=vaa(ri)
+       xtu=tu+dt
+       call possolp(doy,xtu,lon,lat,sza,saa)
+       xtv=viewzenith/100.
+       xts=sza
+       xfi=saa-(viewazimuth/100.)
+	  
+c	  write(6,*) "i , j",i,j,tresi(i,j)
+	  if (sband(12,i,j).ne.1) then
+	  if ((.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))) then
+	  rsurf=sband(ib,i,j)/10000.
+	  rotoa=(rsurf*bttatmg(ib)/(1.-bsatm(ib)*rsurf)+broatm(ib))*btgo(ib)
+	  if (ib.eq.1) then
+c	  write(6,*) "band 1", aerob1(i,j),rotoa
+	  endif
+	  raot550nm=taero(i,j)
+	  eps=teps(i,j)
+	  pres=tp(i,j)
+	  uwv=twvi(i,j)
+	  uoz=tozi(i,j)
+	  iband=ib
+c	  write(6,*) xts,xtv,xfi,raot550nm,iband,pres,uoz,uwv,tauray
+	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
+     s       aot550nm,rolutt,
+     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
+     s       sphalbt,normext,
+     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
+     s       uoz,uwv,tauray,
+     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
+     s       ogtransc0,ogtransc1,
+     s       wvtransa,wvtransb,wvtransc,oztransa,     
+     s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
+     s       err_msg,retval,eps)
+          if ((i.eq.676).and.(j.eq.383)) then
+	  iverbose=1
+	  write(6,*) "  test on negative i,j,rotoa,roslamb ",i,j,rotoa,roslamb," tauaero ",taero(i,j) 
+	  else
+	  iverbose=0
+	  endif
+          if ((i.eq.2111).and.(j.eq.4123)) then
+	  write(6,*) "roslamb ",roslamb," tauaero ",taero(i,j) 
+	  endif
+          if (ib.eq.1) then
+c endif or refining optical depth
+c set up aerosol QA
+c          write(6,*) "SETTING UP aerosol qa BITS and aerosol impact
+          aerimp(i,j)=min(int(abs(rsurf-roslamb)*1000),255)
+          if (abs(rsurf-roslamb).le.0.015) then
+	    cloud(i,j)=cloud(i,j)+16	
+	    else
+	    if   (abs(rsurf-roslamb).lt.0.03) then
+	          cloud(i,j)=cloud(i,j)+32
+	          else
+	          cloud(i,j)=cloud(i,j)+48
+	          endif
+	    endif
+	  endif
+C endif of ib=1	  
+	  
+	  sband(ib,i,j)=int(roslamb*10000.)
+	  endif
+	  endif
+	  enddo
+	  enddo
+	  enddo
+c update the cloud mask
            nbval=0
 	   nbclear=0  
 	   mclear=0.
 	   mall=0.
-	  
-           do i=1,nc
-	   do j=1,nr
-	   if (sband(12,i,j).ne.1) then
-	   nbval=nbval+1
-	   mall=mall+(sband(10,i,j)/10.)
-	   if ((.not.btest(cloud(i,j),cir)).and.(sband(5,i,j).gt.300)) then
-	   anom=sband(2,i,j)-sband(4,i,j)/2.
-	   if (anom.lt.300) then
+	   
+ 	  do i=1,nc
+ 	  do j=1,nr
+	  xndsi=(sband(3,i,j)-sband(6,i,j))*1.0/(sband(3,i,j)+sband(6,i,j))
+          if (sband(12,i,j).ne.1) then
+	  if ((tresi(i,j).gt.0.05).and.((sband(10,i,j)/10.).lt.305.)) then
+	      cloud(i,j)=cloud(i,j)+2
+	      else
 	   nbclear=nbclear+1
 	   mclear=mclear+(sband(10,i,j)/10.)
 	   endif
 	   endif
-	   endif
-	   enddo
-	   enddo
-	   
+	  enddo
+	  enddo    
 	   if (nbclear.gt.0) then
 	   mclear=mclear/nbclear
 	   else
-	   mclear=275.0
+	   mclear=305.0
 	   endif
-	   
-	   if (nbval.gt.0) then
-	   mall=mall/nbval
-	   endif
-	   
-	   write(6,*) "average clear temperature  %clear", mclear,nbclear*100./(nr*nc),mall,nbval
-	   
-	   
+           write(6,*) "average clear temperature  %clear", mclear,nbclear*100./(nr*nc)	  
 
-c Cloud mask 
-c skipping cloud mask (goto 999)
-c          goto 999
+c compute temperature of clear pixels	
+       if (nbclear.eq.0) then
+       write(6,*) "nbclear eq 0 "
+       do j=1,nr
+       do i=1,nc
+       tclears(i,j)=mclear
+       enddo
+       enddo
+       goto 123
+       endif
+c set up adjacent cloud bit       
+       do i=1,nc
+       do j=1,nr
+       if (sband(12,i,j).ne.1) then
+       if (btest(cloud(i,j),cld).or.(btest(cloud(i,j),cir))) then
+       do k=max(i-5,1),min(i+5,nc)
+       do l=max(j-5,1),min(j+5,nr)
+       if ((k.ge.1).and.(k.le.nc).and.(l.ge.1).and.(l.le.nr)) then
+       if ((.NOT.btest(cloud(k,l),cld)).and.(.not.btest(cloud(k,l),cir)).and.(.not.btest(cloud(k,l),clda))) then
+          cloud(k,l)=cloud(k,l)+4
+	  endif
+	endif
+	enddo
+	enddo
+	endif
+	endif
+	enddo
+	enddo
+       
+       nbpixnf=0
+       do j=1,nr
+       do i=1,nc
+       smflag(i,j)=0
+       if(sband(12,i,j).ne.1) then
+       tclearavg=0.
+       nbclearavg=0
+       do k=max(j-10,1),min(j+10,nr)
+       do l=max(i-10,1),min(i+10,nc)
+       if ((.not.btest(cloud(l,k),cld)).and.(.not.btest(cloud(l,k),clda)).and.(sband(12,l,k).ne.1)) then
+       nbclearavg=nbclearavg+1
+       tclearavg=(sband(10,l,k)/10.)+tclearavg
+       endif
+       enddo
+       enddo
+       if (nbclearavg.gt.0) then
+       tclearavg=tclearavg/nbclearavg
+       tclears(i,j)=tclearavg
+       smflag(i,j)=1
+       else
+       nbpixnf=nbpixnf+1
+       endif
+       endif
+       enddo
+       enddo       
 
-	  do i=1,nc
-	  do j=1,nr
-	  if (ipflag(i,j).gt.1) then
-C all bad retrieval (ipflag ne 0) except for filled value (ip.eq.5) should be tested
-C 
-          if (((sband(2,i,j)-sband(4,i,j)/2.).gt.500).and.((sband(10,i,j)/10.).lt.(mclear-2.))) then
-c snow or cloud cloud for now
-          cloud(i,j)=cloud(i,j)+2
+       write(6,*) "Second Pass temperature"
+       do j=1,nr
+       do i=1,nc
+       if(sband(12,i,j).ne.1) then
+       if (smflag(i,j).eq.0) then
+       tclears(i,j)=mclear
+       endif
+       endif
+       enddo
+       enddo
+       goto 123
+              
+       ipass=2
+       iwind=20
+       do while (nbpixnf.ne.0) 
+       write(6,*) " Pass number ",ipass, "nbpixnf ",nbpixnf     
+       nbpixnf=0
+       do j=1,nr
+       do i=1,nc
+       if((sband(12,i,j).ne.1).and.(smflag(i,j).eq.0)) then
+       tclearavg=0.
+       nbclearavg=0
+       do k=max(j-iwind,1),min(j+iwind,nr)
+       do l=max(i-iwind,1),min(i+iwind,nc)
+       if (smflag(l,k).eq.1) then
+       nbclearavg=nbclearavg+1
+       tclearavg=tclears(l,k)+tclearavg
+       endif
+       enddo
+       enddo
+       if (nbclearavg.gt.0) then
+       tclearavg=tclearavg/nbclearavg
+       tclears(i,j)=tclearavg
+       smflag(i,j)=1
+       else
+       nbpixnf=nbpixnf+1
+       endif
+       endif
+       enddo
+       enddo   
+       ipass=ipass+1
+       enddo    
+c refine cloud mask
+ 123   continue
+       do j=1,nr
+       do i=1,nc
+       if (btest(cloud(i,j),cld)) then
+       if (((sband(10,i,j)/10.).ge.(tclears(i,j)-0.5)).or.((sband(6,i,j)+sband(7,i,j)).lt.1000)) then
+       cloud(i,j)=cloud(i,j)-2
+       endif
+       endif
+       enddo
+       enddo
+c do the cloud adjacency
+       do i=1,nc
+       do j=1,nr
+       if (btest(cloud(i,j),clda)) then
+          cloud(i,j)=cloud(i,j)-4
 	  endif
-	  endif
-	  enddo
-	  enddo	
-	  
-c	  goto 999
-c set up the adjacent to something bad (snow or cloud) bit
+       enddo
+       enddo
        do i=1,nc
        do j=1,nr
        if (btest(cloud(i,j),cld).or.(btest(cloud(i,j),cir))) then
@@ -1281,6 +2012,8 @@ c set up the adjacent to something bad (snow or cloud) bit
 	endif
 	enddo
 	enddo
+       
+       
 c cloud shadow
 c compute adjustement to the North
 c scene center lat,lon
@@ -1309,7 +2042,7 @@ c  compute cloud shadow
        do j=1,nr
        if (btest(cloud(i,j),cld).or.btest(cloud(i,j),cir)) then
            tcloud=sband(10,i,j)/10.
-           cldh=(mclear-tcloud)*1000./cfac
+           cldh=(tclears(i,j)-tcloud)*1000./cfac
 	   if (cldh.lt.0.) cldh=0.
 	   cldhmin=cldh-1000.
 	   cldhmax=cldh+1000.
@@ -1345,297 +2078,15 @@ c store the value of band6 as well as the l and k value
          endif
 	 enddo
 	 enddo
-	 
-c exgd the cloud shadow using residual 	 
-c need to be checked carefully residual is meaningless here
-       do i=1,nc
-       do j=1,nr
-       if (btest(cloud(i,j),clds)) then
-       do k=i-6,i+6
-       do l=j-6,j+6
-       if ((k.ge.1).and.(k.le.nc).and.(l.ge.1).and.(l.le.nr)) then
-       if (btest(cloud(k,l),cld)
-     &   .or.btest(cloud(k,l),clds)) then
-       continue
-       else
-       if (btest(cloud(k,l),cldt)) then
-          continue
-          else
-           if (tresi(k,l).lt.0) then
-           cloud(k,l)=cloud(k,l)+(2**cldt)
-           endif
-       endif
-       endif
-       endif
-       enddo
-       enddo
-       endif
-       enddo
-       enddo
-c update the cloud shadow       
-       write(6,*) "updating cloud shadow"
-       do i=1,nc
-       do j=1,nr
-       if (btest(cloud(i,j),cldt)) then
-       cloud(i,j)=cloud(i,j)+(2**clds)
-       cloud(i,j)=cloud(i,j)-(2**cldt)
-       endif
-       enddo
-       enddo
-c detect water (ipflag=6)
-       do j=1,nr
-       do i=1,nc
-       if ((.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))
-     s    .and.(.not.btest(cloud(i,j),clds)) .and.(.not.btest(cloud(i,j),clda))) then
-        if (sband(5,i,j).lt.100) then
-	fndvi=-0.01
-	else
-        fndvi=dble(sband(5,i,j)-sband(4,i,j))/dble(sband(5,i,j)+sband(4,i,j))
-        endif
-	if (fndvi.lt.0.01) then
-        ipflag(i,j)=6
-        endif
-	endif
-	enddo
-	enddo
-
-       
-c aerosol interpolation
-999    continue
-c begin skipping interpolation (goto 1001)
-c       goto 1001
-
-       do j=1,nr
-       do i=1,nc
-        if ((ipflag(i,j).gt.1).and.(.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))
-     s    .and.(.not.btest(cloud(i,j),wat)).and.(ipflag(i,j).lt.5)) then
-c problem there is no interpolation over water      
-c interpolation 
-       
-       k=i
-       do while ((ipflag(k,j).gt.1).and.(k.gt.1)) 
-       k=k-1     
-       enddo
-       infind=k
-       k=i
-       do while ((ipflag(k,j).gt.1).and.(k.lt.nc))
-       k=k+1     
-       enddo
-       supind=k
-       
-       intst=infind+1
-       inten=supind-1
-       
-       
-       
-1003   continue
-       
-       if ((ipflag(infind,j).gt.1).or.(ipflag(supind,j).gt.1))then
-        goto 1002
-       endif
-       
-      
-       do k=intst,inten
-       if (ipflag(k,j).lt.5) then
-       taero(k,j)=taero(infind,j)+(taero(supind,j)-taero(infind,j))*(k-infind)/(supind-infind)
-       ipflag(k,j)=1
-       endif
-       enddo
- 1004  continue
-       
-       endif
- 1002   continue
-       enddo
-       enddo
-c
-
-            
-c redo in the reverse direction
-c       goto 2005
-       do i=1,nc
-       do j=1,nr
-        if ((ipflag(i,j).gt.1).and.(.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))
-     s    .and.(.not.btest(cloud(i,j),wat)).and.(ipflag(i,j).lt.5)) then
-c problem there is no interpolation over water      
-c interpolation 
-       
-       k=j
-       do while ((ipflag(i,k).gt.1).and.(k.gt.1)) 
-       k=k-1     
-       enddo
-       infind=k
-       k=j
-       do while ((ipflag(i,k).gt.1).and.(k.lt.nr))
-       k=k+1     
-       enddo
-       supind=k
-       
-       intst=infind+1
-       inten=supind-1
-       
-       
-       
-2003   continue
-       
-       if ((ipflag(i,infind).gt.1).or.(ipflag(i,supind).gt.1))then
-        goto 2002
-       endif
-       
-      
-       do k=intst,inten
-       if (ipflag(i,k).lt.5) then
-       taero(i,k)=taero(i,infind)+(taero(i,supind)-taero(i,infind))*(k-infind)/(supind-infind)
-       ipflag(i,k)=1
-       endif
-c       tresi(i,k)=0.0
-       enddo
- 2004  continue
-       
-       endif
- 2002  continue
-       enddo
-       enddo
-       
- 2005  continue     
-c
-
-            
-
-
-
-
-           	 
-c perform the correction
- 1001     continue
-	  rstepc=rstep*5
-          do ib=1,7
-	  do i=1,nc
-	 if ((i-int(i/rstepc)*rstepc).eq.0) then
-	 write(6,*) " atmospheric correction collumn ",i," band ",ib
-	 endif
-	  do j=1,nr
-c	  write(6,*) "i , j",i,j,tresi(i,j)
-	  if (sband(12,i,j).ne.1) then
-	  if ((.not.btest(cloud(i,j),cir)).and.(.not.btest(cloud(i,j),cld))) then
-	  rsurf=sband(ib,i,j)/10000.
-	  rotoa=(rsurf*bttatmg(ib)/(1.-bsatm(ib)*rsurf)+broatm(ib))*btgo(ib)
-	  if (ib.eq.1) then
-c	  write(6,*) "band 1", aerob1(i,j),rotoa
-	  endif
-	  raot550nm=taero(i,j)
-	  pres=tp(i,j)
-	  uwv=twvi(i,j)
-	  uoz=tozi(i,j)
-	  iband=ib
-c	  write(6,*) xts,xtv,xfi,raot550nm,iband,pres,uoz,uwv,tauray
-	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
-     s       aot550nm,rolutt,
-     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,normext,
-     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
-     s       uoz,uwv,tauray,
-     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
-     s       ogtransc0,ogtransc1,
-     s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
-          if ((i.eq.2111).and.(j.eq.4123)) then
-	  write(6,*) "roslamb ",roslamb," tauaero ",taero(i,j) 
-	  endif
-          if (ib.eq.1) then
-	  if ((roslamb.lt.0.01).and.(raot550nm.gt.0.06)) then
-c this should be refined to get better value	  
-          isuccess=0
-	  do while ((roslamb.lt.0))
-          if ((i.eq.1001).and.(j.eq.237)) then
-	  write(6,*) "roslamb ",roslamb," tauaero ",taero(i,j) 
-	  endif
-	  raot550nm=taero(i,j)-0.05
-	  ros2b1=roslamb
-	  pres=tp(i,j)
-	  uwv=twvi(i,j)
-	  uoz=tozi(i,j)
-	  iband=ib
-	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
-     s       aot550nm,rolutt,
-     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,normext,
-     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
-     s       uoz,uwv,tauray,
-     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
-     s       ogtransc0,ogtransc1,
-     s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
-         taero(i,j)= raot550nm
-	 if (roslamb.ge.0.) isuccess=1
-	 enddo
-c enddo of do while lt. 0	
- 
-	 if (isuccess.eq.0) then
-	  raot550nm=taero(i,j)-0.05
-	  ros2b1=roslamb
-	  pres=tp(i,j)
-	  uwv=twvi(i,j)
-	  uoz=tozi(i,j)
-	  iband=ib
-	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
-     s       aot550nm,rolutt,
-     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,normext,
-     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
-     s       uoz,uwv,tauray,
-     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
-     s       ogtransc0,ogtransc1,
-     s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
-         taero(i,j)= raot550nm
-         endif	 
-	 
-c refined optical depth	 
-         raot550nm=taero(i,j)-(roslamb-0.01)*(-0.05)/(roslamb-ros2b1)
-	 taero(i,j)=raot550nm
-	call atmcorlamb2(xts,xtv,xfi,raot550nm,iband,pres,tpres,
-     s       aot550nm,rolutt,
-     s       transt,xtsstep,xtsmin,xtvstep,xtvmin,
-     s       sphalbt,normext,
-     s       tsmax,tsmin,nbfic,nbfi,tts,indts,ttv,
-     s       uoz,uwv,tauray,
-     s       ogtransa0,ogtransa1,ogtransb0,ogtransb1,
-     s       ogtransc0,ogtransc1,
-     s       wvtransa,wvtransb,wvtransc,oztransa,     
-     s       rotoa,roslamb,tgo,roatm,ttatmg,satm,xrorayp,next,
-     s       err_msg,retval)
-	 endif 
-c endif or refining optical depth
-c set up aerosol QA
-c          write(6,*) "SETTING UP aerosol qa BITS"
-          if (abs(rsurf-roslamb).le.0.015) then
-	    cloud(i,j)=cloud(i,j)+16	
-	    else
-	    if   (abs(rsurf-roslamb).lt.0.03) then
-	          cloud(i,j)=cloud(i,j)+32
-	          else
-	          cloud(i,j)=cloud(i,j)+48
-	          endif
-	    endif
-	  endif
-C endif of ib=1	  
-	  
-	  sband(ib,i,j)=int(roslamb*10000.)
-	  endif
-	  endif
-	  enddo
-	  enddo
-	  enddo
-
          
+ 966     continue
+
 !Saving in an HDF file
          write(6,*) "saving corrected data"
 	 ii=index(fileout," ")-1
 	 write(6,*) "fileout ",fileout
          sd_id= sfstart(adjustl(fileout),DFACC_CREATE)
+	 write(6,*) " filout ",sd_id
 	 do ib=1,12
 	 if (ib.ne.8) then
 	 do i=1,nc
@@ -1692,16 +2143,16 @@ c check if QA band to write the attribute
 	 endif
 	 enddo
 c writing lat and lon
-c           write(sds_name,'(A3)') "lat"
-c  	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-c           status=sfwdata(sds_id,start,stride,edges,tlat)
-c  	 write(6,*) "status sfwdata ",status
-c           status = sfendacc(sds_id)
-c           write(sds_name,'(A3)') "lon"
-c  	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
-c           status=sfwdata(sds_id,start,stride,edges,tlon)
-c  	 write(6,*) "status sfwdata ",status
-c           status = sfendacc(sds_id)
+c            write(sds_name,'(A3)') "lat"
+c   	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+c            status=sfwdata(sds_id,start,stride,edges,tlat)
+c   	 write(6,*) "status sfwdata ",status
+c            status = sfendacc(sds_id)
+c            write(sds_name,'(A3)') "lon"
+c   	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+c            status=sfwdata(sds_id,start,stride,edges,tlon)
+c   	 write(6,*) "status sfwdata ",status
+c            status = sfendacc(sds_id)
 c writing xcmg and ycmg
 c          write(sds_name,'(A4)') "xcmg"
 c 	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
@@ -1720,25 +2171,39 @@ c	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
 cc       status=sfwdata(sds_id,start,stride,edges,twv)
 c	 write(6,*) "status sfwdata ",status
 cc       status = sfendacc(sds_id)
-         ihdf=0
-         if (iout.eq.2) then
+         if (ihdf.ne.0) iout=1
+         if (iout.ne.0) then
 c writing aerosol algorithm bands (toa)
-
+         if (ihdf.eq.3) then
          write(sds_name,'(A7,A2)') "toaband",suffix(1)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,aerob1)
+         status = sfendacc(sds_id)
          write(sds_name,'(A7,A2)') "toaband",suffix(2)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,aerob2)
+         status = sfendacc(sds_id)
+         write(sds_name,'(A7,A2)') "toaband",suffix(3)
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+         status=sfwdata(sds_id,start,stride,edges,aerob3)
+         status = sfendacc(sds_id)
          write(sds_name,'(A7,A2)') "toaband",suffix(4)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,aerob4)
+         status = sfendacc(sds_id)
          write(sds_name,'(A7,A2)') "toaband",suffix(5)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,aerob5)
+         status = sfendacc(sds_id)
+         write(sds_name,'(A7,A2)') "toaband",suffix(6)
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+         status=sfwdata(sds_id,start,stride,edges,aerob6)
+         status = sfendacc(sds_id)
          write(sds_name,'(A7,A2)') "toaband",suffix(7)
-	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+ 	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,aerob7)
+         status = sfendacc(sds_id)
+	 endif
 	 
          write(sds_name,'(A4)') "twvi"
  	 sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
@@ -1767,12 +2232,27 @@ c writing aerosol algorithm bands (toa)
 	 status=sfwdata(sds_id,start,stride,edges,taero)
 	write(6,*) "status sfwdata ",status
 	 status = sfendacc(sds_id)
+	 write(sds_name,'(A6)') "taeros"
+	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,taeros)
+	write(6,*) "status sfwdata ",status
+	 status = sfendacc(sds_id)
+	 write(sds_name,'(A7)') "tclears"
+	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,tclears)
+	write(6,*) "status sfwdata ",status
+	 status = sfendacc(sds_id)
 	 write(sds_name,'(A5)') "tresi"
 	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
 	 status=sfwdata(sds_id,start,stride,edges,tresi)
 	write(6,*) "status sfwdata ",status
 	 status = sfendacc(sds_id)
-	   write(sds_name,'(A8)') "tratiob1"
+	 write(sds_name,'(A5)') "tepsa"
+	sds_id=sfcreate(sd_id,sds_name,DFNT_FLOAT32,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,teps)
+	write(6,*) "status sfwdata ",status
+	 status = sfendacc(sds_id)
+  	   write(sds_name,'(A8)') "tratiob1"
 	   write(6,*) "tratiob1 ",tratiob1(672,709),tratiob1(709,672)
 	sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
 	 status=sfwdata(sds_id,start,stride,edges,tratiob1)
@@ -1793,11 +2273,6 @@ c	 status = sfendacc(sds_id)
 	 status=sfsattr(sds_id, "scale_factor", DFNT_FLOAT32, 1, scalefactor)
 	 status=sfsattr(sds_id, "offset", DFNT_FLOAT32, 1, offset)
 	 status = sfendacc(sds_id)
-	 write(sds_name,'(A6)') "nbiter"
-	sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
-	 status=sfwdata(sds_id,start,stride,edges,tnit)
-	write(6,*) "status sfwdata ",status
-	 status = sfendacc(sds_id)
 	   write(sds_name,'(A8)') "tratiob7"
 	sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
 	 status=sfwdata(sds_id,start,stride,edges,tratiob7)
@@ -1808,13 +2283,53 @@ c	 status = sfendacc(sds_id)
 	 status=sfsattr(sds_id, "scale_factor", DFNT_FLOAT32, 1, scalefactor)
 	 status=sfsattr(sds_id, "offset", DFNT_FLOAT32, 1, offset)
 	 status = sfendacc(sds_id)
-	 write(sds_name,'(A6)') "nbiter"
-	sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
-	 status=sfwdata(sds_id,start,stride,edges,tnit)
-	write(6,*) "status sfwdata ",status
+	 
+	 write(sds_name,'(A6)') "solzen"
+	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,ttts)
+	 write(6,*) "status sfwdata ",status
+	 scalefactor=100.
+	 offset=0.0
+	 status=sfsattr(sds_id, "scale_factor", DFNT_FLOAT32, 1, scalefactor)
+	 status=sfsattr(sds_id, "offset", DFNT_FLOAT32, 1, offset)
 	 status = sfendacc(sds_id)
+	 
+	 write(sds_name,'(A7)') "viewzen"
+	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,tttv)
+	 write(6,*) "status sfwdata ",status
+	 scalefactor=100.
+	 offset=0.0
+	 status=sfsattr(sds_id, "scale_factor", DFNT_FLOAT32, 1, scalefactor)
+	 status=sfsattr(sds_id, "offset", DFNT_FLOAT32, 1, offset)
+	 status = sfendacc(sds_id)
+	 
+	 write(sds_name,'(A7)') "relazim"
+	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,ttfi)
+	 write(6,*) "status sfwdata ",status
+	 scalefactor=100.
+	 offset=0.0
+	 status=sfsattr(sds_id, "scale_factor", DFNT_FLOAT32, 1, scalefactor)
+	 status=sfsattr(sds_id, "offset", DFNT_FLOAT32, 1, offset)
+	 status = sfendacc(sds_id)
+	 
 	 endif
 	 
+	 if (1.eq.2) then
+	 write(sds_name,'(A8)') "tratiob1"
+	 write(6,*) "tratiob1 ",tratiob1(672,709),tratiob1(709,672)
+	 sds_id=sfcreate(sd_id,sds_name,DFNT_INT16,rank,dim_sizes)
+	 status=sfwdata(sds_id,start,stride,edges,tratiob1)
+	 write(6,*) "status sfwdata ",status
+c	 status = sfendacc(sds_id)
+	 scalefactor=1000.
+	 offset=0.0
+	 status=sfsattr(sds_id, "scale_factor", DFNT_FLOAT32, 1, scalefactor)
+	 status=sfsattr(sds_id, "offset", DFNT_FLOAT32, 1, offset)
+	 status = sfendacc(sds_id)
+	 endif
+
          write(sds_name,'(A5)') "CLOUD"
 	 sds_id=sfcreate(sd_id,sds_name,DFNT_UINT8,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,cloud)
@@ -1827,12 +2342,16 @@ c	 status = sfendacc(sds_id)
 	 sds_id=sfcreate(sd_id,sds_name,DFNT_UINT8,rank,dim_sizes)
          status=sfwdata(sds_id,start,stride,edges,ipflag)
 	 write(6,*) "status sfwdata ",status
-         status = sfendacc(sds_id)
+          write(sds_name,'(A6)') "AERIMP"
+	 sds_id=sfcreate(sd_id,sds_name,DFNT_UINT8,rank,dim_sizes)
+         status=sfwdata(sds_id,start,stride,edges,aerimp)
+	 write(6,*) "status sfwdata ",status
+        status = sfendacc(sds_id)
 c writing projection metadata
 	 xd=nc
 	 yd=nr
-	 uplx=x0+gsize*frcl
-	 uply=y0-gsize*frln
+	 uplx=x0+gsize*(frcl+col0-2)
+	 uply=y0-gsize*(frln+row0-2)
 	 lorx=uplx+nc*gsize
 	 lory=uply-nr*gsize
 	 zone=utmzone
