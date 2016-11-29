@@ -118,10 +118,12 @@ int main (int argc, char *argv[]) {
 
   /* Allocate memory for the input solar zenith representative band buffer, if
      processing Collections */
-  input_psize = sizeof(int16);
-  line_in_sun_zen = calloc (input->size.s, input_psize);
-   if (line_in_sun_zen == NULL) 
-     EXIT_ERROR("allocating input line buffer for solar zenith band", "main");
+  if (param->process_collection) {
+    input_psize = sizeof(int16);
+    line_in_sun_zen = calloc (input->size.s, input_psize);
+     if (line_in_sun_zen == NULL) 
+       EXIT_ERROR("allocating input line buffer for solar zenith band", "main");
+  }
 
   /* Create and open output thermal band, if one exists */
   if ( input->nband_th > 0 ) {
