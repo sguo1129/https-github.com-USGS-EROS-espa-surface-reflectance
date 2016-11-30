@@ -3,7 +3,7 @@
 #
 # Project Name: surface reflectance
 #-----------------------------------------------------------------------------
-.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-lasrc install-lasrc clean-lasrc all-lasrc-aux install-lasrc-aux clean-lasrc-aux all-aux install-aux rpms base-rpm aux-rpms ledaps-rpm ledaps-aux-rpm lasrc-rpm lasrc-aux-rpm
+.PHONY: check-environment all install clean all-script install-script clean-script all-ledaps install-ledaps clean-ledaps all-ledaps-aux install-ledaps-aux clean-ledaps-aux all-lasrc install-lasrc clean-lasrc all-lasrc-aux install-lasrc-aux clean-lasrc-aux all-aux install-aux
 
 include make.config
 
