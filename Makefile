@@ -88,26 +88,6 @@ all-aux: all-ledaps-aux all-lasrc-aux
 install-aux: install-ledaps-aux install-lasrc-aux
 
 #-----------------------------------------------------------------------------
-rpms: base-rpm ledaps-rpm lasrc-rpm
-
-base-rpm:
-	rpmbuild -bb --clean RPM_spec_files/RPM.spec
-
-ledaps-rpm:
-	rpmbuild -bb --clean RPM_spec_files/RPM-Ledaps.spec
-
-lasrc-rpm:
-	rpmbuild -bb --clean RPM_spec_files/RPM-LaSRC.spec
-
-aux-rpms: ledaps-aux-rpm lasrc-aux-rpm
-
-ledaps-aux-rpm:
-	rpmbuild -bb --clean RPM_spec_files/RPM-Ledaps-Aux.spec
-
-lasrc-aux-rpm:
-	rpmbuild -bb --clean RPM_spec_files/RPM-LaSRC-Aux.spec
-
-#-----------------------------------------------------------------------------
 check-environment:
 ifndef PREFIX
     $(error Environment variable PREFIX is not defined)
